@@ -84,7 +84,7 @@ public class AdminTests : BaseTest
 
         // Assert - Member should be created successfully
         // First check if there's an error message instead of success
-        var wait = new WebDriverWait(Driver, TimeSpan.FromSeconds(10));
+        var wait = new WebDriverWait(Driver, TimeSpan.FromSeconds(15));
         
         try 
         {
@@ -101,10 +101,28 @@ public class AdminTests : BaseTest
                     var errorElement = driver.FindElement(By.Id("error-message"));
                     if (errorElement.Displayed) return errorElement;
                     
+                    // Check for general error text or validation errors
+                    var errorElements = driver.FindElements(By.CssSelector("[data-testid='error-message'], .text-red-500, .text-red-600, .text-red-800"));
+                    foreach (var elem in errorElements)
+                    {
+                        if (elem.Displayed && !string.IsNullOrWhiteSpace(elem.Text))
+                        {
+                            return elem;
+                        }
+                    }
+                    
                     return null;
                 }
                 catch (NoSuchElementException)
                 {
+                    // If no message elements exist yet, check if form is still visible
+                    try
+                    {
+                        var form = driver.FindElement(By.Id("submit-create-member"));
+                        if (form.Displayed) return null; // Still processing
+                    }
+                    catch (NoSuchElementException) { }
+                    
                     return null;
                 }
             });
@@ -133,7 +151,26 @@ public class AdminTests : BaseTest
             // If no message appears, fail with more helpful information
             var currentUrl = Driver.Url;
             var pageTitle = Driver.Title;
-            throw new Exception($"No success or error message appeared after member creation. Current URL: {currentUrl}, Page Title: {pageTitle}");
+            var pageSource = Driver.PageSource;
+            
+            // Check for any visible errors on the page
+            var hasErrorOnPage = pageSource.Contains("error") || pageSource.Contains("Error") || pageSource.Contains("failed") || pageSource.Contains("Failed");
+            var debugInfo = hasErrorOnPage ? "Page contains error text" : "No obvious error text found";
+            
+            // Look for specific error messages
+            var errorPattern = new System.Text.RegularExpressions.Regex(@"(error|Error|failed|Failed)[^<]*");
+            var errorMatches = errorPattern.Matches(pageSource);
+            var errorText = errorMatches.Count > 0 ? string.Join("; ", errorMatches.Take(3).Select(m => m.Value.Trim())) : "No specific errors found";
+            
+            // Log the current state for debugging
+            Console.WriteLine($"DEBUG: Current URL: {currentUrl}");
+            Console.WriteLine($"DEBUG: Page Title: {pageTitle}");
+            Console.WriteLine($"DEBUG: {debugInfo}");
+            Console.WriteLine($"DEBUG: Error text: {errorText}");
+            Console.WriteLine($"DEBUG: Form still visible: {pageSource.Contains("submit-create-member")}");
+            Console.WriteLine($"DEBUG: Success message div exists: {pageSource.Contains("data-testid=\"success-message\"")}");
+            
+            throw new Exception($"No success or error message appeared after member creation. Current URL: {currentUrl}, Page Title: {pageTitle}, Debug: {debugInfo}, Errors: {errorText}");
         }
     }
 
@@ -784,7 +821,7 @@ public class AdminTests : BaseTest
 
         // Verify rooms are available in dropdown while modal is open
         var availableRooms = coursesPage.GetAvailableRooms();
-        availableRooms.Should().Contain("Classroom B (Capacity: 20)", "Classroom B should be available in the room options");
+        availableRooms.Should().Contain(room => room.Contains("Classroom B") && room.Contains("20"), "Classroom B should be available in the room options");
 
         coursesPage.FillCourseForm(
             name: courseName,

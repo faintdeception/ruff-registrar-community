@@ -433,3 +433,4 @@ src/StudentRegistrar.AppHost/appsettings.*.json
 *.key
 *.pem
 secrets.json
+.github/copilot-instructions.md

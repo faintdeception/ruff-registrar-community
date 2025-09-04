@@ -147,10 +147,14 @@ docker-compose up postgres keycloak -d
 
    The script will:
    - Create the `student-registrar` realm
-   - Create user roles (Administrator, Educator, Parent, Student)
-   - Create the `student-registrar` client
+   - Create user roles (Administrator, Educator, Member)
+   - Create the `student-registrar` client with service account enabled
+   - **Configure service account permissions** for user management (manage-users role)
    - Generate and display the client secret
+   - Create test users (scoopadmin, scoopmember, scoopinstructor)
    - Provide configuration commands
+
+   **Important**: The setup script now automatically configures all necessary Keycloak permissions for admin member creation functionality. No additional permission configuration is needed.
 
 3. **Alternative Manual Setup:**
    - Open Keycloak Admin Console: http://localhost:8080

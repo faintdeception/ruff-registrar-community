@@ -181,6 +181,52 @@ if [ "$CLIENT_UUID" != "null" ] && [ -n "$CLIENT_UUID" ]; then
     CLIENT_SECRET=$(curl -s -X GET "${KEYCLOAK_URL}/admin/realms/$REALM_NAME/clients/$CLIENT_UUID/client-secret" \
         -H "Authorization: Bearer $TOKEN" | jq -r '.value')
     
+    # Grant service account permissions for user management
+    echo "🔧 Configuring service account permissions..."
+    
+    # Get the service account user ID
+    SERVICE_ACCOUNT_USER=$(curl -s -X GET "${KEYCLOAK_URL}/admin/realms/$REALM_NAME/clients/$CLIENT_UUID/service-account-user" \
+        -H "Authorization: Bearer $TOKEN")
+    
+    SERVICE_ACCOUNT_USER_ID=$(echo "$SERVICE_ACCOUNT_USER" | jq -r '.id')
+    
+    if [ "$SERVICE_ACCOUNT_USER_ID" != "null" ] && [ -n "$SERVICE_ACCOUNT_USER_ID" ]; then
+        # Get the realm-management client ID
+        REALM_MANAGEMENT_CLIENT=$(curl -s -X GET "${KEYCLOAK_URL}/admin/realms/$REALM_NAME/clients?clientId=realm-management" \
+            -H "Authorization: Bearer $TOKEN" | jq -r '.[0].id')
+        
+        if [ "$REALM_MANAGEMENT_CLIENT" != "null" ] && [ -n "$REALM_MANAGEMENT_CLIENT" ]; then
+            # Get the manage-users role
+            MANAGE_USERS_ROLE=$(curl -s -X GET "${KEYCLOAK_URL}/admin/realms/$REALM_NAME/clients/$REALM_MANAGEMENT_CLIENT/roles/manage-users" \
+                -H "Authorization: Bearer $TOKEN")
+            
+            MANAGE_USERS_ROLE_ID=$(echo "$MANAGE_USERS_ROLE" | jq -r '.id')
+            
+            if [ "$MANAGE_USERS_ROLE_ID" != "null" ] && [ -n "$MANAGE_USERS_ROLE_ID" ]; then
+                # Grant the manage-users role to the service account
+                GRANT_RESPONSE=$(curl -s -X POST "${KEYCLOAK_URL}/admin/realms/$REALM_NAME/users/$SERVICE_ACCOUNT_USER_ID/role-mappings/clients/$REALM_MANAGEMENT_CLIENT" \
+                    -H "Authorization: Bearer $TOKEN" \
+                    -H "Content-Type: application/json" \
+                    -d "[{
+                        \"id\": \"$MANAGE_USERS_ROLE_ID\",
+                        \"name\": \"manage-users\"
+                    }]")
+                
+                if [ $? -eq 0 ]; then
+                    echo "✅ Service account granted manage-users permission"
+                else
+                    echo "⚠️  Failed to grant manage-users permission to service account"
+                fi
+            else
+                echo "⚠️  Could not find manage-users role"
+            fi
+        else
+            echo "⚠️  Could not find realm-management client"
+        fi
+    else
+        echo "⚠️  Could not find service account user"
+    fi
+    
     # Create scoopadmin user if not exists
     SCOOPADMIN_USERNAME="scoopadmin"
     SCOOPADMIN_PASSWORD="changethis123!"
