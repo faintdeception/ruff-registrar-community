@@ -218,30 +218,6 @@ public class StudentsControllerTests
     }
 
     [Fact]
-    public async Task GetStudentEnrollments_Should_ReturnEnrollmentsForStudent()
-    {
-        // Arrange
-        var studentId = Guid.NewGuid();
-        var expectedEnrollments = new List<EnrollmentDto>
-        {
-            new() { Id = 1, StudentId = 1, CourseId = 101, Status = "Active" }
-        };
-
-        _mockStudentService
-            .Setup(s => s.GetStudentEnrollmentsAsync(studentId))
-            .Returns(Task.FromResult<IEnumerable<EnrollmentDto>>(expectedEnrollments));
-
-        // Act
-        var result = await _controller.GetStudentEnrollments(studentId);
-
-        // Assert
-        var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(expectedEnrollments);
-    }
-
-    [Fact]
     public async Task GetStudentsByAccountHolder_Should_ReturnStudentsForAccountHolder()
     {
         // Arrange

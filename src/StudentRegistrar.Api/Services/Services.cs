@@ -64,101 +64,12 @@ public class StudentService : IStudentService
         return await _studentRepository.DeleteAsync(id);
     }
 
-    /*
-    public async Task<IEnumerable<EnrollmentDto>> GetStudentEnrollmentsAsync(Guid studentId)
-    {
-        var enrollments = await _enrollmentRepository.GetByStudentAsync(studentId);
-        return _mapper.Map<IEnumerable<EnrollmentDto>>(enrollments);
-    }
-    */
-
     public async Task<IEnumerable<StudentDto>> GetStudentsByAccountHolderAsync(Guid accountHolderId)
     {
         var students = await _studentRepository.GetByAccountHolderAsync(accountHolderId);
         return _mapper.Map<IEnumerable<StudentDto>>(students);
     }
 }
-
-/*
-public class EnrollmentService : IEnrollmentService
-{
-    private readonly IEnrollmentRepository _enrollmentRepository;
-    private readonly IStudentRepository _studentRepository;
-    private readonly ICourseRepository _courseRepository;
-    private readonly IMapper _mapper;
-
-    public EnrollmentService(
-        IEnrollmentRepository enrollmentRepository,
-        IStudentRepository studentRepository,
-        ICourseRepository courseRepository,
-        IMapper mapper)
-    {
-        _enrollmentRepository = enrollmentRepository;
-        _studentRepository = studentRepository;
-        _courseRepository = courseRepository;
-        _mapper = mapper;
-    }
-
-    public async Task<IEnumerable<EnrollmentDto>> GetAllEnrollmentsAsync()
-    {
-        var enrollments = await _enrollmentRepository.GetAllAsync();
-        return _mapper.Map<IEnumerable<EnrollmentDto>>(enrollments);
-    }
-
-    public async Task<EnrollmentDto?> GetEnrollmentByIdAsync(Guid id)
-    {
-        var enrollment = await _enrollmentRepository.GetByIdAsync(id);
-        return enrollment != null ? _mapper.Map<EnrollmentDto>(enrollment) : null;
-    }
-
-    public async Task<EnrollmentDto> CreateEnrollmentAsync(CreateEnrollmentDto createEnrollmentDto)
-    {
-        var enrollment = _mapper.Map<Enrollment>(createEnrollmentDto);
-        var createdEnrollment = await _enrollmentRepository.CreateAsync(enrollment);
-        return _mapper.Map<EnrollmentDto>(createdEnrollment);
-    }
-
-    public async Task<bool> DeleteEnrollmentAsync(Guid id)
-    {
-        return await _enrollmentRepository.DeleteAsync(id);
-    }
-
-    public async Task<EnrollmentDto?> UpdateEnrollmentStatusAsync(Guid id, string status)
-    {
-        var existingEnrollment = await _enrollmentRepository.GetByIdAsync(id);
-        if (existingEnrollment == null)
-            return null;
-
-        // Update the enrollment type based on status
-        if (Enum.TryParse<EnrollmentType>(status, out var enrollmentType))
-        {
-            existingEnrollment.EnrollmentType = enrollmentType;
-            var updatedEnrollment = await _enrollmentRepository.UpdateAsync(existingEnrollment);
-            return _mapper.Map<EnrollmentDto>(updatedEnrollment);
-        }
-
-        return null;
-    }
-
-    public async Task<IEnumerable<EnrollmentDto>> GetEnrollmentsByStudentAsync(Guid studentId)
-    {
-        var enrollments = await _enrollmentRepository.GetByStudentAsync(studentId);
-        return _mapper.Map<IEnumerable<EnrollmentDto>>(enrollments);
-    }
-
-    public async Task<IEnumerable<EnrollmentDto>> GetEnrollmentsByCourseAsync(Guid courseId)
-    {
-        var enrollments = await _enrollmentRepository.GetByCourseAsync(courseId);
-        return _mapper.Map<IEnumerable<EnrollmentDto>>(enrollments);
-    }
-
-    public async Task<IEnumerable<EnrollmentDto>> GetEnrollmentsBySemesterAsync(Guid semesterId)
-    {
-        var enrollments = await _enrollmentRepository.GetBySemesterAsync(semesterId);
-        return _mapper.Map<IEnumerable<EnrollmentDto>>(enrollments);
-    }
-}
-*/
 
 public class CourseServiceV2 : ICourseServiceV2
 {
