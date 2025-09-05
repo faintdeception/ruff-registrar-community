@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import apiClient from '@/lib/api-client';
 import {
   ClipboardDocumentListIcon,
   UserGroupIcon,
@@ -44,20 +45,10 @@ export default function EnrollmentsPage() {
   const fetchEnrollments = async () => {
     try {
       setLoading(true);
-      
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
 
       // For now, we'll need to get enrollments through the students endpoint
       // In the future, there should be a dedicated enrollments endpoint
-      const response = await fetch('/api/account-holders/me/students', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await apiClient.get('/api/account-holders/me/students');
 
       if (!response.ok) {
         throw new Error('Failed to fetch enrollments');

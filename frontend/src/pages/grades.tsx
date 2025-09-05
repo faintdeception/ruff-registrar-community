@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import apiClient from '@/lib/api-client';
 import {
   ChartBarIcon,
   UserGroupIcon,
@@ -53,19 +54,9 @@ export default function GradesPage() {
   const fetchGrades = async () => {
     try {
       setLoading(true);
-      
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
 
       // Get students and their enrollments to extract grade information
-      const response = await fetch('/api/account-holders/me/students', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await apiClient.get('/api/account-holders/me/students');
 
       if (!response.ok) {
         throw new Error('Failed to fetch grade data');

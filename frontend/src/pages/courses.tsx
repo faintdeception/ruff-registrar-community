@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import apiClient from '@/lib/api-client';
 import {
   BookOpenIcon,
   CalendarIcon,
@@ -118,19 +119,9 @@ export default function CoursesPage() {
   const fetchSemesters = async () => {
     try {
       setLoading(true);
+
+      const semestersResponse = await apiClient.get('/api/semesters');
       
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const semestersResponse = await fetch('/api/semesters', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
       if (!semestersResponse.ok) {
         throw new Error('Failed to fetch semesters');
       }
@@ -140,12 +131,7 @@ export default function CoursesPage() {
       
       // Try to get the active semester
       try {
-        const activeSemesterResponse = await fetch('/api/semesters/active', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
+        const activeSemesterResponse = await apiClient.get('/api/semesters/active');
 
         if (activeSemesterResponse.ok) {
           const activeSemesterData = await activeSemesterResponse.json();
@@ -175,17 +161,7 @@ export default function CoursesPage() {
 
   const fetchCoursesBySemester = async (semesterId: string) => {
     try {
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const coursesResponse = await fetch(`/api/courses?semesterId=${semesterId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const coursesResponse = await apiClient.get(`/api/courses?semesterId=${semesterId}`);
 
       if (!coursesResponse.ok) {
         throw new Error('Failed to fetch courses');
@@ -199,19 +175,9 @@ export default function CoursesPage() {
     }
   };
 
-  const fetchAvailableMembers = useCallback(async () => {
+    const fetchAvailableMembers = useCallback(async () => {
     try {
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await fetch('/api/courses/available-members', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await apiClient.get('/api/courses/available-members');
 
       if (!response.ok) {
         throw new Error('Failed to fetch available members');
@@ -226,17 +192,7 @@ export default function CoursesPage() {
 
   const fetchAvailableRooms = useCallback(async () => {
     try {
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await fetch('/api/rooms', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await apiClient.get('/api/rooms');
 
       if (!response.ok) {
         let errorMessage = 'Failed to fetch rooms';
@@ -301,11 +257,6 @@ export default function CoursesPage() {
   }) => {
     try {
       setIsCreating(true);
-      
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
 
       if (!selectedSemester) {
         throw new Error('No semester selected');
@@ -326,14 +277,7 @@ export default function CoursesPage() {
         ageGroup: courseData.ageGroup
       };
 
-      const response = await fetch('/api/courses', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(createDto)
-      });
+      const response = await apiClient.post('/api/courses', createDto);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -381,15 +325,8 @@ export default function CoursesPage() {
       
       try {
         setLoadingInstructors(true);
-        const token = localStorage.getItem('accessToken');
-        if (!token) return;
 
-        const response = await fetch(`/api/courses/${editingCourse.id}/instructors`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
+        const response = await apiClient.get(`/api/courses/${editingCourse.id}/instructors`);
 
         if (response.ok) {
           const instructors = await response.json();
@@ -407,8 +344,6 @@ export default function CoursesPage() {
       
       try {
         setAddingInstructor(true);
-        const token = localStorage.getItem('accessToken');
-        if (!token) return;
 
         const instructorData: any = {
           courseId: editingCourse.id,
@@ -430,14 +365,7 @@ export default function CoursesPage() {
           }
         }
 
-        const response = await fetch(`/api/courses/${editingCourse.id}/instructors`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(instructorData)
-        });
+        const response = await apiClient.post(`/api/courses/${editingCourse.id}/instructors`, instructorData);
 
         if (response.ok) {
           await fetchCourseInstructors();
@@ -461,15 +389,7 @@ export default function CoursesPage() {
       if (!editingCourse) return;
       
       try {
-        const token = localStorage.getItem('accessToken');
-        if (!token) return;
-
-        const response = await fetch(`/api/courses/${editingCourse.id}/instructors/${instructorId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
+        const response = await apiClient.delete(`/api/courses/${editingCourse.id}/instructors/${instructorId}`);
 
         if (response.ok) {
           await fetchCourseInstructors();
@@ -504,9 +424,6 @@ export default function CoursesPage() {
       if (!editingCourse || !roomId) return;
       
       try {
-        const token = localStorage.getItem('accessToken');
-        if (!token) return;
-
         const updateDto = {
           name: editingCourse.name,
           code: editingCourse.code,
@@ -520,14 +437,7 @@ export default function CoursesPage() {
           ageGroup: editingCourse.ageGroup
         };
 
-        const response = await fetch(`/api/courses/${editingCourse.id}`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(updateDto)
-        });
+        const response = await apiClient.put(`/api/courses/${editingCourse.id}`, updateDto);
 
         if (response.ok) {
           // Refresh the courses list to show updated room

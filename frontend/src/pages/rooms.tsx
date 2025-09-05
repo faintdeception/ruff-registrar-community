@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import apiClient from '@/lib/api-client';
 import {
   BuildingOfficeIcon,
   PlusIcon,
@@ -91,18 +92,8 @@ export default function RoomsPage() {
   const fetchRooms = async () => {
     try {
       setLoading(true);
-      
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
 
-      const response = await fetch('/api/rooms', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await apiClient.get('/api/rooms');
 
       if (!response.ok) {
         throw new Error('Failed to fetch rooms');
