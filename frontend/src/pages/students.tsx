@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import apiClient from '@/lib/api-client';
 import {
   UserGroupIcon,
   PlusIcon,
@@ -45,27 +46,17 @@ export default function StudentsPage() {
   const fetchStudents = async () => {
     try {
       setLoading(true);
-      
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
 
       // For regular users, get their students through account holder endpoint
       // For admins, we'd need a different endpoint to get all students
       const endpoint = isAdmin ? '/api/students' : '/api/account-holders/me/students';
       
-      const response = await fetch(endpoint, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
+      const response = await apiClient.get(endpoint);
+      
       if (!response.ok) {
         throw new Error('Failed to fetch students');
       }
-
+      
       const data = await response.json();
       setStudents(Array.isArray(data) ? data : []);
     } catch (err) {

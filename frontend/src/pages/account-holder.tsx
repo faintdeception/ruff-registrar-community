@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../lib/auth';
 import ProtectedRoute from '../components/ProtectedRoute';
+import apiClient from '../lib/api-client';
 import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 interface AccountHolder {
@@ -137,37 +138,21 @@ const AccountHolderPage: React.FC = () => {
       setError(null);
       setSuccessMessage(null);
       setAddingStudent(true);
-      
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
 
-      const response = await fetch(`/api/account-holders/me/students`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+      const response = await apiClient.post('/api/account-holders/me/students', {
+        firstName: newStudent.firstName,
+        lastName: newStudent.lastName,
+        grade: newStudent.grade || null,
+        dateOfBirth: newStudent.dateOfBirth ? new Date(newStudent.dateOfBirth).toISOString() : null,
+        studentInfoJson: {
+          specialConditions: newStudent.studentInfoJson.specialConditions?.filter(c => c.trim()) || [],
+          allergies: newStudent.studentInfoJson.allergies?.filter(a => a.trim()) || [],
+          medications: newStudent.studentInfoJson.medications?.filter(m => m.trim()) || [],
+          preferredName: newStudent.studentInfoJson.preferredName || null,
+          parentNotes: newStudent.studentInfoJson.parentNotes || null
         },
-        body: JSON.stringify({
-          firstName: newStudent.firstName,
-          lastName: newStudent.lastName,
-          grade: newStudent.grade || null,
-          dateOfBirth: newStudent.dateOfBirth ? new Date(newStudent.dateOfBirth).toISOString() : null,
-          studentInfoJson: {
-            specialConditions: newStudent.studentInfoJson.specialConditions?.filter(c => c.trim()) || [],
-            allergies: newStudent.studentInfoJson.allergies?.filter(a => a.trim()) || [],
-            medications: newStudent.studentInfoJson.medications?.filter(m => m.trim()) || [],
-            preferredName: newStudent.studentInfoJson.preferredName || null,
-            parentNotes: newStudent.studentInfoJson.parentNotes || null
-          },
-          notes: newStudent.notes || null
-        }),
+        notes: newStudent.notes || null
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to add student');
-      }
 
       // Refresh account holder data
       fetchAccountHolder();
@@ -208,22 +193,7 @@ const AccountHolderPage: React.FC = () => {
       setError(null);
       setSuccessMessage(null);
       
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await fetch(`/api/account-holders/me/students/${studentId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to remove student');
-      }
+      await apiClient.delete(`/api/account-holders/me/students/${studentId}`);
 
       // Refresh account holder data
       fetchAccountHolder();
@@ -241,22 +211,12 @@ const AccountHolderPage: React.FC = () => {
       setError(null);
       setSuccessMessage(null);
       
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await fetch(`/api/account-holders/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
+      const response = await apiClient.get('/api/account-holders/me');
+      
       if (!response.ok) {
         throw new Error('Failed to fetch account holder data');
       }
-
+      
       const data = await response.json();
       setAccountHolder(data);
     } catch (err) {

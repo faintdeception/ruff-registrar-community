@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../lib/auth';
 import ProtectedRoute from '../components/ProtectedRoute';
+import apiClient from '../lib/api-client';
 import { PlusIcon, XMarkIcon, UserIcon, PhoneIcon, EnvelopeIcon, MapPinIcon, ClipboardDocumentIcon, EyeIcon, EyeSlashIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 interface Member {
@@ -129,18 +130,8 @@ const MembersPage: React.FC = () => {
       setError(null);
       setSuccessMessage(null);
       setLoading(true);
-      
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
 
-      const response = await fetch('/api/members', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await apiClient.get('/api/members');
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -162,20 +153,8 @@ const MembersPage: React.FC = () => {
       setError(null);
       setSuccessMessage(null);
       setCreating(true);
-      
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
 
-      const response = await fetch('/api/members', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newMember),
-      });
+      const response = await apiClient.post('/api/members', newMember);
 
       if (!response.ok) {
         const errorData = await response.json();
