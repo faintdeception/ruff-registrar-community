@@ -3,15 +3,7 @@ using StudentRegistrar.Api.DTOs;
 
 namespace StudentRegistrar.Api.Services;
 
-public interface IStudentService
-{
-    Task<IEnumerable<StudentDto>> GetAllStudentsAsync();
-    Task<StudentDto?> GetStudentByIdAsync(Guid id);
-    Task<StudentDto> CreateStudentAsync(CreateStudentDto createStudentDto);
-    Task<StudentDto?> UpdateStudentAsync(Guid id, UpdateStudentDto updateStudentDto);
-    Task<bool> DeleteStudentAsync(Guid id);
-    Task<IEnumerable<StudentDto>> GetStudentsByAccountHolderAsync(Guid accountHolderId);
-}
+
 
 public interface ICourseService
 {
@@ -67,60 +59,13 @@ public interface IEducatorService
     Task<bool> ActivateEducatorAsync(Guid id);
 }
 
-// New Course System Services
-public interface ISemesterService
-{
-    Task<IEnumerable<SemesterDto>> GetAllSemestersAsync();
-    Task<SemesterDto?> GetSemesterByIdAsync(Guid id);
-    Task<SemesterDto?> GetActiveSemesterAsync();
-    Task<SemesterDto> CreateSemesterAsync(CreateSemesterDto createDto);
-    Task<SemesterDto?> UpdateSemesterAsync(Guid id, UpdateSemesterDto updateDto);
-    Task<bool> DeleteSemesterAsync(Guid id);
-}
 
-public interface ICourseServiceV2
-{
-    Task<IEnumerable<CourseDto>> GetAllCoursesAsync();
-    Task<IEnumerable<CourseDto>> GetCoursesBySemesterAsync(Guid semesterId);
-    Task<CourseDto?> GetCourseByIdAsync(Guid id);
-    Task<CourseDto> CreateCourseAsync(CreateCourseDto createDto);
-    Task<CourseDto?> UpdateCourseAsync(Guid id, UpdateCourseDto updateDto);
-    Task<bool> DeleteCourseAsync(Guid id);
-    
-    // Instructor management methods
-    Task<IEnumerable<CourseInstructorDto>> GetCourseInstructorsAsync(Guid courseId);
-    Task<CourseInstructorDto> AddInstructorAsync(CreateCourseInstructorDto createDto);
-    Task<CourseInstructorDto?> UpdateInstructorAsync(Guid instructorId, UpdateCourseInstructorDto updateDto);
-    Task<bool> RemoveInstructorAsync(Guid instructorId);
-    Task<IEnumerable<AccountHolderDto>> GetAvailableMembersAsync();
-}
 
-public interface IAccountHolderService
-{
-    Task<IEnumerable<AccountHolderDto>> GetAllAccountHoldersAsync();
-    Task<AccountHolderDto?> GetAccountHolderByUserIdAsync(string userId);
-    Task<AccountHolderDto?> GetAccountHolderByIdAsync(Guid id);
-    Task<AccountHolderDto> CreateAccountHolderAsync(CreateAccountHolderDto createDto);
-    Task<AccountHolderDto> CreateAccountHolderAsync(CreateAccountHolderDto createDto, string? keycloakUserId);
-    Task<AccountHolderDto?> UpdateAccountHolderAsync(Guid id, UpdateAccountHolderDto updateDto);
-    Task<StudentDto> AddStudentToAccountAsync(Guid accountHolderId, CreateStudentForAccountDto createDto);
-    Task<bool> RemoveStudentFromAccountAsync(Guid accountHolderId, Guid studentId);
-}
 
-public interface IPaymentService
-{
-    Task<IEnumerable<PaymentDto>> GetAllPaymentsAsync();
-    Task<PaymentDto?> GetPaymentByIdAsync(Guid id);
-    Task<IEnumerable<PaymentDto>> GetPaymentsByAccountHolderAsync(Guid accountHolderId);
-    Task<IEnumerable<PaymentDto>> GetPaymentsByEnrollmentAsync(Guid enrollmentId);
-    Task<IEnumerable<PaymentDto>> GetPaymentsByTypeAsync(PaymentType paymentType);
-    Task<PaymentDto> CreatePaymentAsync(CreatePaymentDto createDto);
-    Task<PaymentDto?> UpdatePaymentAsync(Guid id, UpdatePaymentDto updateDto);
-    Task<bool> DeletePaymentAsync(Guid id);
-    Task<decimal> GetTotalPaidByAccountHolderAsync(Guid accountHolderId, PaymentType? type = null);
-    Task<decimal> GetTotalPaidByEnrollmentAsync(Guid enrollmentId);
-    Task<IEnumerable<PaymentDto>> GetPaymentHistoryAsync(Guid accountHolderId, DateTime? fromDate = null, DateTime? toDate = null);
-}
+
+
+
+
 
 public interface IRoomService
 {
