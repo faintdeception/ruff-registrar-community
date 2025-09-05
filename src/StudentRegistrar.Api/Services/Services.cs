@@ -64,11 +64,13 @@ public class StudentService : IStudentService
         return await _studentRepository.DeleteAsync(id);
     }
 
+    /*
     public async Task<IEnumerable<EnrollmentDto>> GetStudentEnrollmentsAsync(Guid studentId)
     {
         var enrollments = await _enrollmentRepository.GetByStudentAsync(studentId);
         return _mapper.Map<IEnumerable<EnrollmentDto>>(enrollments);
     }
+    */
 
     public async Task<IEnumerable<StudentDto>> GetStudentsByAccountHolderAsync(Guid accountHolderId)
     {
@@ -77,6 +79,7 @@ public class StudentService : IStudentService
     }
 }
 
+/*
 public class EnrollmentService : IEnrollmentService
 {
     private readonly IEnrollmentRepository _enrollmentRepository;
@@ -155,6 +158,7 @@ public class EnrollmentService : IEnrollmentService
         return _mapper.Map<IEnumerable<EnrollmentDto>>(enrollments);
     }
 }
+*/
 
 public class CourseServiceV2 : ICourseServiceV2
 {

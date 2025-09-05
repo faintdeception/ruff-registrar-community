@@ -45,7 +45,6 @@ builder.Services.AddScoped<StudentRegistrar.Data.Repositories.IRoomRepository, S
 
 // Add modernized application services
 builder.Services.AddScoped<IStudentService, StudentService>();
-builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<ICourseServiceV2, CourseServiceV2>();
 builder.Services.AddScoped<IAccountHolderService, AccountHolderService>();
 builder.Services.AddScoped<ISemesterService, SemesterService>();

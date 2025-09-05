@@ -74,8 +74,6 @@ public class NavigationPage
     public bool IsStudentsVisible() => IsNavItemVisible("students");
     public bool IsCoursesVisible() => IsNavItemVisible("courses");
     public bool IsSemestersVisible() => IsNavItemVisible("semesters");
-    public bool IsEnrollmentsVisible() => IsNavItemVisible("enrollments");
-    public bool IsGradesVisible() => IsNavItemVisible("grades");
     public bool IsEducatorsVisible() => IsNavItemVisible("educators");
 
     public bool IsStudentsPresent() => IsNavItemPresent("students");
@@ -155,8 +153,6 @@ public class NavigationPage
         IsStudentsVisible().Should().BeTrue("Admin should see Students nav");
         IsCoursesVisible().Should().BeTrue("Admin should see Courses nav");
         IsSemestersVisible().Should().BeTrue("Admin should see Semesters nav");
-        IsEnrollmentsVisible().Should().BeTrue("Admin should see Enrollments nav");
-        IsGradesVisible().Should().BeTrue("Admin should see Grades nav");
         IsEducatorsVisible().Should().BeTrue("Admin should see Educators nav");
     }
 
@@ -167,8 +163,6 @@ public class NavigationPage
         IsStudentsVisible().Should().BeFalse("Educator should NOT see Students nav");
         IsCoursesVisible().Should().BeTrue("Educator should see Courses nav");
         IsSemestersVisible().Should().BeFalse("Educator should NOT see Semesters nav");
-        IsEnrollmentsVisible().Should().BeTrue("Educator should see Enrollments nav");
-        IsGradesVisible().Should().BeTrue("Educator should see Grades nav");
         IsEducatorsVisible().Should().BeTrue("Educator should see Educators nav");
         
         // Double check - admin items should not be present in DOM
@@ -183,8 +177,6 @@ public class NavigationPage
         IsStudentsVisible().Should().BeFalse("Student should NOT see Students nav");
         IsCoursesVisible().Should().BeTrue("Student should see Courses nav");
         IsSemestersVisible().Should().BeFalse("Student should NOT see Semesters nav");
-        IsEnrollmentsVisible().Should().BeTrue("Student should see Enrollments nav");
-        IsGradesVisible().Should().BeTrue("Student should see Grades nav");
         IsEducatorsVisible().Should().BeTrue("Student should see Educators nav");
     }
 }

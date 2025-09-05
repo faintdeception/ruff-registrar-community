@@ -61,12 +61,14 @@ public class StudentsController : ControllerBase
         return NoContent();
     }
 
+    /* Enrollment functionality removed
     [HttpGet("{id}/enrollments")]
     public async Task<ActionResult<IEnumerable<EnrollmentDto>>> GetStudentEnrollments(Guid id)
     {
         var enrollments = await _studentService.GetStudentEnrollmentsAsync(id);
         return Ok(enrollments);
     }
+    */
 
     // New endpoint for account holder's students
     [HttpGet("by-account/{accountHolderId}")]

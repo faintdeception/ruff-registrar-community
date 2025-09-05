@@ -173,9 +173,7 @@ public class MemberTests : BaseTest
 
         // Should have access to member-appropriate features
         navigationPage.IsNavItemVisible("account").Should().BeTrue("Members should see Account link");
-        navigationPage.IsNavItemVisible("courses").Should().BeTrue("Members should see Courses link");
-        navigationPage.IsNavItemVisible("enrollments").Should().BeTrue("Members should see Enrollments link");
-        navigationPage.IsNavItemVisible("grades").Should().BeTrue("Members should see Grades link");
+        navigationPage.IsNavItemVisible("courses").Should().BeTrue("Members should see Courses link");        
         navigationPage.IsNavItemVisible("educators").Should().BeTrue("Members should see Educators link");
 
         // Should NOT have access to admin-only features

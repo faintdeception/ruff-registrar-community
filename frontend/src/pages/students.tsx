@@ -205,13 +205,6 @@ export default function StudentsPage() {
                           <span>Account: {student.accountHolderName}</span>
                         </div>
                       )}
-
-                      <div className="flex items-center text-sm text-gray-600">
-                        <BookOpenIcon className="h-4 w-4 mr-2 flex-shrink-0" />
-                        <span>
-                          {student.enrollments?.length || 0} enrollment{(student.enrollments?.length || 0) !== 1 ? 's' : ''}
-                        </span>
-                      </div>
                     </div>
 
                     {/* Special Conditions */}
@@ -252,9 +245,6 @@ export default function StudentsPage() {
 
                     {/* Actions */}
                     <div className="flex space-x-2">
-                      <button className="flex-1 btn btn-secondary text-sm py-2">
-                        View Enrollments
-                      </button>
                       <button className="btn btn-secondary text-sm py-2 px-3">
                         Edit
                       </button>

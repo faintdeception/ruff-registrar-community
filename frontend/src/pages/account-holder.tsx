@@ -644,43 +644,6 @@ const AccountHolderPage: React.FC = () => {
                           )}
                         </div>
                       )}
-
-                      {/* Enrollments */}
-                      {student.enrollments && student.enrollments.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-900 mb-2">Current Enrollments</h4>
-                          <div className="space-y-2">
-                            {student.enrollments.map((enrollment) => (
-                              <div key={enrollment.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                                <div>
-                                  <span className="text-sm font-medium">{enrollment.courseName}</span>
-                                  {enrollment.courseCode && (
-                                    <span className="text-sm text-gray-500 ml-2">({enrollment.courseCode})</span>
-                                  )}
-                                  <div className="text-xs text-gray-500">
-                                    {enrollment.semesterName} • {enrollment.enrollmentType}
-                                    {enrollment.waitlistPosition && (
-                                      <span className="text-yellow-600"> • Waitlist #{enrollment.waitlistPosition}</span>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <div className="text-sm font-medium">
-                                    {formatCurrency(enrollment.feeAmount)}
-                                  </div>
-                                  <div className={`text-xs ${
-                                    enrollment.paymentStatus === 'PAID' ? 'text-green-600' : 
-                                    enrollment.paymentStatus === 'PARTIAL' ? 'text-yellow-600' : 
-                                    'text-red-600'
-                                  }`}>
-                                    {enrollment.paymentStatus}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>

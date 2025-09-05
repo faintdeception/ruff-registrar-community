@@ -79,22 +79,6 @@ export default function Layout({ children }: LayoutProps) {
                   </Link>
                 )}
                 <Link 
-                  href="/enrollments" 
-                  className="text-gray-600 hover:text-primary-600"
-                  data-testid="nav-enrollments"
-                  data-nav-item="enrollments"
-                >
-                  Enrollments
-                </Link>
-                <Link 
-                  href="/grades" 
-                  className="text-gray-600 hover:text-primary-600"
-                  data-testid="nav-grades"
-                  data-nav-item="grades"
-                >
-                  Grades
-                </Link>
-                <Link 
                   href="/educators" 
                   className="text-gray-600 hover:text-primary-600"
                   data-testid="nav-educators"

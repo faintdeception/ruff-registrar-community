@@ -10,7 +10,6 @@ public interface IStudentService
     Task<StudentDto> CreateStudentAsync(CreateStudentDto createStudentDto);
     Task<StudentDto?> UpdateStudentAsync(Guid id, UpdateStudentDto updateStudentDto);
     Task<bool> DeleteStudentAsync(Guid id);
-    Task<IEnumerable<EnrollmentDto>> GetStudentEnrollmentsAsync(Guid studentId);
     Task<IEnumerable<StudentDto>> GetStudentsByAccountHolderAsync(Guid accountHolderId);
 }
 
@@ -23,18 +22,6 @@ public interface ICourseService
     Task<bool> DeleteCourseAsync(int id);
     Task<IEnumerable<EnrollmentDto>> GetCourseEnrollmentsAsync(int courseId);
     Task<IEnumerable<GradeRecordDto>> GetCourseGradesAsync(int courseId);
-}
-
-public interface IEnrollmentService
-{
-    Task<IEnumerable<EnrollmentDto>> GetAllEnrollmentsAsync();
-    Task<EnrollmentDto?> GetEnrollmentByIdAsync(Guid id);
-    Task<EnrollmentDto> CreateEnrollmentAsync(CreateEnrollmentDto createEnrollmentDto);
-    Task<bool> DeleteEnrollmentAsync(Guid id);
-    Task<EnrollmentDto?> UpdateEnrollmentStatusAsync(Guid id, string status);
-    Task<IEnumerable<EnrollmentDto>> GetEnrollmentsByStudentAsync(Guid studentId);
-    Task<IEnumerable<EnrollmentDto>> GetEnrollmentsByCourseAsync(Guid courseId);
-    Task<IEnumerable<EnrollmentDto>> GetEnrollmentsBySemesterAsync(Guid semesterId);
 }
 
 public interface IGradeService
