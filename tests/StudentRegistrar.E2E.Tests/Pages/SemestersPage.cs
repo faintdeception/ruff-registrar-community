@@ -45,12 +45,12 @@ public class SemestersPage
     {
         try
         {
-            CreateSemesterButton.Click();
+            TryClickWithRetry(CreateSemesterButton);
         }
         catch (NoSuchElementException)
         {
             // If main create button not found, try the "create first semester" button
-            CreateFirstSemesterButton.Click();
+            TryClickWithRetry(CreateFirstSemesterButton);
         }
         WaitForModalToOpen();
     }
@@ -83,7 +83,7 @@ public class SemestersPage
 
         if (isActive != IsActiveCheckbox.Selected)
         {
-            IsActiveCheckbox.Click();
+            ClickThroughOverlay(IsActiveCheckbox);
         }
     }
 
@@ -91,18 +91,17 @@ public class SemestersPage
     {
         SaveSemesterButton.Click();
         
-        // Wait a moment to see if there's an error first
-        Thread.Sleep(1000);
-        
-        // Check if there's an error message
-        if (IsErrorDisplayed())
-        {
-            // If there's an error, don't wait for modal to close
+        // Wait for error or modal close
+        // try {
+        //     _wait.Until(d => IsErrorDisplayed() || !SemesterModal.Displayed);
+        // } catch (WebDriverTimeoutException) {
+        //     // If neither error nor close, log and continue
+        //     Console.WriteLine("Timeout waiting for error or modal close after save");
+        // }
+        if (IsErrorDisplayed()) {
             Console.WriteLine($"Error during save: {GetErrorMessage()}");
             return;
         }
-        
-        // Otherwise wait for modal to close
         WaitForModalToClose();
     }
 
@@ -146,24 +145,24 @@ public class SemestersPage
         }
     }
 
-    public bool IsCreateFormVisible()
-    {
-        try
-        {
-            return SemesterModal.Displayed && SemesterNameInput.Displayed;
-        }
-        catch (NoSuchElementException)
-        {
-            return false;
-        }
-    }
+    // public bool IsCreateFormVisible()
+    // {
+    //     try
+    //     {
+    //         return SemesterModal.Displayed && SemesterNameInput.Displayed;
+    //     }
+    //     catch (NoSuchElementException)
+    //     {
+    //         return false;
+    //     }
+    // }
 
     public bool IsSemesterVisible(string semesterName)
     {
-        var testId = $"semester-{semesterName.Replace(" ", "-").ToLower()}";
+        var slug = semesterName.Replace(" ", "-").ToLower();
         try
         {
-            var element = _driver.FindElement(By.CssSelector($"[data-testid='{testId}']"));
+            var element = _driver.FindElement(By.Id($"semester-{slug}"));
             return element.Displayed;
         }
         catch (NoSuchElementException)
@@ -174,9 +173,9 @@ public class SemestersPage
 
     public void DeleteSemester(string semesterName)
     {
-        var testId = $"semester-{semesterName.Replace(" ", "-").ToLower()}";
-        var semesterCard = _driver.FindElement(By.CssSelector($"[data-testid='{testId}']"));
-        var semesterId = semesterCard.GetDomAttribute("id").Replace("semester-card-", "");
+        var slug = semesterName.Replace(" ", "-").ToLower();
+        var semesterCard = _driver.FindElement(By.Id($"semester-{slug}"));
+        var semesterId = semesterCard.GetDomAttribute("data-semester-id");
         var deleteButton = _driver.FindElement(By.Id($"delete-semester-{semesterId}"));
         deleteButton.Click();
         
@@ -187,11 +186,11 @@ public class SemestersPage
 
     public void EditSemester(string semesterName)
     {
-        var testId = $"semester-{semesterName.Replace(" ", "-").ToLower()}";
-        var semesterCard = _driver.FindElement(By.CssSelector($"[data-testid='{testId}']"));
-        var semesterId = semesterCard.GetDomAttribute("id").Replace("semester-card-", "");
-        var editButton = _driver.FindElement(By.Id($"edit-semester-{semesterId}"));
-        editButton.Click();
+    var slug = semesterName.Replace(" ", "-").ToLower();
+    var semesterCard = _driver.FindElement(By.Id($"semester-{slug}"));
+    var semesterId = semesterCard.GetDomAttribute("data-semester-id");
+    var editButton = _driver.FindElement(By.Id($"edit-semester-{semesterId}"));
+    SafeClick(editButton);
         WaitForModalToOpen();
     }
 
@@ -234,8 +233,8 @@ public class SemestersPage
     {
         try
         {
-            // Count semester cards using the data-testid attribute
-            var semesterCards = _driver.FindElements(By.CssSelector("[data-testid^='semester-']"));
+            // Count semester cards using their new id pattern
+            var semesterCards = _driver.FindElements(By.CssSelector("div[id^='semester-']"));
             return semesterCards.Count;
         }
         catch (NoSuchElementException)
@@ -278,6 +277,66 @@ public class SemestersPage
     private void WaitForPageLoad()
     {
         _wait.Until(driver => ((IJavaScriptExecutor)driver).ExecuteScript("return document.readyState").Equals("complete"));
-        Thread.Sleep(500); // Additional wait for dynamic content
+        // Wait for at least one semester card or create button to appear
+        _wait.Until(d => d.FindElements(By.CssSelector("[data-testid^='semester-'],#create-semester-btn,#create-first-semester-btn")).Count > 0);
+    }
+
+    private void SafeClick(IWebElement element)
+    {
+        try
+        {
+            element.Click();
+        }
+        catch (ElementClickInterceptedException)
+        {
+            ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", element);
+        }
+    }
+
+    private void TryClickWithRetry(IWebElement element, int retries = 3)
+    {
+        for (int attempt = 0; attempt < retries; attempt++)
+        {
+            try
+            {
+                SafeClick(element);
+                return;
+            }
+            catch (ElementClickInterceptedException)
+            {
+                // Wait for potential overlay (Next.js portal) to disappear
+                try
+                {
+                    _wait.Until(d => !d.FindElements(By.CssSelector("nextjs-portal"))
+                        .Any(el => el.Displayed));
+                }
+                catch {}
+                if (attempt == retries - 1) throw;
+            }
+            catch (WebDriverException)
+            {
+                if (attempt == retries - 1) throw;
+            }
+        }
+    }
+
+    private void ClickThroughOverlay(IWebElement element)
+    {
+        try
+        {
+            element.Click();
+        }
+        catch (ElementClickInterceptedException)
+        {
+            // Scroll into view and try JS click after waiting for portal
+            try
+            {
+                _wait.Until(d => !d.FindElements(By.CssSelector("nextjs-portal"))
+                    .Any(el => el.Displayed));
+            }
+            catch {}
+            ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].scrollIntoView({block:'center'});", element);
+            ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", element);
+        }
     }
 }

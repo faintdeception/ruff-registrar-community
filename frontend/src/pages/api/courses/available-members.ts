@@ -4,10 +4,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
   
   // Get token from Authorization header
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'No token provided' });
-  }
+  // const authHeader = req.headers.authorization;
+  // if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  //   return res.status(401).json({ message: 'No zoken provided' });
+  // }
 
   try {
     // Only allow GET requests for this endpoint
@@ -19,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const response = await fetch(`${API_BASE_URL}/api/courses/available-members`, {
       method: 'GET',
       headers: {
-        'Authorization': authHeader,
+        // 'Authorization': authHeader,
         'Content-Type': 'application/json',
       }
     });

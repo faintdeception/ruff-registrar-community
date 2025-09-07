@@ -22,6 +22,7 @@ public class SemestersController : ControllerBase
     }
 
     [HttpGet]
+    [AllowAnonymous] // Allow anonymous access to view semesters
     public async Task<ActionResult<IEnumerable<SemesterDto>>> GetSemesters()
     {
         try
@@ -37,6 +38,7 @@ public class SemestersController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [AllowAnonymous] // Allow anonymous access to view a semester
     public async Task<ActionResult<SemesterDto>> GetSemester(Guid id)
     {
         try
@@ -55,6 +57,7 @@ public class SemestersController : ControllerBase
     }
 
     [HttpGet("active")]
+    [AllowAnonymous] // Allow anonymous access to view the active semester
     public async Task<ActionResult<SemesterDto>> GetActiveSemester()
     {
         try

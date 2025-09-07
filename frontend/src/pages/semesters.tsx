@@ -361,11 +361,15 @@ export default function SemestersPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {semesters.map((semester) => {
                 const status = getSemesterStatus(semester);
+                const slug = semester.name.replace(/\s+/g, '-').toLowerCase();
                 return (
                   <div 
                     key={semester.id} 
-                    id={`semester-card-${semester.id}`}
-                    data-testid={`semester-${semester.name.replace(/\s+/g, '-').toLowerCase()}`}
+                    // Slug-based id for stable E2E testing
+                    id={`semester-${slug}`}
+                    // Preserve original data-testid (backwards compatibility) and expose the underlying DB id
+                    data-testid={`semester-${slug}`}
+                    data-semester-id={semester.id}
                     className="bg-white rounded-lg shadow hover:shadow-md transition-shadow"
                   >
                     <div className="p-6">

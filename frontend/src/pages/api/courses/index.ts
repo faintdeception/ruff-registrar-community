@@ -5,18 +5,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   
   // Get token from Authorization header
   const authHeader = req.headers.authorization;
+  var requestHeaders;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'No token provided' });
+    requestHeaders = {
+        'Content-Type': 'application/json',
+    };
+  }
+  else {
+    requestHeaders = {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json',
+    };
   }
 
   try {
     // Build the request options
     const fetchOptions: RequestInit = {
       method: req.method,
-      headers: {
-        'Authorization': authHeader,
-        'Content-Type': 'application/json',
-      }
+      headers: requestHeaders
     };
 
     // Only include body for non-GET requests

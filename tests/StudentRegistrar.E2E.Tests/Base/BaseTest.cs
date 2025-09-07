@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using OpenQA.Selenium;
+using OpenQA.Selenium.Support.UI;
 using StudentRegistrar.E2E.Tests.Infrastructure;
 using Xunit;
 
@@ -93,6 +94,34 @@ public abstract class BaseTest : IDisposable
             Driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(implicitWait);
         }
     }
+
+    // Explicit wait utilities
+    protected void WaitUntil(Func<IWebDriver, bool> condition, int timeoutSeconds = 10, int pollMillis = 200, string? failureMessage = null)
+    {
+        var wait = new WebDriverWait(Driver, TimeSpan.FromSeconds(timeoutSeconds))
+        {
+            PollingInterval = TimeSpan.FromMilliseconds(pollMillis)
+        };
+        wait.IgnoreExceptionTypes(typeof(NoSuchElementException), typeof(StaleElementReferenceException));
+        try
+        {
+            wait.Until(d => condition(d));
+        }
+        catch (WebDriverTimeoutException)
+        {
+            throw new TimeoutException(failureMessage ?? $"Condition not met within {timeoutSeconds}s");
+        }
+    }
+
+    protected void WaitForUrlContains(string fragment, int timeoutSeconds = 10)
+        => WaitUntil(d => d.Url.Contains(fragment, StringComparison.OrdinalIgnoreCase), timeoutSeconds, 200, $"URL did not contain '{fragment}' in time");
+
+    protected void WaitForElementVisible(By locator, int timeoutSeconds = 10)
+        => WaitUntil(d =>
+        {
+            var els = d.FindElements(locator);
+            return els.Any(e => e.Displayed);
+        }, timeoutSeconds, 200, $"Element {locator} not visible in time");
 
     public virtual void Dispose()
     {

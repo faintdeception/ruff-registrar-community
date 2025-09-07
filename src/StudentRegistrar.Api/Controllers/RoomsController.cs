@@ -23,6 +23,7 @@ public class RoomsController : ControllerBase
     }
 
     [HttpGet]
+    [AllowAnonymous] // Allow anonymous access to view rooms
     public async Task<ActionResult<IEnumerable<RoomDto>>> GetRooms()
     {
         try
@@ -38,6 +39,7 @@ public class RoomsController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [AllowAnonymous] // Allow anonymous access to view a room
     public async Task<ActionResult<RoomDto>> GetRoom(Guid id)
     {
         try
@@ -56,6 +58,7 @@ public class RoomsController : ControllerBase
     }
 
     [HttpGet("by-type/{roomType}")]
+    [AllowAnonymous] // Allow anonymous access to view rooms by type
     public async Task<ActionResult<IEnumerable<RoomDto>>> GetRoomsByType(RoomType roomType)
     {
         try

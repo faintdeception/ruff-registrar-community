@@ -12,18 +12,18 @@ public class EducatorTests : BaseTest
     public void Educator_Should_Login_Successfully()
     {
         // Arrange
-        NavigateToHome();
-        WaitForPageLoad();
-        Thread.Sleep(2000);
+    NavigateToHome();
+    WaitForPageLoad();
+    WaitForUrlContains("/login");
 
         // Act - Login as educator
         var loginPage = new LoginPage(Driver);
         var username = Configuration["TestCredentials:EducatorUser:Username"] ?? "educator1";
         var password = Configuration["TestCredentials:EducatorUser:Password"] ?? "EducatorPass123!";
         
-        loginPage.Login(username, password);
-        WaitForPageLoad();
-        Thread.Sleep(2000);
+    loginPage.Login(username, password);
+    WaitForPageLoad();
+    WaitForUrlContains("/");
 
         // Assert - Should be logged in
         Driver.Url.Should().NotContain("/login", "Educator should be logged in");
@@ -152,17 +152,17 @@ public class EducatorTests : BaseTest
 
     private void LoginAsEducator()
     {
-        NavigateToHome();
-        WaitForPageLoad();
-        Thread.Sleep(2000);
+    NavigateToHome();
+    WaitForPageLoad();
+    WaitForUrlContains("/login");
 
         var loginPage = new LoginPage(Driver);
         var username = Configuration["TestCredentials:EducatorUser:Username"] ?? "educator1";
         var password = Configuration["TestCredentials:EducatorUser:Password"] ?? "EducatorPass123!";
         
-        loginPage.Login(username, password);
-        WaitForPageLoad();
-        Thread.Sleep(2000);
+    loginPage.Login(username, password);
+    WaitForPageLoad();
+    WaitForUrlContains("/");
 
         var homePage = new HomePage(Driver);
         homePage.IsLoggedIn().Should().BeTrue("Educator login should succeed");

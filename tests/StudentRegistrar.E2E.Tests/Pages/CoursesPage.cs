@@ -34,8 +34,8 @@ public class CoursesPage
     // Navigation
     public void NavigateToCourses()
     {
-        var coursesLink = _driver.FindElement(By.LinkText("Courses"));
-        coursesLink.Click();
+    var coursesLink = _driver.FindElement(By.LinkText("Courses"));
+    SafeClick(coursesLink);
         WaitForPageLoad();
     }
 
@@ -69,14 +69,15 @@ public class CoursesPage
             throw new NoSuchElementException($"Could not find semester option starting with: {semesterName}");
         }
         
-        Thread.Sleep(1000); // Wait for courses to load
+    // Wait for potential course cards or empty state to load
+    _wait.Until(d => d.FindElements(By.CssSelector(".bg-white.rounded-lg.shadow")).Count >= 0);
     }
 
     public void SelectSemesterByExactText(string exactText)
     {
         var semesterSelect = new SelectElement(SemesterSelect);
         semesterSelect.SelectByText(exactText);
-        Thread.Sleep(1000); // Wait for courses to load
+    _wait.Until(d => d.FindElements(By.CssSelector(".bg-white.rounded-lg.shadow")).Count >= 0);
     }
 
     public void SelectSemesterByPartialText(string partialText)
@@ -95,19 +96,19 @@ public class CoursesPage
             throw new NoSuchElementException($"Could not find semester option containing: {partialText}");
         }
         
-        Thread.Sleep(1000); // Wait for courses to load
+    _wait.Until(d => d.FindElements(By.CssSelector(".bg-white.rounded-lg.shadow")).Count >= 0);
     }
 
     public void SelectSemesterByValue(string value)
     {
         var semesterSelect = new SelectElement(SemesterSelect);
         semesterSelect.SelectByValue(value);
-        Thread.Sleep(1000); // Wait for courses to load
+    _wait.Until(d => d.FindElements(By.CssSelector(".bg-white.rounded-lg.shadow")).Count >= 0);
     }
 
     public void ClickCreateCourse()
     {
-        CreateCourseButton.Click();
+    SafeClick(CreateCourseButton);
         WaitForModalToOpen();
     }
 
@@ -220,13 +221,13 @@ public class CoursesPage
 
     public void SaveCourse()
     {
-        SaveCourseButton.Click();
+    SafeClick(SaveCourseButton);
         //WaitForModalToClose();
     }
 
     public void CancelCreate()
     {
-        CancelCourseButton.Click();
+    SafeClick(CancelCourseButton);
         //WaitForModalToClose();
     }
 
@@ -335,6 +336,18 @@ public class CoursesPage
                            !string.IsNullOrWhiteSpace(option.GetDomAttribute("value")))
             .Select(option => option.Text)
             .ToList();
+    }
+
+    private void SafeClick(IWebElement element)
+    {
+        try
+        {
+            element.Click();
+        }
+        catch (ElementClickInterceptedException)
+        {
+            ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", element);
+        }
     }
 
     public List<(string Text, string Value)> GetAvailableSemestersWithValues()

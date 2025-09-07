@@ -19,6 +19,7 @@ public class CoursesController : ControllerBase
 
     // Modern Guid-based endpoints
     [HttpGet]
+    [AllowAnonymous] // Allow anonymous access to view courses
     public async Task<ActionResult<IEnumerable<CourseDto>>> GetCourses()
     {
         var courses = await _courseService.GetAllCoursesAsync();
@@ -26,6 +27,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpGet("semester/{semesterId:guid}")]
+    [AllowAnonymous] // Allow anonymous access to view courses by semester
     public async Task<ActionResult<IEnumerable<CourseDto>>> GetCoursesBySemester(Guid semesterId)
     {
         var courses = await _courseService.GetCoursesBySemesterAsync(semesterId);
@@ -33,6 +35,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [AllowAnonymous] // Allow anonymous access to view a course
     public async Task<ActionResult<CourseDto>> GetCourse(Guid id)
     {
         var course = await _courseService.GetCourseByIdAsync(id);

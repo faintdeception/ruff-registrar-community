@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
-import { 
-  AcademicCapIcon, 
+import {
+  AcademicCapIcon,
   ArrowRightOnRectangleIcon,
   UserCircleIcon
 } from '@heroicons/react/24/outline';
@@ -29,93 +29,113 @@ export default function Layout({ children }: LayoutProps) {
             </div>
             <div className="flex items-center space-x-4">
               <nav className="flex space-x-4" data-testid="main-navigation">
-                <Link 
-                  href="/account-holder" 
-                  className="text-gray-600 hover:text-primary-600"
-                  data-testid="nav-account"
-                  data-nav-item="account"
-                >
-                  Account
-                </Link>
-                {user?.roles.includes('Administrator') && (
-                  <Link 
-                    href="/students" 
-                    className="text-gray-600 hover:text-primary-600"
-                    data-testid="nav-students"
-                    data-nav-item="students"
-                    data-admin-only="true"
-                  >
-                    Students
-                  </Link>
-                )}
-                <Link 
-                  href="/courses" 
+                {/* Public navigation (always visible) */}
+                <Link
+                  href="/courses"
                   className="text-gray-600 hover:text-primary-600"
                   data-testid="nav-courses"
                   data-nav-item="courses"
                 >
                   Courses
                 </Link>
-                {user?.roles.includes('Administrator') && (
-                  <Link 
-                    href="/semesters" 
-                    className="text-gray-600 hover:text-primary-600"
-                    data-testid="nav-semesters"
-                    data-nav-item="semesters"
-                    data-admin-only="true"
-                  >
-                    Semesters
-                  </Link>
-                )}
-                {user?.roles.includes('Administrator') && (
-                  <Link 
-                    href="/rooms" 
-                    className="text-gray-600 hover:text-primary-600"
-                    data-testid="nav-rooms"
-                    data-nav-item="rooms"
-                    data-admin-only="true"
-                  >
-                    Rooms
-                  </Link>
-                )}
-                <Link 
-                  href="/educators" 
+                <Link
+                  href="/educators"
                   className="text-gray-600 hover:text-primary-600"
                   data-testid="nav-educators"
                   data-nav-item="educators"
                 >
                   Educators
                 </Link>
+                {/* Authenticated-only navigation */}
+                {user && (
+                  <>
+                    <Link
+                      href="/account-holder"
+                      className="text-gray-600 hover:text-primary-600"
+                      data-testid="nav-account"
+                      data-nav-item="account"
+                    >
+                      Account
+                    </Link>
+                    {user.roles.includes('Administrator') && (
+                      <Link
+                        href="/students"
+                        className="text-gray-600 hover:text-primary-600"
+                        data-testid="nav-students"
+                        data-nav-item="students"
+                        data-admin-only="true"
+                      >
+                        Students
+                      </Link>
+                    )}
+                    {user.roles.includes('Administrator') && (
+                      <Link
+                        href="/semesters"
+                        className="text-gray-600 hover:text-primary-600"
+                        data-testid="nav-semesters"
+                        data-nav-item="semesters"
+                        data-admin-only="true"
+                      >
+                        Semesters
+                      </Link>
+                    )}
+                    {user.roles.includes('Administrator') && (
+                      <Link
+                        href="/rooms"
+                        className="text-gray-600 hover:text-primary-600"
+                        data-testid="nav-rooms"
+                        data-nav-item="rooms"
+                        data-admin-only="true"
+                      >
+                        Rooms
+                      </Link>
+                    )}
+                  </>
+                )}
               </nav>
-              
-              {/* User Menu */}
-              <div className="flex items-center space-x-3" data-testid="user-menu">
-                <div className="flex items-center space-x-2" data-testid="user-info">
-                  <UserCircleIcon className="h-6 w-6 text-gray-400" />
-                  <span className="text-sm text-gray-700" data-testid="user-name">
-                    {user?.firstName} {user?.lastName}
-                  </span>
-                  <span className="text-xs text-gray-500" data-testid="user-roles">
-                    ({user?.roles.join(', ')})
-                  </span>
+
+              {/* User Menu / Auth Controls */}
+              {user ? (
+                <div className="flex items-center space-x-3" data-testid="user-menu">
+                  <div className="flex items-center space-x-2" data-testid="user-info">
+                    <UserCircleIcon className="h-6 w-6 text-gray-400" />
+                    <span className="text-sm text-gray-700" data-testid="user-name">
+                      {user.firstName} {user.lastName}
+                    </span>
+                    {user.roles && user.roles.length > 0 && (
+                      <span className="text-xs text-gray-500" data-testid="user-roles">
+                        ({user.roles.join(', ')})
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    id="logout-button"
+                    data-testid="logout-button"
+                    onClick={logout}
+                    className="flex items-center space-x-1 text-gray-600 hover:text-red-600"
+                  >
+                    <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                    <span>Logout</span>
+                  </button>
                 </div>
-                <button 
-                  id="logout-button"
-                  data-testid="logout-button"
-                  onClick={logout}
-                  className="flex items-center space-x-1 text-gray-600 hover:text-red-600"
-                >
-                  <ArrowRightOnRectangleIcon className="h-5 w-5" />
-                  <span>Logout</span>
-                </button>
-              </div>
+              ) : (
+                <div className="flex items-center space-x-4" data-testid="guest-menu">
+                  <Link
+                    href="/login"
+                    className="text-gray-600 hover:text-primary-600 font-medium"
+                    data-testid="login-link"
+                  >
+                    Login
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      {children}
+  {children}
     </div>
   );
 }

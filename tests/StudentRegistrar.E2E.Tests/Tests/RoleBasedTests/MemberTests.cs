@@ -12,18 +12,18 @@ public class MemberTests : BaseTest
     public void Member_Should_Login_Successfully()
     {
         // Arrange
-        NavigateToHome();
-        WaitForPageLoad();
-        Thread.Sleep(2000);
+    NavigateToHome();
+    WaitForPageLoad();
+    WaitForUrlContains("/login");
 
         // Act - Login as basic member
         var loginPage = new LoginPage(Driver);
         var username = Configuration["TestCredentials:MemberUser:Username"] ?? "member1";
         var password = Configuration["TestCredentials:MemberUser:Password"] ?? "MemberPass123!";
         
-        loginPage.Login(username, password);
-        WaitForPageLoad();
-        Thread.Sleep(2000);
+    loginPage.Login(username, password);
+    WaitForPageLoad();
+    WaitForUrlContains("/");
 
         // Assert - Should be logged in
         Driver.Url.Should().NotContain("/login", "Member should be logged in");
@@ -201,8 +201,8 @@ public class MemberTests : BaseTest
         WaitForPageLoad();
         Thread.Sleep(2000);
 
-        var homePage = new HomePage(Driver);
-        homePage.IsLoggedIn().Should().BeTrue("Member login should succeed");
+    var homePage = new HomePage(Driver);
+    homePage.IsLoggedIn().Should().BeTrue("Member login should succeed");
     }
 
     private void VerifyCanAccessPage(string linkText, string expectedUrlPart)

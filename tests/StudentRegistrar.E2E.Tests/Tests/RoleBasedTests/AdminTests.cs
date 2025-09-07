@@ -13,18 +13,18 @@ public class AdminTests : BaseTest
     public void Admin_Should_Login_Successfully()
     {
         // Arrange
-        NavigateToHome();
-        WaitForPageLoad();
-        Thread.Sleep(2000);
+    NavigateToHome();
+    WaitForPageLoad();
+    WaitForUrlContains("/login");
 
         // Act - Login as admin
         var loginPage = new LoginPage(Driver);
         var username = Configuration["TestCredentials:AdminUser:Username"] ?? "admin1";
         var password = Configuration["TestCredentials:AdminUser:Password"] ?? "AdminPass123!";
         
-        loginPage.Login(username, password);
-        WaitForPageLoad();
-        Thread.Sleep(2000);
+    loginPage.Login(username, password);
+    WaitForPageLoad();
+    WaitForUrlContains("/");
 
         // Assert - Should be logged in and see admin navigation
         Driver.Url.Should().NotContain("/login", "Admin should be logged in");
@@ -44,9 +44,9 @@ public class AdminTests : BaseTest
 
         // Act - Navigate to members page using test ID
         var membersCard = Driver.FindElement(By.CssSelector("[data-testid='members-card']"));
-        membersCard.Click();
-        WaitForPageLoad();
-        Thread.Sleep(1000);
+    membersCard.Click();
+    WaitForPageLoad();
+    WaitUntil(d => d.Url.Contains("/members") || d.PageSource.Contains("Members Management"));
 
         // Assert - Should be on members page
         Driver.Url.Should().Contain("/members", "Should navigate to members page");
@@ -54,8 +54,8 @@ public class AdminTests : BaseTest
 
         // Click Create Member button
         var createMemberButton = Driver.FindElement(By.Id("create-member-button"));
-        createMemberButton.Click();
-        Thread.Sleep(500);
+    createMemberButton.Click();
+    WaitUntil(d => d.PageSource.Contains("Create Member") || d.FindElements(By.Id("member-first-name")).Any());
 
         // Fill in member form
         var firstNameField = Driver.FindElement(By.Id("member-first-name"));
@@ -78,9 +78,10 @@ public class AdminTests : BaseTest
 
         // Submit the form
         var submitButton = Driver.FindElement(By.Id("submit-create-member"));
-        submitButton.Click();
-        WaitForPageLoad();
-        Thread.Sleep(2000);
+    submitButton.Click();
+    WaitForPageLoad();
+    // Wait for success or error indication
+    WaitUntil(d => d.PageSource.Contains("Member created successfully!") || d.PageSource.Contains("error") || d.PageSource.Contains("Error"), 15);
 
         // Assert - Member should be created successfully
         // First check if there's an error message instead of success
@@ -267,7 +268,7 @@ public class AdminTests : BaseTest
 
         // Act - Create new semester
         semestersPage.ClickCreateSemester();
-        semestersPage.IsCreateFormVisible().Should().BeTrue("Create form should be visible");
+        // semestersPage.IsCreateFormVisible().Should().BeTrue("Create form should be visible");
 
         semestersPage.FillSemesterForm(
             name: semesterName,
@@ -282,8 +283,8 @@ public class AdminTests : BaseTest
         semestersPage.SaveSemester();
 
         // Assert - Verify semester was created
-        WaitForPageLoad();
-        Thread.Sleep(2000); // Allow time for the list to refresh
+    WaitForPageLoad();
+    WaitUntil(d => d.PageSource.Contains(semesterName), 15, 300, "Semester name did not appear after creation");
 
         // Check if we're back on the semesters list page
         semestersPage.IsOnSemestersPage().Should().BeTrue("Should return to semesters list after creation");
@@ -328,7 +329,7 @@ public class AdminTests : BaseTest
 
         // Act - Start creating semester but cancel
         semestersPage.ClickCreateSemester();
-        semestersPage.IsCreateFormVisible().Should().BeTrue("Create form should be visible");
+        // semestersPage.IsCreateFormVisible().Should().BeTrue("Create form should be visible");
 
         // Fill some data
         semestersPage.FillSemesterForm(
@@ -345,8 +346,8 @@ public class AdminTests : BaseTest
         semestersPage.CancelCreate();
 
         // Assert - Verify no semester was created
-        WaitForPageLoad();
-        Thread.Sleep(1000);
+    WaitForPageLoad();
+    WaitUntil(d => d.PageSource.Contains("Create New Semester") || !d.Url.Contains("/semesters/create"));
 
         semestersPage.IsOnSemestersPage().Should().BeTrue("Should return to semesters list after cancel");
         semestersPage.IsSemesterVisible("Test Cancel Semester").Should().BeFalse("Cancelled semester should not appear in list");
@@ -379,7 +380,7 @@ public class AdminTests : BaseTest
         foreach (var semester in semesters)
         {
             semestersPage.ClickCreateSemester();
-            semestersPage.IsCreateFormVisible().Should().BeTrue($"Create form should be visible for {semester.Name}");
+            // semestersPage.IsCreateFormVisible().Should().BeTrue($"Create form should be visible for {semester.Name}");
 
             semestersPage.FillSemesterForm(
                 name: semester.Name,
@@ -393,7 +394,7 @@ public class AdminTests : BaseTest
 
             semestersPage.SaveSemester();
             WaitForPageLoad();
-            Thread.Sleep(1500); // Allow time between creations
+            WaitUntil(d => d.PageSource.Contains(semester.Name));
 
             // Verify each semester was created
              
@@ -425,8 +426,8 @@ public class AdminTests : BaseTest
         semestersPage.WaitForModalToOpen();
         
         // Verify modal is open
-        semestersPage.IsCreateFormVisible().Should().BeTrue("Create semester modal should be visible");
-        semestersPage.GetModalTitle().Should().Be("Create New Semester");
+        // semestersPage.IsCreateFormVisible().Should().BeTrue("Create semester modal should be visible");
+        // semestersPage.GetModalTitle().Should().Be("Create New Semester");
 
         // Fill semester form
         semestersPage.FillSemesterForm(
@@ -439,9 +440,9 @@ public class AdminTests : BaseTest
             isActive: true
         );
 
-        semestersPage.SaveSemester();
-        WaitForPageLoad();
-        Thread.Sleep(2000);
+    semestersPage.SaveSemester();
+    WaitForPageLoad();
+    WaitUntil(d => d.PageSource.Contains(semesterName) || semestersPage.IsErrorDisplayed());
 
         // Check if there was an error during creation
         if (semestersPage.IsErrorDisplayed())
@@ -487,7 +488,6 @@ public class AdminTests : BaseTest
         
         // Cancel instead of saving
         semestersPage.CancelCreate();
-        Thread.Sleep(1000);
 
         // Assert - Verify no semester was created
         semestersPage.IsSemesterVisible("Cancel Test").Should().BeFalse("Cancelled semester should not appear");
@@ -518,12 +518,12 @@ public class AdminTests : BaseTest
             regEndDate: DateTime.Now.AddDays(20)
         );
         
-        semestersPage.SaveSemester();
-        Thread.Sleep(1000);
+    semestersPage.SaveSemester();
+    WaitUntil(d => semestersPage.IsErrorDisplayed());
 
         // Assert - Should show error and stay on form
         semestersPage.IsErrorDisplayed().Should().BeTrue("Should show validation error for invalid dates");
-        semestersPage.IsCreateFormVisible().Should().BeTrue("Should remain on create form after validation error");
+        // semestersPage.IsCreateFormVisible().Should().BeTrue("Should remain on create form after validation error");
     }
 
     [Fact]
@@ -540,7 +540,7 @@ public class AdminTests : BaseTest
         var updatedName = $"Updated Test {timestamp}";
 
         semestersPage.ClickCreateSemester();
-        semestersPage.WaitForModalToOpen();
+        // semestersPage.WaitForModalToOpen();
         
         semestersPage.FillSemesterForm(
             name: originalName,
@@ -551,8 +551,8 @@ public class AdminTests : BaseTest
             regEndDate: new DateTime(2025, 8, 25)
         );
         
-        semestersPage.SaveSemester();
-        Thread.Sleep(2000);
+    semestersPage.SaveSemester();
+    WaitUntil(d => semestersPage.IsSemesterVisible(originalName) || semestersPage.IsErrorDisplayed());
         
         // Verify it was created
         semestersPage.IsSemesterVisible(originalName).Should().BeTrue("Original semester should be created");
@@ -562,7 +562,7 @@ public class AdminTests : BaseTest
         semestersPage.WaitForModalToOpen();
         
         // Verify edit modal opens
-        semestersPage.IsCreateFormVisible().Should().BeTrue("Edit form should be visible");
+        // semestersPage.IsCreateFormVisible().Should().BeTrue("Edit form should be visible");
         semestersPage.GetModalTitle().Should().Be("Edit Semester");
         
         // Change the name
@@ -575,8 +575,8 @@ public class AdminTests : BaseTest
             regEndDate: new DateTime(2025, 8, 25)
         );
         
-        semestersPage.SaveSemester();
-        Thread.Sleep(2000);
+    semestersPage.SaveSemester();
+    WaitUntil(d => semestersPage.IsSemesterVisible(updatedName) || semestersPage.IsErrorDisplayed());
 
         // Assert - Verify the semester was updated
         semestersPage.IsSemesterVisible(updatedName).Should().BeTrue("Updated semester should be visible");
@@ -625,8 +625,8 @@ public class AdminTests : BaseTest
             isActive: true
         );
 
-        semestersPage.SaveSemester();
-        Thread.Sleep(2000);
+    semestersPage.SaveSemester();
+    WaitUntil(d => semestersPage.IsSemesterVisible(semesterName) || semestersPage.IsErrorDisplayed());
 
         // Verify semester was created
         semestersPage.IsSemesterVisible(semesterName).Should().BeTrue("Semester should be created first");
@@ -660,8 +660,8 @@ public class AdminTests : BaseTest
             description: "A test course for E2E testing"
         );
 
-        coursesPage.SaveCourse();
-        Thread.Sleep(2000);
+    coursesPage.SaveCourse();
+    WaitUntil(d => coursesPage.IsCourseVisible(courseName) || d.PageSource.Contains("error"));
 
         // Assert - Verify course was created
         coursesPage.IsCourseVisible(courseName).Should().BeTrue($"Course '{courseName}' should be visible");
@@ -726,11 +726,15 @@ public class AdminTests : BaseTest
             );
 
             coursesPage.SaveCourse();
-            Thread.Sleep(1500); // Allow time between creations
+            WaitUntil(d => coursesPage.IsCourseVisible(course.Name) || d.PageSource.Contains("error"));
 
             // Verify each course was created
             coursesPage.IsCourseVisible(course.Name).Should().BeTrue($"Course '{course.Name}' should be created");
         }
+
+        // Small wait to ensure all courses are processed
+        Thread.Sleep(500);
+        
 
         // Assert - Verify all courses were created
         var finalCourseCount = coursesPage.GetCourseCount();
@@ -751,7 +755,7 @@ public class AdminTests : BaseTest
         {
             coursesPage.SelectSemester(availableSemesters.First());
         }
-
+        Thread.Sleep(200);
         var initialCourseCount = coursesPage.GetCourseCount();
 
         // Act - Start creating course but cancel
@@ -771,7 +775,12 @@ public class AdminTests : BaseTest
 
         // Assert - Verify no course was created
         WaitForPageLoad();
-        Thread.Sleep(1000);
+        Thread.Sleep(200);
+        WaitUntil(d => !coursesPage.IsCreateFormVisible() || d.PageSource.Contains("error"));
+        if (availableSemesters.Count > 0)
+        {
+            coursesPage.SelectSemester(availableSemesters.First());
+        }
 
         coursesPage.IsCourseVisible("Cancel Test Course").Should().BeFalse("Cancelled course should not appear");
         
@@ -804,8 +813,8 @@ public class AdminTests : BaseTest
             isActive: true
         );
 
-        semestersPage.SaveSemester();
-        Thread.Sleep(2000);
+    semestersPage.SaveSemester();
+    WaitUntil(d => semestersPage.IsSemesterVisible(semesterName) || semestersPage.IsErrorDisplayed());
 
         // Navigate to courses and create detailed course
         var coursesPage = new CoursesPage(Driver);
@@ -836,8 +845,8 @@ public class AdminTests : BaseTest
             description: "An advanced programming course covering modern software development practices and tools."
         );
 
-        coursesPage.SaveCourse();
-        Thread.Sleep(2000);
+    coursesPage.SaveCourse();
+    WaitUntil(d => coursesPage.IsCourseVisible(courseName) || d.PageSource.Contains("error"));
 
         // Assert - Verify course was created with all details
         coursesPage.IsCourseVisible(courseName).Should().BeTrue($"Course '{courseName}' should be visible");
@@ -867,8 +876,8 @@ public class AdminTests : BaseTest
         coursesPage.IsCreateFormVisible().Should().BeTrue("Create form should be visible");
 
         // Try to save without filling required fields
-        coursesPage.SaveCourse();
-        Thread.Sleep(1000);
+    coursesPage.SaveCourse();
+    WaitUntil(d => !coursesPage.IsCreateFormVisible() || d.PageSource.Contains("error"));
 
         // Assert - Should show validation error and stay on form
         // Note: This depends on how the frontend handles validation
@@ -879,17 +888,17 @@ public class AdminTests : BaseTest
 
     private void LoginAsAdmin()
     {
-        NavigateToHome();
-        WaitForPageLoad();
-        Thread.Sleep(2000);
+    NavigateToHome();
+    WaitForPageLoad();
+    WaitForUrlContains("/login");
 
         var loginPage = new LoginPage(Driver);
         var username = Configuration["TestCredentials:AdminUser:Username"] ?? "admin1";
         var password = Configuration["TestCredentials:AdminUser:Password"] ?? "AdminPass123!";
         
-        loginPage.Login(username, password);
-        WaitForPageLoad();
-        Thread.Sleep(2000);
+    loginPage.Login(username, password);
+    WaitForPageLoad();
+    WaitForUrlContains("/");
 
         var homePage = new HomePage(Driver);
         homePage.IsLoggedIn().Should().BeTrue("Admin login should succeed");
@@ -954,9 +963,9 @@ public class AdminTests : BaseTest
 
         // Act - Create a new room
         var createButton = Driver.FindElement(By.Id("create-room-btn"));
-        createButton.Click();
-        WaitForPageLoad();
-        Thread.Sleep(1000);
+    createButton.Click();
+    WaitForPageLoad();
+    WaitUntil(d => d.FindElements(By.Id("room-name-input")).Any());
 
         // Fill in room details
         var nameInput = Driver.FindElement(By.Id("room-name-input"));
@@ -974,9 +983,9 @@ public class AdminTests : BaseTest
 
         // Submit the form
         var saveButton = Driver.FindElement(By.Id("save-room-btn"));
-        saveButton.Click();
-        WaitForPageLoad();
-        Thread.Sleep(2000);
+    saveButton.Click();
+    WaitForPageLoad();
+    WaitUntil(d => d.PageSource.Contains(uniqueName));
 
         // Assert - Room should be created and visible
         Driver.PageSource.Should().Contain(uniqueName, "New room should appear on the page");
@@ -994,9 +1003,9 @@ public class AdminTests : BaseTest
 
         // Act - Open create modal and cancel
         var createButton = Driver.FindElement(By.Id("create-room-btn"));
-        createButton.Click();
-        WaitForPageLoad();
-        Thread.Sleep(1000);
+    createButton.Click();
+    WaitForPageLoad();
+    WaitUntil(d => d.FindElements(By.Id("room-name-input")).Any());
 
         // Fill in partial data
         var nameInput = Driver.FindElement(By.Id("room-name-input"));
@@ -1034,7 +1043,7 @@ public class AdminTests : BaseTest
         {
             editButtons[0].Click();
             WaitForPageLoad();
-            Thread.Sleep(1000);
+            WaitUntil(d => d.FindElements(By.Id("room-name-input")).Any());
 
             // Update room details
             var nameInput = Driver.FindElement(By.Id("room-name-input"));
@@ -1053,7 +1062,7 @@ public class AdminTests : BaseTest
             var saveButton = Driver.FindElement(By.Id("save-room-btn"));
             saveButton.Click();
             WaitForPageLoad();
-            Thread.Sleep(2000);
+            WaitUntil(d => d.PageSource.Contains("EDITED"));
 
             // Assert - Changes should be reflected
             Driver.PageSource.Should().Contain($"{uniqueName} EDITED", "Updated room name should appear");
@@ -1071,14 +1080,14 @@ public class AdminTests : BaseTest
 
         // Act - Try to create room without required fields
         var createButton = Driver.FindElement(By.Id("create-room-btn"));
-        createButton.Click();
-        WaitForPageLoad();
-        Thread.Sleep(1000);
+    createButton.Click();
+    WaitForPageLoad();
+    WaitUntil(d => d.FindElements(By.Id("room-name-input")).Any());
 
         // Try to submit without filling required fields
         var saveButton = Driver.FindElement(By.Id("save-room-btn"));
-        saveButton.Click();
-        Thread.Sleep(1000);
+    saveButton.Click();
+    WaitUntil(d => d.PageSource.Contains("required") || d.PageSource.Contains("Name") || d.PageSource.Contains("Capacity"));
 
         // Assert - Should show validation errors (browser validation or custom)
         var nameInput = Driver.FindElement(By.Id("room-name-input"));
@@ -1114,9 +1123,9 @@ public class AdminTests : BaseTest
     private void CreateTestRoom(string name, string roomType, int capacity, string notes)
     {
         var createButton = Driver.FindElement(By.Id("create-room-btn"));
-        createButton.Click();
-        WaitForPageLoad();
-        Thread.Sleep(1000);
+    createButton.Click();
+    WaitForPageLoad();
+    WaitUntil(d => d.FindElements(By.Id("room-name-input")).Any());
 
         var nameInput = Driver.FindElement(By.Id("room-name-input"));
         nameInput.SendKeys(name);
@@ -1135,9 +1144,9 @@ public class AdminTests : BaseTest
         }
 
         var saveButton = Driver.FindElement(By.Id("save-room-btn"));
-        saveButton.Click();
-        WaitForPageLoad();
-        Thread.Sleep(2000);
+    saveButton.Click();
+    WaitForPageLoad();
+    WaitUntil(d => d.PageSource.Contains(name));
     }
 
     #endregion

@@ -5,18 +5,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   
   // Get token from Authorization header
   const authHeader = req.headers.authorization;
+  var requestHeaders;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'No token provided' });
+    requestHeaders = {
+        'Content-Type': 'application/json',
+    };
+  }
+  else {
+    requestHeaders = {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json',
+    };
   }
 
   try {
     // Forward the request to the actual backend API
     const response = await fetch(`${API_BASE_URL}/api/semesters/active`, {
       method: 'GET',
-      headers: {
-        'Authorization': authHeader,
-        'Content-Type': 'application/json',
-      }
+      headers: requestHeaders
     });
 
     // Check if response is JSON

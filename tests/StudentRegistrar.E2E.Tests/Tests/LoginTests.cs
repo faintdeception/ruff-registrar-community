@@ -37,8 +37,8 @@ public class LoginTests : BaseTest
         // Act - Try to login with invalid credentials
         loginPage.Login("invalid_user", "invalid_password");
 
-        // Wait for the error response
-        Thread.Sleep(3000);
+    // Wait for error message to appear
+    WaitUntil(d => d.PageSource.Contains("Login Error") || d.PageSource.Contains("Invalid user credentials"), 10);
 
         // Assert - Should show error message and stay on login page
         Driver.Url.Should().Contain("/login", "Should remain on login page after invalid credentials");
@@ -66,9 +66,9 @@ public class LoginTests : BaseTest
         // Act - Login with valid credentials
         loginPage.Login(username, password);
 
-        // Wait for redirect and page load
-        WaitForPageLoad();
-        Thread.Sleep(2000);
+    // Wait for redirect and page load
+    WaitForPageLoad();
+    WaitForUrlContains("/");
 
         // Assert - Should be redirected to home page and be logged in
         Driver.Url.Should().NotContain("/login", "Should be redirected away from login page");
@@ -89,9 +89,9 @@ public class LoginTests : BaseTest
         var username = Configuration["TestCredentials:ValidUser:Username"] ?? "admin1";
         var password = Configuration["TestCredentials:ValidUser:Password"] ?? "AdminPass123!";
         
-        loginPage.Login(username, password);
-        WaitForPageLoad();
-        Thread.Sleep(2000);
+    loginPage.Login(username, password);
+    WaitForPageLoad();
+    WaitForUrlContains("/");
 
         var homePage = new HomePage(Driver);
         homePage.IsLoggedIn().Should().BeTrue("Should be logged in before logout test");
@@ -99,9 +99,9 @@ public class LoginTests : BaseTest
         // Act - Logout using the logout button
         homePage.ClickLogout();
 
-        // Wait for redirect
-        WaitForPageLoad();
-        Thread.Sleep(2000);
+    // Wait for redirect
+    WaitForPageLoad();
+    WaitForUrlContains("/login");
 
         // Assert - Should be redirected back to login page
         Driver.Url.Should().Contain("/login", "Should be redirected to login page after logout");
@@ -115,35 +115,35 @@ public class LoginTests : BaseTest
     {
         // This test verifies the complete flow: redirect to login -> login -> home -> logout -> login
 
-        // Step 1: Navigate to home (should redirect to login)
-        NavigateToHome();
-        WaitForPageLoad();
-        Thread.Sleep(2000); // Wait for redirect to complete
-        Driver.Url.Should().Contain("/login", "Step 1: Should redirect to login when not authenticated");
+    // Step 1: Navigate to home (should redirect to login)
+    NavigateToHome();
+    WaitForPageLoad();
+    WaitForUrlContains("/login");
+    Driver.Url.Should().Contain("/login", "Step 1: Should redirect to login when not authenticated");
 
         // Step 2: Login with valid credentials
         var loginPage = new LoginPage(Driver);
         var username = Configuration["TestCredentials:ValidUser:Username"] ?? "admin1";
         var password = Configuration["TestCredentials:ValidUser:Password"] ?? "AdminPass123!";
         
-        loginPage.Login(username, password);
-        WaitForPageLoad();
-        Thread.Sleep(2000);
+    loginPage.Login(username, password);
+    WaitForPageLoad();
+    WaitForUrlContains("/");
 
         // Step 3: Verify logged in and on home page
         Driver.Url.Should().NotContain("/login", "Step 3: Should be redirected away from login page");
         var homePage = new HomePage(Driver);
         homePage.IsLoggedIn().Should().BeTrue("Step 3: Should be logged in");
 
-        // Step 4: Logout
-        homePage.ClickLogout();
-        WaitForPageLoad();
-        Thread.Sleep(2000);
+    // Step 4: Logout
+    homePage.ClickLogout();
+    WaitForPageLoad();
+    WaitForUrlContains("/login");
 
-        // Step 5: Verify redirected back to login
-        Thread.Sleep(2000); // Wait for redirect after logout
-        Driver.Url.Should().Contain("/login", "Step 5: Should be redirected to login page after logout");
-        var loginPageAfterLogout = new LoginPage(Driver);
-        loginPageAfterLogout.IsOnLoginPage().Should().BeTrue("Step 5: Should display login form after logout");
+    // Step 5: Verify redirected back to login
+    WaitForUrlContains("/login");
+    Driver.Url.Should().Contain("/login", "Step 5: Should be redirected to login page after logout");
+    var loginPageAfterLogout = new LoginPage(Driver);
+    loginPageAfterLogout.IsOnLoginPage().Should().BeTrue("Step 5: Should display login form after logout");
     }
 }

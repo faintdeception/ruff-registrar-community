@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
-import ProtectedRoute from '@/components/ProtectedRoute';
+import Layout from '@/components/Layout';
 import apiClient from '@/lib/api-client';
 import {
   BookOpenIcon,
@@ -101,7 +101,7 @@ export default function CoursesPage() {
   const [roomError, setRoomError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
-  const isAdmin = user?.roles.includes('Administrator');
+  const isAdmin = !!user?.roles.includes('Administrator');
 
   useEffect(() => {
     fetchSemesters();
@@ -223,10 +223,11 @@ export default function CoursesPage() {
   }, [fetchAvailableRooms]);
 
   const openEditModal = useCallback(async (course: Course) => {
+    if (!isAdmin) return; // guard for non-admin users
     setEditingCourse(course);
     setShowEditModal(true);
     await fetchAvailableMembers();
-  }, [fetchAvailableMembers]);
+  }, [fetchAvailableMembers, isAdmin]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -456,7 +457,7 @@ export default function CoursesPage() {
       }
     };
 
-    if (!showEditModal || !editingCourse) return null;
+  if (!isAdmin || !showEditModal || !editingCourse) return null;
 
     return (
       <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -717,7 +718,7 @@ export default function CoursesPage() {
       }));
     };
 
-    if (!showCreateModal) return null;
+  if (!isAdmin || !showCreateModal) return null;
 
     return (
       <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -932,19 +933,19 @@ export default function CoursesPage() {
 
   if (loading) {
     return (
-      <ProtectedRoute>
+      <Layout>
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600 mx-auto"></div>
             <p className="mt-4 text-gray-600">Loading courses...</p>
           </div>
         </main>
-      </ProtectedRoute>
+      </Layout>
     );
   }
 
   return (
-    <ProtectedRoute>
+    <Layout>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-6">
@@ -1183,6 +1184,6 @@ export default function CoursesPage() {
         {/* Course Edit Modal */}
         <CourseEditModal />
       </main>
-    </ProtectedRoute>
+    </Layout>
   );
 }

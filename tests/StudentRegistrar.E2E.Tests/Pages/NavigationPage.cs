@@ -15,13 +15,18 @@ public class NavigationPage
         _wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
     }
 
-    // Navigation elements
+    // Navigation elements (tolerant of unauthenticated state)
     private IWebElement MainNavigation => _driver.FindElement(By.CssSelector("[data-testid='main-navigation']"));
-    private IWebElement UserMenu => _driver.FindElement(By.CssSelector("[data-testid='user-menu']"));
-    private IWebElement UserInfo => _driver.FindElement(By.CssSelector("[data-testid='user-info']"));
-    private IWebElement UserName => _driver.FindElement(By.CssSelector("[data-testid='user-name']"));
-    private IWebElement UserRoles => _driver.FindElement(By.CssSelector("[data-testid='user-roles']"));
-    private IWebElement LogoutButton => _driver.FindElement(By.CssSelector("[data-testid='logout-button']"));
+    private IWebElement? TryFind(By by)
+    {
+        try { return _driver.FindElement(by); } catch (NoSuchElementException) { return null; }
+    }
+    private IWebElement? UserMenu => TryFind(By.CssSelector("[data-testid='user-menu']"));
+    private IWebElement? GuestMenu => TryFind(By.CssSelector("[data-testid='guest-menu']"));
+    private IWebElement? UserInfo => TryFind(By.CssSelector("[data-testid='user-info']"));
+    private IWebElement? UserName => TryFind(By.CssSelector("[data-testid='user-name']"));
+    private IWebElement? UserRoles => TryFind(By.CssSelector("[data-testid='user-roles']"));
+    private IWebElement? LogoutButton => TryFind(By.CssSelector("[data-testid='logout-button']"));
 
     // Navigation methods
     public void ClickNavItem(string navItem)
@@ -40,7 +45,7 @@ public class NavigationPage
 
     public void Logout()
     {
-        LogoutButton.Click();
+        LogoutButton?.Click();
     }
 
     // Verification methods
@@ -97,41 +102,13 @@ public class NavigationPage
             .ToList();
     }
 
-    public string GetUserName()
-    {
-        try
-        {
-            return UserName.Text.Trim();
-        }
-        catch (NoSuchElementException)
-        {
-            return "";
-        }
-    }
+    public string GetUserName() => UserName?.Text.Trim() ?? string.Empty;
 
-    public string GetUserRoles()
-    {
-        try
-        {
-            return UserRoles.Text.Trim();
-        }
-        catch (NoSuchElementException)
-        {
-            return "";
-        }
-    }
+    public string GetUserRoles() => UserRoles?.Text.Trim() ?? string.Empty;
 
-    public bool IsUserLoggedIn()
-    {
-        try
-        {
-            return UserMenu.Displayed && !string.IsNullOrEmpty(GetUserName());
-        }
-        catch (NoSuchElementException)
-        {
-            return false;
-        }
-    }
+    public bool IsUserLoggedIn() => UserMenu != null && UserMenu.Displayed && !string.IsNullOrEmpty(GetUserName());
+
+    public bool IsGuestUser() => GuestMenu != null && GuestMenu.Displayed && !IsUserLoggedIn();
 
     public bool HasAdminRole()
     {
