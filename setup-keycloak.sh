@@ -5,7 +5,8 @@
 set -e
 
 KEYCLOAK_URL="http://localhost:8080"
-ADMIN_USER="zach-admin"
+# Aspire dev default master admin username is typically 'admin'.
+ADMIN_USER="admin"
 REALM_NAME="student-registrar"
 CLIENT_ID="student-registrar"
 
@@ -84,9 +85,13 @@ if [ "$KEYCLOAK_STATUS" != "200" ]; then
 fi
 echo "✅ Keycloak is accessible"
 
-# read -s -p "Enter Keycloak admin password: " ADMIN_PASSWORD
-read -s -p "Enter Keycloak admin password: " ADMIN_PASSWORD
-echo ""
+if [ -n "${KEYCLOAK_ADMIN_PASSWORD:-}" ]; then
+    ADMIN_PASSWORD="$KEYCLOAK_ADMIN_PASSWORD"
+    echo "🔑 Using KEYCLOAK_ADMIN_PASSWORD from environment"
+else
+    read -s -p "Enter Keycloak admin password: " ADMIN_PASSWORD
+    echo ""
+fi
 
 # Get admin token
 echo "🔑 Getting admin access token..."
