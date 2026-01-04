@@ -20,6 +20,8 @@ public class WebDriverFactory : IDisposable
         if (_driver != null)
             return _driver;
 
+        EnsureSeleniumManagerIsExecutable();
+
         var options = new ChromeOptions();
         
         // Configure Chrome options based on settings
@@ -62,6 +64,7 @@ public class WebDriverFactory : IDisposable
         // Set page load strategy for better reliability
         options.PageLoadStrategy = PageLoadStrategy.Normal;
 
+        // Let Selenium Manager resolve a compatible driver for the installed Chrome.
         _driver = new ChromeDriver(options);
 
         // Configure timeouts
@@ -72,6 +75,41 @@ public class WebDriverFactory : IDisposable
         _driver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(pageLoadTimeout);
 
         return _driver;
+    }
+
+    private static void EnsureSeleniumManagerIsExecutable()
+    {
+        // Selenium extracts selenium-manager next to the test output. On some systems the
+        // executable bit can be lost during restore/build, causing "Permission denied".
+        string? runtime = null;
+
+        if (OperatingSystem.IsLinux())
+            runtime = "linux";
+        else if (OperatingSystem.IsMacOS())
+            runtime = "osx";
+        else
+            return;
+
+        var managerPath = Path.Combine(AppContext.BaseDirectory, "runtimes", runtime, "native", "selenium-manager");
+
+        if (!File.Exists(managerPath))
+            return;
+
+        try
+        {
+            if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+            {
+                var mode = File.GetUnixFileMode(managerPath);
+                var desired = mode | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
+
+                if (desired != mode)
+                    File.SetUnixFileMode(managerPath, desired);
+            }
+        }
+        catch
+        {
+            // Best-effort: if we can't adjust permissions, Selenium will surface a useful error.
+        }
     }
 
     public void Dispose()
