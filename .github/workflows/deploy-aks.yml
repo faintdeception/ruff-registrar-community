@@ -1,0 +1,88 @@
+name: Deploy to AKS (main)
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      APPHOST_PROJECT: src/StudentRegistrar.AppHost/StudentRegistrar.AppHost.csproj
+      MANIFEST_PATH: dist/aspire/aspire-manifest.json
+      IMAGE_TAG: ${{ github.sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Install Aspire CLI
+        run: |
+          dotnet tool install --global aspire
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Generate Aspire deployment manifest
+        run: |
+          mkdir -p dist/aspire
+          aspire do publish-manifest \
+            --project "$APPHOST_PROJECT" \
+            --output-path "$MANIFEST_PATH" \
+            --non-interactive
+
+      - name: Upload manifest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aspire-manifest
+          path: dist/aspire/aspire-manifest.json
+
+      # Container build/push and AKS apply are intentionally left as a scaffold.
+      # To enable them, provide the required secrets and set the cluster/registry values.
+
+      - name: Azure login
+        if: ${{ secrets.AZURE_CREDENTIALS != '' }}
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set AKS context
+        if: ${{ secrets.AZURE_CREDENTIALS != '' && secrets.AKS_CLUSTER_NAME != '' && secrets.AKS_RESOURCE_GROUP != '' }}
+        uses: azure/aks-set-context@v4
+        with:
+          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
+          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
+
+      - name: Build & push images to ACR
+        if: ${{ secrets.AZURE_CREDENTIALS != '' && secrets.ACR_LOGIN_SERVER != '' }}
+        env:
+          ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+        run: |
+          az acr login --name "${ACR_LOGIN_SERVER%%.*}"
+
+          docker build \
+            -f src/StudentRegistrar.Api/Dockerfile \
+            -t "$ACR_LOGIN_SERVER/studentregistrar-api:$IMAGE_TAG" \
+            .
+          docker push "$ACR_LOGIN_SERVER/studentregistrar-api:$IMAGE_TAG"
+
+          docker build \
+            -f frontend/Dockerfile \
+            -t "$ACR_LOGIN_SERVER/studentregistrar-frontend:$IMAGE_TAG" \
+            frontend
+          docker push "$ACR_LOGIN_SERVER/studentregistrar-frontend:$IMAGE_TAG"
+
+      - name: Deploy to AKS
+        if: ${{ secrets.AZURE_CREDENTIALS != '' && secrets.AKS_CLUSTER_NAME != '' && secrets.AKS_RESOURCE_GROUP != '' }}
+        run: |
+          echo "AKS deploy step not yet wired to Kubernetes manifests."
+          echo "Next: add deploy/aks manifests (or a converter from Aspire manifest) and run kubectl apply here."
