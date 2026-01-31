@@ -17,6 +17,12 @@ jobs:
       APPHOST_PROJECT: src/StudentRegistrar.AppHost/StudentRegistrar.AppHost.csproj
       DOTNET_ASPIRE_ENABLE_DEPLOY_COMMAND: "true"
       DEPLOYMENT_PLATFORM: "aca"
+      Keycloak__ClientSecret: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
+      Keycloak__AdminPassword: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
+      Keycloak__Hostname: ${{ secrets.KEYCLOAK_HOSTNAME }}
+      Postgres__Password: ${{ secrets.POSTGRES_PASSWORD }}
+      PublicApiUrl: ${{ secrets.PUBLIC_API_URL }}
+      PublicKeycloakUrl: ${{ secrets.PUBLIC_KEYCLOAK_URL }}
 
     steps:
       - name: Checkout

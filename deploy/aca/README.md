@@ -17,6 +17,25 @@ This workflow is **not production-ready** yet. It assumes the AppHost’s ACA pu
 
 - `AZURE_CREDENTIALS`: JSON for `azure/login@v2` (service principal). For example:
   - `az ad sp create-for-rbac --name <name> --role contributor --scopes /subscriptions/<subId> --sdk-auth`
+- `KEYCLOAK_CLIENT_SECRET`
+- `KEYCLOAK_ADMIN_PASSWORD`
+- `KEYCLOAK_HOSTNAME`
+- `POSTGRES_PASSWORD`
+- `PUBLIC_API_URL`
+- `PUBLIC_KEYCLOAK_URL`
+
+## Required deploy parameters (publish/deploy)
+
+These are required when running `aspire deploy` in ACA mode:
+
+- `keycloak-admin-password` (secret)
+- `keycloak-client-secret` (secret)
+- `postgres-password` (secret)
+- `keycloak-hostname` (e.g., `https://keycloak.<env>.<region>.azurecontainerapps.io`)
+- `public-api-url` (e.g., `https://api.<env>.<region>.azurecontainerapps.io`)
+- `public-keycloak-url` (e.g., `https://keycloak.<env>.<region>.azurecontainerapps.io`)
+
+Provide these via Aspire deploy parameters or environment-based parameter injection supported by your CLI version.
 
 ## Default deploy parameters
 
