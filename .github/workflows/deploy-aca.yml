@@ -17,6 +17,7 @@ jobs:
       APPHOST_PROJECT: src/StudentRegistrar.AppHost/StudentRegistrar.AppHost.csproj
       DOTNET_ASPIRE_ENABLE_DEPLOY_COMMAND: "true"
       DEPLOYMENT_PLATFORM: "aca"
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
       Keycloak__ClientSecret: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
       Keycloak__AdminPassword: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
       Keycloak__Hostname: ${{ secrets.KEYCLOAK_HOSTNAME }}
@@ -34,10 +35,10 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Azure login
-        if: ${{ secrets.AZURE_CREDENTIALS != '' }}
+        if: ${{ env.AZURE_CREDENTIALS != '' }}
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ env.AZURE_CREDENTIALS }}
 
       - name: Install Aspire CLI
         run: |
@@ -45,7 +46,7 @@ jobs:
           echo "$HOME/.aspire/bin" >> "$GITHUB_PATH"
 
       - name: Deploy (aspire deploy)
-        if: ${{ secrets.AZURE_CREDENTIALS != '' }}
+        if: ${{ env.AZURE_CREDENTIALS != '' }}
         run: |
           aspire deploy \
             --project "$APPHOST_PROJECT" \
@@ -53,7 +54,7 @@ jobs:
             --environment Production
 
       - name: Notes
-        if: ${{ secrets.AZURE_CREDENTIALS == '' }}
+        if: ${{ env.AZURE_CREDENTIALS == '' }}
         run: |
           echo "AZURE_CREDENTIALS not set; skipping ACA deploy."
           echo "Set AZURE_CREDENTIALS (azure/login) to enable."
