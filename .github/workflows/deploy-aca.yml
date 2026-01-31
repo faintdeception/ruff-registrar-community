@@ -18,6 +18,8 @@ jobs:
       DOTNET_ASPIRE_ENABLE_DEPLOY_COMMAND: "true"
       DEPLOYMENT_PLATFORM: "aca"
       AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      Azure__SubscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       Keycloak__ClientSecret: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
       Keycloak__AdminPassword: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
       Keycloak__Hostname: ${{ secrets.KEYCLOAK_HOSTNAME }}
