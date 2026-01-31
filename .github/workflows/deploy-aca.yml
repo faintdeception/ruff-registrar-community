@@ -60,47 +60,11 @@ jobs:
             --environment Production \
             --log-level debug
 
-      - name: Resolve ACA resource group
+      - name: Note
         if: ${{ env.AZURE_CREDENTIALS != '' }}
         run: |
-          set -euo pipefail
-          rg="$ACA_RESOURCE_GROUP"
-          if [ -z "$rg" ]; then
-            deploy_state=$(find "$HOME/.aspire/deployments" -name production.json -print | sort | tail -n 1 || true)
-            if [ -n "$deploy_state" ] && [ -f "$deploy_state" ]; then
-              rg=$(jq -r '.. | objects | .resourceGroupName? // empty' "$deploy_state" | head -n 1)
-            fi
-          fi
-          if [ -z "$rg" ]; then
-            rg=$(az containerapp list --query "[?name=='postgres' || name=='keycloak'].resourceGroup" -o tsv | head -n 1)
-          fi
-          if [ -z "$rg" ]; then
-            echo "Could not determine resource group. Set ACA_RESOURCE_GROUP to your Azure RG."
-            exit 1
-          fi
-          echo "ACA_RESOURCE_GROUP=$rg" >> "$GITHUB_ENV"
-          echo "Resolved resource group: $rg"
-
-      - name: Ensure Keycloak database exists
-        if: ${{ env.AZURE_CREDENTIALS != '' }}
-        run: |
-          set -euo pipefail
-          rg="$ACA_RESOURCE_GROUP"
-          echo "Using resource group: $rg"
-          script -q -e -c "az containerapp exec -g $rg -n postgres --command \"sh -c 'PGPASSWORD=$POSTGRES_PASSWORD psql -U postgres -d postgres -tc \\\"SELECT 1 FROM pg_database WHERE datname=\\\\\\\"keycloak\\\\\\\"\\\" | grep -q 1 || PGPASSWORD=$POSTGRES_PASSWORD psql -U postgres -d postgres -c \\\"CREATE DATABASE \\\\\\\"keycloak\\\\\\\"\\\"'\"" /dev/null
-          az containerapp restart -g "$rg" -n keycloak
-
-      - name: Check Keycloak app status
-        if: ${{ env.AZURE_CREDENTIALS != '' }}
-        run: |
-          set -euo pipefail
-          rg="$ACA_RESOURCE_GROUP"
-          status=$(az containerapp show -g "$rg" -n keycloak --query "properties.runningStatus" -o tsv)
-          echo "Keycloak runningStatus: $status"
-          if [ "$status" != "Running" ]; then
-            echo "Keycloak is not running."
-            exit 1
-          fi
+          echo "Keycloak database creation is currently manual."
+          echo "If Keycloak fails with 'database \"keycloak\" does not exist', create it in the Postgres container app."
 
       - name: Notes
         if: ${{ env.AZURE_CREDENTIALS == '' }}
