@@ -53,8 +53,9 @@ var publicKeycloakUrl = builder.ExecutionContext.IsRunMode
 
 var keycloakEndpointPort = (deployToAca && isPublishOrDeploy) ? 80 : 8080;
 
-// PostgreSQL database
-var postgres = builder.AddPostgres("postgres", password: postgresPassword);
+// PostgreSQL database (persisted)
+var postgres = builder.AddPostgres("postgres", password: postgresPassword)
+    .WithDataVolume("postgres-data-v1");
 
 var studentRegistrarDb = postgres.AddDatabase("studentregistrar");
 var keycloakDb = postgres.AddDatabase("keycloakdb", "keycloak");

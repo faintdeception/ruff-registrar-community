@@ -175,7 +175,8 @@ docker-compose up postgres keycloak -d
      - Web Origins: `http://localhost:3000`, `http://localhost:3001`
      - Service Accounts Enabled: `On`
 
-**Note:** Keycloak configuration persists across restarts thanks to persistent data volumes.
+**Note:** Keycloak configuration persists across restarts thanks to persistent data volumes. This project uses named volumes for both Keycloak and Postgres; do not remove Docker volumes if you want the realm to persist.
+If the `student-registrar` realm disappears after a restart (for example, after deleting Docker volumes or running `docker system prune -a`), re-run `./setup-keycloak.sh`, update `src/StudentRegistrar.AppHost/appsettings.json` with the new client secret, and restart the AppHost.
 
 ### 6. Configure AppHost Settings
 

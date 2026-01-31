@@ -20,7 +20,7 @@ fi
 
 # Check if .NET SDK is installed
 if ! command -v dotnet &> /dev/null; then
-    echo "❌ .NET SDK is not installed. Please install .NET 9 SDK first."
+    echo "❌ .NET SDK is not installed. Please install .NET 10 SDK first."
     exit 1
 fi
 
@@ -36,6 +36,10 @@ echo "✅ Prerequisites check passed!"
 echo "📦 Restoring .NET packages..."
 dotnet restore
 
+# Restore local .NET tools (dotnet-ef)
+echo "🛠️ Restoring .NET tools..."
+dotnet tool restore
+
 # Install frontend dependencies
 echo "📦 Installing frontend dependencies..."
 cd frontend
@@ -49,9 +53,16 @@ docker-compose up -d postgres keycloak
 echo "⏳ Waiting for services to be ready..."
 sleep 10
 
-# Create initial migration
-echo "🗄️ Creating initial database migration..."
-dotnet ef migrations add InitialCreate --project src/StudentRegistrar.Data --startup-project src/StudentRegistrar.Api
+# Default connection string for local Docker Compose Postgres
+export ConnectionStrings__studentregistrar="Host=localhost;Database=studentregistrar;Username=postgres;Password=${POSTGRES_PASSWORD:-changeme-in-production}"
+
+# Create initial migration if none exist
+if [ ! -d "src/StudentRegistrar.Data/Migrations" ]; then
+    echo "🗄️ Creating initial database migration..."
+    dotnet ef migrations add InitialCreate --project src/StudentRegistrar.Data --startup-project src/StudentRegistrar.Api
+else
+    echo "🗄️ Migrations already exist. Skipping creation."
+fi
 
 # Apply migration
 echo "🗄️ Applying database migration..."

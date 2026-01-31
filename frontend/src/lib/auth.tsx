@@ -32,7 +32,7 @@ export const useAuth = () => {
 const KEYCLOAK_URL = process.env.NEXT_PUBLIC_KEYCLOAK_URL || 'http://localhost:8080';
 const KEYCLOAK_REALM = process.env.NEXT_PUBLIC_KEYCLOAK_REALM || 'student-registrar';
 const KEYCLOAK_CLIENT_ID = process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID || 'student-registrar';
-const KEYCLOAK_CLIENT_SECRET = process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_SECRET || 'hpWpXCmMHAzDy0FrwUwrBONtTdoeXBNx';
+const KEYCLOAK_CLIENT_SECRET = process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_SECRET || 'MZGqAKhlOudcHHm2kLcrqag3hAqob9ga';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

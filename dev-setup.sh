@@ -5,7 +5,7 @@ echo "Setting up StudentRegistrar development environment..."
 
 # Check if dotnet is installed
 if ! command -v dotnet &> /dev/null; then
-    echo "❌ .NET SDK is not installed. Please install .NET 9 SDK first."
+    echo "❌ .NET SDK is not installed. Please install .NET 10 SDK first."
     exit 1
 fi
 
@@ -23,13 +23,13 @@ fi
 
 echo "✅ Prerequisites check passed"
 
-# Install .NET Aspire workload
-echo "Installing .NET Aspire workload..."
-dotnet workload install aspire
-
 # Install frontend dependencies
 echo "Installing frontend dependencies..."
 cd frontend && npm install && cd ..
+
+# Restore local .NET tools (dotnet-ef)
+echo "Restoring .NET tools..."
+dotnet tool restore
 
 # Initialize user secrets if not already done
 echo "Initializing user secrets..."

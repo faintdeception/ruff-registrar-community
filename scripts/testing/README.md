@@ -196,6 +196,15 @@ docker run --rm student-registrar-e2e
 ```
 **Solution**: Start Keycloak with `docker-compose up keycloak`
 
+### Realm Missing / Login Fails
+Symptoms: login tests stay on `/login` or Keycloak returns `Realm does not exist`.
+
+**Solution**:
+1. Run `./setup-keycloak.sh` to recreate the realm/client.
+2. Update `src/StudentRegistrar.AppHost/appsettings.json` with the new client secret.
+3. Restart the AppHost.
+4. Run `./scripts/testing/setup-test-users.sh`.
+
 ### Test Failures
 1. Check application logs: `docker-compose logs frontend`
 2. Verify test users exist in Keycloak admin console
