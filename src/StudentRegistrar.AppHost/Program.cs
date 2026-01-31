@@ -145,7 +145,8 @@ else
         .WithEnvironment("NEXT_PUBLIC_API_URL", publicApiUrl!.Resource)
         .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_URL", publicKeycloakUrl!.Resource)
         .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_REALM", keycloakRealm)
-        .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_CLIENT_ID", keycloakClientId);
+        .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_CLIENT_ID", keycloakClientId)
+        .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_CLIENT_SECRET", keycloakClientSecret.Resource);
 }
 
 // Azure Container Apps deployment wiring (opt-in)
