@@ -1,0 +1,33 @@
+{
+  "realm": "student-registrar",
+  "enabled": true,
+  "loginWithEmailAllowed": true,
+  "registrationAllowed": false,
+  "rememberMe": true,
+  "verifyEmail": false,
+  "resetPasswordAllowed": true,
+  "roles": {
+    "realm": [
+      { "name": "Administrator", "description": "Administrator role" },
+      { "name": "Educator", "description": "Educator role" },
+      { "name": "Member", "description": "Member / family account role" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "student-registrar",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "redirectUris": ["http://localhost:3000/*", "http://localhost:3001/*"],
+      "webOrigins": ["http://localhost:3000", "http://localhost:3001"],
+      "attributes": {}
+    }
+  ],
+  "smtpServer": {},
+  "eventsListeners": ["jboss-logging"],
+  "internationalizationEnabled": false
+}
