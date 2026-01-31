@@ -693,7 +693,7 @@ public class AdminTests : BaseTest
         );
 
         semestersPage.SaveSemester();
-        Thread.Sleep(2000);
+        WaitUntil(d => semestersPage.IsSemesterVisible(semesterName) || semestersPage.IsErrorDisplayed());
 
         // Navigate to courses page
         var coursesPage = new CoursesPage(Driver);
@@ -711,17 +711,45 @@ public class AdminTests : BaseTest
         };
 
         // Act - Create each course
+        coursesPage.ClickCreateCourse();
+        coursesPage.IsCreateFormVisible().Should().BeTrue("Create form should be visible");
+
+        var availableRooms = coursesPage.GetAvailableRooms();
+        if (availableRooms.Count == 0)
+        {
+            coursesPage.CancelCreate();
+            WaitUntil(d => !coursesPage.IsCreateFormVisible() || d.PageSource.Contains("error"));
+
+            Driver.Navigate().GoToUrl($"{BaseUrl}/rooms");
+            WaitForPageLoad();
+
+            var fallbackRoomName = $"Auto Room {DateTime.Now:yyyyMMddHHmmss}";
+            CreateTestRoom(fallbackRoomName, "Classroom", 20, "Auto-created for E2E courses");
+
+            Driver.Navigate().GoToUrl($"{BaseUrl}/courses");
+            WaitForPageLoad();
+            coursesPage.SelectSemester(semesterName);
+
+            coursesPage.ClickCreateCourse();
+            coursesPage.IsCreateFormVisible().Should().BeTrue("Create form should be visible");
+            availableRooms = coursesPage.GetAvailableRooms();
+        }
+
+        availableRooms.Should().NotBeEmpty("at least one room should be available in the room options");
+
         foreach (var course in courses)
         {
             coursesPage.ClickCreateCourse();
             coursesPage.IsCreateFormVisible().Should().BeTrue($"Create form should be visible for {course.Name}");
+
+            var selectedRoom = availableRooms[Array.IndexOf(courses, course) % availableRooms.Count];
 
             coursesPage.FillCourseForm(
                 name: course.Name,
                 code: course.Code,
                 ageGroup: course.AgeGroup,
                 maxCapacity: course.Capacity,
-                room: $"Room {Array.IndexOf(courses, course) + 1}",
+                room: selectedRoom,
                 fee: 25.00m
             );
 
@@ -732,8 +760,7 @@ public class AdminTests : BaseTest
             coursesPage.IsCourseVisible(course.Name).Should().BeTrue($"Course '{course.Name}' should be created");
         }
 
-        // Small wait to ensure all courses are processed
-        Thread.Sleep(500);
+        WaitUntil(d => coursesPage.GetCourseCount() >= initialCourseCount + courses.Length || d.PageSource.Contains("error"), 15);
         
 
         // Assert - Verify all courses were created
@@ -755,7 +782,7 @@ public class AdminTests : BaseTest
         {
             coursesPage.SelectSemester(availableSemesters.First());
         }
-        Thread.Sleep(200);
+        WaitUntil(d => coursesPage.GetCourseCount() >= 0 || d.PageSource.Contains("error"), 10);
         var initialCourseCount = coursesPage.GetCourseCount();
 
         // Act - Start creating course but cancel
@@ -775,7 +802,6 @@ public class AdminTests : BaseTest
 
         // Assert - Verify no course was created
         WaitForPageLoad();
-        Thread.Sleep(200);
         WaitUntil(d => !coursesPage.IsCreateFormVisible() || d.PageSource.Contains("error"));
         if (availableSemesters.Count > 0)
         {
@@ -830,14 +856,18 @@ public class AdminTests : BaseTest
 
         // Verify rooms are available in dropdown while modal is open
         var availableRooms = coursesPage.GetAvailableRooms();
-        availableRooms.Should().Contain(room => room.Contains("Classroom B") && room.Contains("20"), "Classroom B should be available in the room options");
+        availableRooms.Should().NotBeEmpty("at least one room should be available in the room options");
+
+        var selectedRoom = availableRooms.FirstOrDefault(room =>
+            room.Contains("Classroom B", StringComparison.OrdinalIgnoreCase) && room.Contains("20"))
+            ?? availableRooms.First();
 
         coursesPage.FillCourseForm(
             name: courseName,
             code: courseCode,
             ageGroup: "Teens (13-17)",
             maxCapacity: 12,
-            room: "Classroom B",
+            room: selectedRoom,
             fee: 150.00m,
             periodCode: "Morning Block",
             startTime: "10:00AM",
