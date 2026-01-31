@@ -53,9 +53,13 @@ var publicKeycloakUrl = builder.ExecutionContext.IsRunMode
 
 var keycloakEndpointPort = (deployToAca && isPublishOrDeploy) ? 80 : 8080;
 
-// PostgreSQL database (persisted)
-var postgres = builder.AddPostgres("postgres", password: postgresPassword)
-    .WithDataVolume("postgres-data-v1");
+// PostgreSQL database (persisted locally; ACA volume permissions can prevent initdb)
+var postgres = builder.AddPostgres("postgres", password: postgresPassword);
+
+if (builder.ExecutionContext.IsRunMode)
+{
+    postgres = postgres.WithDataVolume("postgres-data-v1");
+}
 
 var studentRegistrarDb = postgres.AddDatabase("studentregistrar");
 var keycloakDb = postgres.AddDatabase("keycloakdb", "keycloak");
@@ -86,6 +90,7 @@ var keycloak = builder.AddKeycloak("keycloak", keycloakEndpointPort)
         {
             context.EnvironmentVariables["KC_HOSTNAME"] = keycloakHostname!.Resource;
             context.EnvironmentVariables["KC_PROXY"] = "edge";
+            context.EnvironmentVariables["KC_PROXY_HEADERS"] = "xforwarded";
             context.EnvironmentVariables["KC_HOSTNAME_STRICT"] = "true";
             context.EnvironmentVariables["KC_HOSTNAME_STRICT_HTTPS"] = "true";
         }
