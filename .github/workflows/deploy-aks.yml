@@ -17,6 +17,10 @@ jobs:
       APPHOST_PROJECT: src/StudentRegistrar.AppHost/StudentRegistrar.AppHost.csproj
       MANIFEST_PATH: dist/aspire/aspire-manifest.json
       IMAGE_TAG: ${{ github.sha }}
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+      AKS_CLUSTER_NAME: ${{ secrets.AKS_CLUSTER_NAME }}
+      AKS_RESOURCE_GROUP: ${{ secrets.AKS_RESOURCE_GROUP }}
+      ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
 
     steps:
       - name: Checkout
@@ -50,22 +54,22 @@ jobs:
       # To enable them, provide the required secrets and set the cluster/registry values.
 
       - name: Azure login
-        if: ${{ secrets.AZURE_CREDENTIALS != '' }}
+        if: ${{ env.AZURE_CREDENTIALS != '' }}
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ env.AZURE_CREDENTIALS }}
 
       - name: Set AKS context
-        if: ${{ secrets.AZURE_CREDENTIALS != '' && secrets.AKS_CLUSTER_NAME != '' && secrets.AKS_RESOURCE_GROUP != '' }}
+        if: ${{ env.AZURE_CREDENTIALS != '' && env.AKS_CLUSTER_NAME != '' && env.AKS_RESOURCE_GROUP != '' }}
         uses: azure/aks-set-context@v4
         with:
-          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
-          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ env.AKS_CLUSTER_NAME }}
+          resource-group: ${{ env.AKS_RESOURCE_GROUP }}
 
       - name: Build & push images to ACR
-        if: ${{ secrets.AZURE_CREDENTIALS != '' && secrets.ACR_LOGIN_SERVER != '' }}
+        if: ${{ env.AZURE_CREDENTIALS != '' && env.ACR_LOGIN_SERVER != '' }}
         env:
-          ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+          ACR_LOGIN_SERVER: ${{ env.ACR_LOGIN_SERVER }}
         run: |
           az acr login --name "${ACR_LOGIN_SERVER%%.*}"
 
@@ -82,7 +86,7 @@ jobs:
           docker push "$ACR_LOGIN_SERVER/studentregistrar-frontend:$IMAGE_TAG"
 
       - name: Deploy to AKS
-        if: ${{ secrets.AZURE_CREDENTIALS != '' && secrets.AKS_CLUSTER_NAME != '' && secrets.AKS_RESOURCE_GROUP != '' }}
+        if: ${{ env.AZURE_CREDENTIALS != '' && env.AKS_CLUSTER_NAME != '' && env.AKS_RESOURCE_GROUP != '' }}
         run: |
           echo "AKS deploy step not yet wired to Kubernetes manifests."
           echo "Next: add deploy/aks manifests (or a converter from Aspire manifest) and run kubectl apply here."
