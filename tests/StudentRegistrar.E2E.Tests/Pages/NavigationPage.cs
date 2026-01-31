@@ -31,8 +31,22 @@ public class NavigationPage
     // Navigation methods
     public void ClickNavItem(string navItem)
     {
-        var navLink = _driver.FindElement(By.CssSelector($"[data-testid='nav-{navItem}']"));
-        navLink.Click();
+        var selector = By.CssSelector($"[data-testid='nav-{navItem}']");
+        _wait.Until(d =>
+        {
+            var el = d.FindElement(selector);
+            return el.Displayed && el.Enabled;
+        });
+
+        var navLink = _driver.FindElement(selector);
+        try
+        {
+            navLink.Click();
+        }
+        catch (ElementClickInterceptedException)
+        {
+            ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", navLink);
+        }
     }
 
     public void ClickAccount() => ClickNavItem("account");

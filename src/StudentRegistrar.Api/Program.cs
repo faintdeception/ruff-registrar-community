@@ -10,6 +10,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var allowUntrustedKeycloakCertificates =
+    builder.Configuration.GetValue<bool?>("Keycloak:AllowUntrustedCertificates")
+    ?? builder.Environment.IsDevelopment();
+
 // Add service defaults & Aspire components
 builder.AddServiceDefaults();
 
@@ -57,7 +61,18 @@ builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 
 // Add HttpClient for Keycloak
-builder.Services.AddHttpClient<IKeycloakService, KeycloakService>();
+builder.Services.AddHttpClient<IKeycloakService, KeycloakService>()
+    .ConfigurePrimaryHttpMessageHandler(() =>
+    {
+        var handler = new HttpClientHandler();
+
+        if (allowUntrustedKeycloakCertificates)
+        {
+            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+        }
+
+        return handler;
+    });
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -81,6 +96,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.Authority = $"{keycloakUrl}/realms/{realm}";
         options.Audience = "student-registrar";
         options.RequireHttpsMetadata = false; // Only for development
+
+        if (allowUntrustedKeycloakCertificates)
+        {
+            options.BackchannelHttpHandler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            };
+        }
         
         options.TokenValidationParameters = new TokenValidationParameters
         {

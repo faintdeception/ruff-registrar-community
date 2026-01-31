@@ -73,6 +73,7 @@ public class EducatorTests : BaseTest
         var navigationPage = new NavigationPage(Driver);
         navigationPage.ClickEducators();
         WaitForPageLoad();
+        WaitForUrlContains("/educators");
 
         // Assert - Should access educators section
         Driver.Url.Should().Contain("/educators", "Should navigate to educators page");

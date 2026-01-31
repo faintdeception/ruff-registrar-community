@@ -10,7 +10,8 @@ echo "🧪 Setting up E2E test users..."
 
 # Configuration
 KEYCLOAK_URL="http://localhost:8080"
-ADMIN_USER="zach-admin"
+# Aspire dev default master admin username is typically 'admin'.
+ADMIN_USER="admin"
 REALM_NAME="student-registrar"
 
 # Function to check if command succeeded (copied from setup-keycloak.sh)
@@ -27,11 +28,16 @@ check_api_response() {
 }
 
 # Prompt for admin password (same as setup-keycloak.sh)
-echo "📋 Enter your Keycloak admin password:"
-echo "   (The same password you used for setup-keycloak.sh)"
-echo ""
-read -s -p "Enter Keycloak admin password: " ADMIN_PASSWORD
-echo ""
+if [ -n "${KEYCLOAK_ADMIN_PASSWORD:-}" ]; then
+    ADMIN_PASSWORD="$KEYCLOAK_ADMIN_PASSWORD"
+    echo "🔑 Using KEYCLOAK_ADMIN_PASSWORD from environment"
+else
+    echo "📋 Enter your Keycloak admin password:"
+    echo "   (The same password you used for setup-keycloak.sh)"
+    echo ""
+    read -s -p "Enter Keycloak admin password: " ADMIN_PASSWORD
+    echo ""
+fi
 
 # Get admin token (using the same method as setup-keycloak.sh)
 echo "🔑 Getting admin access token..."

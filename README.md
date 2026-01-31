@@ -86,6 +86,9 @@ cd student-registrar
 
 # Start the application
 dotnet run --project src/StudentRegistrar.AppHost
+
+# Or, to use hot reload:
+dotnet watch run --project src/StudentRegistrar.AppHost/StudentRegistrar.AppHost.csproj
 ```
 
 The setup script will:
@@ -138,6 +141,9 @@ docker-compose up postgres keycloak -d
 1. Start the application first:
    ```bash
    dotnet run --project src/StudentRegistrar.AppHost
+
+   # Or, to use hot reload:
+   dotnet watch run --project src/StudentRegistrar.AppHost/StudentRegistrar.AppHost.csproj
    ```
 
 2. Run the automated Keycloak setup script:
@@ -377,6 +383,74 @@ docker-compose down
 ```
 
 ### Using Docker Images
+## Keycloak Bootstrap & Test Seeding
+
+This application ships with scripts to initialize a new Keycloak realm in a secure, repeatable way.
+
+Location: `scripts/keycloak/`
+
+Scripts:
+- `bootstrap-keycloak.sh` – One-time realm + first application Administrator creation. Fails fast if realm already exists.
+- `seed-test-users.sh` – Adds deterministic test users for development / CI (NOT for production).
+- `realm-student-registrar.template.json` – Sanitized baseline realm definition (no users / secrets).
+
+### First-Time (Interactive) Bootstrap
+```
+./scripts/keycloak/bootstrap-keycloak.sh --keycloak-url http://localhost:8080 \
+   --admin-username admin --realm student-registrar
+```
+You will be prompted for:
+1. Keycloak master admin password (from Aspire dashboard or secret store)
+2. First application admin username
+3. First application admin email
+4. Temporary password (user must change on first login)
+
+If the realm exists, the script exits with code 10 (no changes). Treat that as success in idempotent automation.
+
+### Non-Interactive (CI / Automated Install)
+```
+export KEYCLOAK_ADMIN_PASSWORD="$(cat /run/secrets/kc_admin_password)"
+export INITIAL_ADMIN_TEMP_PASS="TempAdmin!12345"
+./scripts/keycloak/bootstrap-keycloak.sh \
+   --keycloak-url http://localhost:8080 \
+   --admin-username admin \
+   --initial-admin-username registrar-admin \
+   --initial-admin-email registrar-admin@example.org
+```
+Or use a password file:
+```
+./scripts/keycloak/bootstrap-keycloak.sh \
+   --admin-password-file /run/secrets/kc_admin_password \
+   --initial-admin-username registrar-admin \
+   --initial-admin-email registrar-admin@example.org \
+   --initial-admin-temp-pass TempAdmin!12345
+```
+
+### Seeding Test Users (Dev / CI Only)
+```
+./scripts/keycloak/seed-test-users.sh --keycloak-url http://localhost:8080 --realm student-registrar
+```
+Creates:
+- scoopadmin (Administrator)
+- scoopmember (Member)
+- scoopeducator (Educator)
+
+Do NOT run the seeding script in production.
+
+### Updating Realm Template
+1. Make changes in a disposable Keycloak instance.
+2. Export (without users):
+```
+docker exec -it <kc-container> /opt/keycloak/bin/kc.sh export --realm student-registrar --dir /tmp/export --users skip
+```
+3. Copy JSON out, sanitize, replace `realm-student-registrar.template.json`.
+4. Commit changes.
+
+### Future Enhancements (Planned)
+- Automated smoke test: client credentials token retrieval
+- Optional password policy enforcement script
+- Redirect URI dynamic injection for production hostnames
+
 
 Build individual images:
 
