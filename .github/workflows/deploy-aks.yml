@@ -21,6 +21,12 @@ jobs:
       AKS_CLUSTER_NAME: ${{ secrets.AKS_CLUSTER_NAME }}
       AKS_RESOURCE_GROUP: ${{ secrets.AKS_RESOURCE_GROUP }}
       ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+      Keycloak__ClientSecret: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
+      Keycloak__AdminPassword: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
+      Keycloak__Hostname: ${{ secrets.KEYCLOAK_HOSTNAME }}
+      Postgres__Password: ${{ secrets.POSTGRES_PASSWORD }}
+      PublicApiUrl: ${{ secrets.PUBLIC_API_URL }}
+      PublicKeycloakUrl: ${{ secrets.PUBLIC_KEYCLOAK_URL }}
 
     steps:
       - name: Checkout
