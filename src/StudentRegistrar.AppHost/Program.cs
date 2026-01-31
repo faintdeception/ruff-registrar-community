@@ -55,7 +55,6 @@ frontend.WithEnvironment("NEXT_PUBLIC_API_URL", apiService.GetEndpoint("http"));
 frontend
     .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_URL", keycloak.GetEndpoint("http"))
     .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_REALM", keycloakRealm)
-    .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_CLIENT_ID", keycloakClientId)
-    .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_CLIENT_SECRET", keycloakClientSecret);
+    .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_CLIENT_ID", keycloakClientId);
 
 await builder.Build().RunAsync();
