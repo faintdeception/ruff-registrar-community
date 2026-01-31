@@ -1,10 +1,10 @@
 # Copilot instructions
 
-This repository is set up to use Aspire. Aspire is an orchestrator for the entire application and will take care of configuring dependencies, building, and running the application. The resources that make up the application are defined in `apphost.cs` including application code and external dependencies.
+This repository is set up to use Aspire. Aspire is an orchestrator for the entire application and will take care of configuring dependencies, building, and running the application. The resources that make up the application are defined in `Program.cs` (in the AppHost project) including application code and external dependencies.
 
 ## General recommendations for working with Aspire
 1. Before making any changes always run the apphost using `aspire run` and inspect the state of resources to make sure you are building from a known state.
-1. Changes to the _apphost.cs_ file will require a restart of the application to take effect.
+1. Changes to the _Program.cs_ file in the AppHost project will require a restart of the application to take effect.
 2. Make changes incrementally and run the aspire application using the `aspire run` command to validate changes.
 3. Use the Aspire MCP tools to check the status of resources and debug issues.
 
@@ -15,7 +15,7 @@ To run the application run the following command:
 aspire run
 ```
 
-If there is already an instance of the application running it will prompt to stop the existing instance. You only need to restart the application if code in `apphost.cs` is changed, but if you experience problems it can be useful to reset everything to the starting state.
+If there is already an instance of the application running it will prompt to stop the existing instance. You only need to restart the application if code in `Program.cs` (in the AppHost project) is changed, but if you experience problems it can be useful to reset everything to the starting state.
 
 ## Checking resources
 To check the status of resources defined in the app model use the _list resources_ tool. This will show you the current state of each resource and if there are any issues. If a resource is not running as expected you can use the _execute resource command_ tool to restart it or perform other actions.
