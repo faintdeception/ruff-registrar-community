@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/auth';
+import { getApiBaseUrl } from '@/lib/runtime-env';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { EducatorDto, CreateEducatorDto } from '@/types';
 
 const EducatorsPage = () => {
   const { user } = useAuth();
+  const apiBaseUrl = getApiBaseUrl();
   const [educators, setEducators] = useState<EducatorDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,7 @@ const EducatorsPage = () => {
         return;
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/Educators`, {
+      const response = await fetch(`${apiBaseUrl}/api/Educators`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
@@ -72,7 +74,7 @@ const EducatorsPage = () => {
         return;
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/Educators`, {
+      const response = await fetch(`${apiBaseUrl}/api/Educators`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -119,7 +121,7 @@ const EducatorsPage = () => {
       }
 
       const endpoint = currentStatus ? 'deactivate' : 'activate';
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/Educators/${id}/${endpoint}`, {
+      const response = await fetch(`${apiBaseUrl}/api/Educators/${id}/${endpoint}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

@@ -1,7 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { getApiBaseUrl } from '@/lib/runtime-env';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const API_BASE_URL = getApiBaseUrl();
   const { courseId, instructorId } = req.query;
   
   // Get token from Authorization header

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { EducatorDto, CreateEducatorDto, EducatorInfo } from '@/types';
+import { getApiBaseUrl } from '@/lib/runtime-env';
 
 interface CreateEducatorFormData {
   courseId: string;
@@ -21,6 +22,7 @@ const AdminEducatorsPage = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
+  const apiBaseUrl = getApiBaseUrl();
 
   const [newInstructor, setNewInstructor] = useState<CreateEducatorFormData>({
     courseId: '',
@@ -55,7 +57,7 @@ const AdminEducatorsPage = () => {
 
   const loadInstructors = async (authToken: string) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/Educators`, {
+      const response = await fetch(`${apiBaseUrl}/api/Educators`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
@@ -78,7 +80,7 @@ const AdminEducatorsPage = () => {
 
   const loadCourses = async (authToken: string) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/Courses`, {
+      const response = await fetch(`${apiBaseUrl}/api/Courses`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
@@ -117,7 +119,7 @@ const AdminEducatorsPage = () => {
         }
       };
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/Educators`, {
+      const response = await fetch(`${apiBaseUrl}/api/Educators`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -159,7 +161,7 @@ const AdminEducatorsPage = () => {
     if (!token) return;
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/Educators/${id}`, {
+      const response = await fetch(`${apiBaseUrl}/api/Educators/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

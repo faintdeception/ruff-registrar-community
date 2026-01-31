@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { getApiBaseUrl } from './runtime-env';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = getApiBaseUrl();
 
 export const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,
