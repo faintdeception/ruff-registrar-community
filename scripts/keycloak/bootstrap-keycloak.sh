@@ -207,6 +207,6 @@ cat <<SUMMARY
 Realm: ${REALM}
 Initial admin (app): ${APP_ADMIN_USERNAME} (temp password must be changed at first login)
 Client ID: ${CLIENT_ID}
-Client Secret: ${CLIENT_SECRET}
+Client Secret: [not displayed; retrieve from Keycloak Admin Console or via API after bootstrap]
 Add to appsettings / secrets accordingly.
 SUMMARY
