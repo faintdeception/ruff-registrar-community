@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-#!/usr/bin/env bash
 # bootstrap-keycloak.sh
 # One-time bootstrap of Keycloak realm & first application Administrator (no test users).
 # Fails fast if realm already exists.
