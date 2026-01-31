@@ -59,19 +59,32 @@ jobs:
             --environment Production \
             --log-level debug
 
-      - name: Ensure Keycloak database exists
+      - name: Resolve ACA resource group
         if: ${{ env.AZURE_CREDENTIALS != '' }}
         run: |
           set -euo pipefail
           rg="$ACA_RESOURCE_GROUP"
           if [ -z "$rg" ]; then
-            deploy_state=$(ls -t "$HOME/.aspire/deployments"/*/production.json | head -n 1)
-            rg=$(jq -r '.. | objects | .resourceGroupName? // empty' "$deploy_state" | head -n 1)
+            deploy_state=$(find "$HOME/.aspire/deployments" -name production.json -print | sort | tail -n 1 || true)
+            if [ -n "$deploy_state" ] && [ -f "$deploy_state" ]; then
+              rg=$(jq -r '.. | objects | .resourceGroupName? // empty' "$deploy_state" | head -n 1)
+            fi
+          fi
+          if [ -z "$rg" ]; then
+            rg=$(az containerapp list --query "[?name=='postgres' || name=='keycloak'].resourceGroup" -o tsv | head -n 1)
           fi
           if [ -z "$rg" ]; then
             echo "Could not determine resource group. Set ACA_RESOURCE_GROUP to your Azure RG."
             exit 1
           fi
+          echo "ACA_RESOURCE_GROUP=$rg" >> "$GITHUB_ENV"
+          echo "Resolved resource group: $rg"
+
+      - name: Ensure Keycloak database exists
+        if: ${{ env.AZURE_CREDENTIALS != '' }}
+        run: |
+          set -euo pipefail
+          rg="$ACA_RESOURCE_GROUP"
           echo "Using resource group: $rg"
           az containerapp exec \
             -g "$rg" \
@@ -84,14 +97,6 @@ jobs:
         run: |
           set -euo pipefail
           rg="$ACA_RESOURCE_GROUP"
-          if [ -z "$rg" ]; then
-            deploy_state=$(ls -t "$HOME/.aspire/deployments"/*/production.json | head -n 1)
-            rg=$(jq -r '.. | objects | .resourceGroupName? // empty' "$deploy_state" | head -n 1)
-          fi
-          if [ -z "$rg" ]; then
-            echo "Could not determine resource group. Set ACA_RESOURCE_GROUP to your Azure RG."
-            exit 1
-          fi
           status=$(az containerapp show -g "$rg" -n keycloak --query "properties.runningStatus" -o tsv)
           echo "Keycloak runningStatus: $status"
           if [ "$status" != "Running" ]; then
