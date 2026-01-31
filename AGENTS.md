@@ -4,7 +4,7 @@ This repository is set up to use Aspire. Aspire is an orchestrator for the entir
 
 ## General recommendations for working with Aspire
 1. Before making any changes always run the apphost using `aspire run` and inspect the state of resources to make sure you are building from a known state.
-1. Changes to the _AppHost Program.cs_ file will require a restart of the application to take effect.
+1. Changes to the _Program.cs_ file in the AppHost project will require a restart of the application to take effect.
 2. Make changes incrementally and run the aspire application using the `aspire run` command to validate changes.
 3. Use the Aspire MCP tools to check the status of resources and debug issues.
 
