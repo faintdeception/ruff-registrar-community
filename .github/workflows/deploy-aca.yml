@@ -26,6 +26,7 @@ jobs:
       Keycloak__ClientSecret: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
       Keycloak__AdminPassword: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
       Keycloak__Hostname: ${{ secrets.KEYCLOAK_HOSTNAME }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
       Postgres__Password: ${{ secrets.POSTGRES_PASSWORD }}
       PublicApiUrl: ${{ secrets.PUBLIC_API_URL }}
       PublicKeycloakUrl: ${{ secrets.PUBLIC_KEYCLOAK_URL }}
