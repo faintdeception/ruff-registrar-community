@@ -29,6 +29,7 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 
 RUN chmod +x /app/docker-entrypoint.sh
+RUN chown -R nextjs:nodejs /app/public /app/.next
 
 USER nextjs
 
