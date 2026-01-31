@@ -55,7 +55,8 @@ jobs:
           aspire deploy \
             --project "$APPHOST_PROJECT" \
             --non-interactive \
-            --environment Production
+            --environment Production \
+            --log-level debug
 
       - name: Notes
         if: ${{ env.AZURE_CREDENTIALS == '' }}
