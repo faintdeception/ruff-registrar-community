@@ -11,6 +11,7 @@ var isPublishOrDeploy = !builder.ExecutionContext.IsRunMode;
 var keycloakConfig = builder.Configuration.GetSection("Keycloak");
 var keycloakRealm = keycloakConfig["Realm"] ?? "student-registrar";
 var keycloakClientId = keycloakConfig["ClientId"] ?? "student-registrar";
+var keycloakPublicClientId = keycloakConfig["PublicClientId"] ?? "student-registrar-spa";
 var keycloakClientSecret = builder.ExecutionContext.IsRunMode
     ? builder.AddParameter("keycloak-client-secret", keycloakConfig["ClientSecret"]
         ?? throw new InvalidOperationException("Keycloak:ClientSecret is required for local development."), secret: true)
@@ -129,8 +130,7 @@ if (builder.ExecutionContext.IsRunMode)
     frontendDev
         .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_URL", keycloak.GetEndpoint("http"))
         .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_REALM", keycloakRealm)
-        .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_CLIENT_ID", keycloakClientId)
-        .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_CLIENT_SECRET", keycloakClientSecret.Resource);
+        .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_CLIENT_ID", keycloakPublicClientId);
 }
 else
 {
@@ -145,8 +145,7 @@ else
         .WithEnvironment("NEXT_PUBLIC_API_URL", publicApiUrl!.Resource)
         .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_URL", publicKeycloakUrl!.Resource)
         .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_REALM", keycloakRealm)
-        .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_CLIENT_ID", keycloakClientId)
-        .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_CLIENT_SECRET", keycloakClientSecret.Resource);
+        .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_CLIENT_ID", keycloakPublicClientId);
 }
 
 // Azure Container Apps deployment wiring (opt-in)

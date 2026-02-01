@@ -1,4 +1,4 @@
-import { useAuth } from './auth';
+import { getKeycloakConfig } from './runtime-env';
 
 interface ApiClientOptions extends RequestInit {
   headers?: Record<string, string>;
@@ -89,13 +89,10 @@ class ApiClient {
         return null;
       }
 
-      const KEYCLOAK_URL = process.env.NEXT_PUBLIC_KEYCLOAK_URL || 'http://localhost:8080';
-      const KEYCLOAK_REALM = process.env.NEXT_PUBLIC_KEYCLOAK_REALM || 'student-registrar';
-      const KEYCLOAK_CLIENT_ID = process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID || 'student-registrar';
-      const KEYCLOAK_CLIENT_SECRET = process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_SECRET || 'hpWpXCmMHAzDy0FrwUwrBONtTdoeXBNx';
+      const keycloakConfig = getKeycloakConfig();
 
       const tokenResponse = await fetch(
-        `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`,
+        `${keycloakConfig.url}/realms/${keycloakConfig.realm}/protocol/openid-connect/token`,
         {
           method: 'POST',
           headers: {
@@ -103,8 +100,7 @@ class ApiClient {
           },
           body: new URLSearchParams({
             grant_type: 'refresh_token',
-            client_id: KEYCLOAK_CLIENT_ID,
-            client_secret: KEYCLOAK_CLIENT_SECRET,
+            client_id: keycloakConfig.clientId,
             refresh_token: refreshToken,
           }),
         }

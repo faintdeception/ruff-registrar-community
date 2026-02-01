@@ -34,7 +34,6 @@ const runtimeEnv = typeof window !== 'undefined' ? (window as any).__ENV__ : und
 const KEYCLOAK_URL = runtimeEnv?.NEXT_PUBLIC_KEYCLOAK_URL || process.env.NEXT_PUBLIC_KEYCLOAK_URL || 'http://localhost:8080';
 const KEYCLOAK_REALM = runtimeEnv?.NEXT_PUBLIC_KEYCLOAK_REALM || process.env.NEXT_PUBLIC_KEYCLOAK_REALM || 'student-registrar';
 const KEYCLOAK_CLIENT_ID = runtimeEnv?.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID || process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID || 'student-registrar';
-const KEYCLOAK_CLIENT_SECRET = runtimeEnv?.NEXT_PUBLIC_KEYCLOAK_CLIENT_SECRET || process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_SECRET || 'MZGqAKhlOudcHHm2kLcrqag3hAqob9ga';
 const API_BASE_URL = runtimeEnv?.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -94,7 +93,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           body: new URLSearchParams({
             grant_type: 'refresh_token',
             client_id: KEYCLOAK_CLIENT_ID,
-            client_secret: KEYCLOAK_CLIENT_SECRET,
             refresh_token: storedRefreshToken,
           }),
         }
@@ -164,7 +162,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           body: new URLSearchParams({
             grant_type: 'password',
             client_id: KEYCLOAK_CLIENT_ID,
-            client_secret: KEYCLOAK_CLIENT_SECRET,
             username,
             password,
           }),

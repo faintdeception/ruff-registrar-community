@@ -25,6 +25,18 @@
       "redirectUris": ["http://localhost:3000/*", "http://localhost:3001/*"],
       "webOrigins": ["http://localhost:3000", "http://localhost:3001"],
       "attributes": {}
+    },
+    {
+      "clientId": "student-registrar-spa",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:3000/*", "http://localhost:3001/*"],
+      "webOrigins": ["http://localhost:3000", "http://localhost:3001"],
+      "attributes": {}
     }
   ],
   "smtpServer": {},

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getApiBaseUrl } from './runtime-env';
+import { getApiBaseUrl, getKeycloakConfig } from './runtime-env';
 
 const API_BASE_URL = getApiBaseUrl();
 
@@ -72,13 +72,10 @@ api.interceptors.response.use(
         }
 
         // Refresh the token
-        const KEYCLOAK_URL = process.env.NEXT_PUBLIC_KEYCLOAK_URL || 'http://localhost:8080';
-        const KEYCLOAK_REALM = process.env.NEXT_PUBLIC_KEYCLOAK_REALM || 'student-registrar';
-        const KEYCLOAK_CLIENT_ID = process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID || 'student-registrar';
-        const KEYCLOAK_CLIENT_SECRET = process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_SECRET || 'hpWpXCmMHAzDy0FrwUwrBONtTdoeXBNx';
+        const keycloakConfig = getKeycloakConfig();
 
         const tokenResponse = await fetch(
-          `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`,
+          `${keycloakConfig.url}/realms/${keycloakConfig.realm}/protocol/openid-connect/token`,
           {
             method: 'POST',
             headers: {
@@ -86,8 +83,7 @@ api.interceptors.response.use(
             },
             body: new URLSearchParams({
               grant_type: 'refresh_token',
-              client_id: KEYCLOAK_CLIENT_ID,
-              client_secret: KEYCLOAK_CLIENT_SECRET,
+              client_id: keycloakConfig.clientId,
               refresh_token: refreshToken,
             }),
           }
