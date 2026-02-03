@@ -12,6 +12,27 @@ This directory contains scripts and assets to bootstrap a new Keycloak instance 
 - `bootstrap-keycloak.sh` – Creates realm, roles, application client, and prompts for the first Administrator user (no test users). Designed to run exactly once.
 - `seed-test-users.sh` – Adds development / test users (Administrator, Educator, Member variants) – NOT for production.
 - `realm-student-registrar.template.json` – Minimal sanitized realm definition used as a baseline. Dynamic values (hostnames, client redirect URIs) are applied by bootstrap script.
+- `add-spa-client.sh` – Adds/updates the public SPA client used by the frontend.
+
+## SPA client setup (local vs ACA)
+
+### Local development
+```bash
+KEYCLOAK_ADMIN_PASSWORD=admin123 \
+  ./scripts/keycloak/add-spa-client.sh \
+  --keycloak-url http://localhost:8080
+```
+
+### Azure Container Apps (ACA)
+```bash
+KEYCLOAK_ADMIN_PASSWORD='<admin-password>' \
+  ./scripts/keycloak/add-spa-client.sh \
+  --keycloak-url https://keycloak.<env>.<region>.azurecontainerapps.io \
+  --redirect-uris "https://frontend.<env>.<region>.azurecontainerapps.io/*" \
+  --web-origins "https://frontend.<env>.<region>.azurecontainerapps.io"
+```
+
+You can also provide the same values via `REDIRECT_URIS` and `WEB_ORIGINS` env vars.
 
 ## Usage
 

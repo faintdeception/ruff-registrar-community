@@ -40,19 +40,53 @@ var postgresPassword = builder.ExecutionContext.IsRunMode
         ?? throw new InvalidOperationException("Postgres:Password is required for publish/deploy."),
         secret: true);
 
+var publicApiUrlValue = builder.ExecutionContext.IsRunMode
+    ? string.Empty
+    : builder.Configuration["PublicApiUrl"]
+        ?? throw new InvalidOperationException("PublicApiUrl is required for publish/deploy.");
+
 var publicApiUrl = builder.ExecutionContext.IsRunMode
     ? null
-    : builder.AddParameter("public-api-url",
-        builder.Configuration["PublicApiUrl"]
-        ?? throw new InvalidOperationException("PublicApiUrl is required for publish/deploy."));
+    : builder.AddParameter("public-api-url", publicApiUrlValue);
+
+var publicKeycloakUrlValue = builder.ExecutionContext.IsRunMode
+    ? string.Empty
+    : builder.Configuration["PublicKeycloakUrl"]
+        ?? throw new InvalidOperationException("PublicKeycloakUrl is required for publish/deploy.");
 
 var publicKeycloakUrl = builder.ExecutionContext.IsRunMode
     ? null
-    : builder.AddParameter("public-keycloak-url",
-        builder.Configuration["PublicKeycloakUrl"]
-        ?? throw new InvalidOperationException("PublicKeycloakUrl is required for publish/deploy."));
+    : builder.AddParameter("public-keycloak-url", publicKeycloakUrlValue);
 
 var keycloakEndpointPort = (deployToAca && isPublishOrDeploy) ? 80 : 8080;
+
+static string? DeriveFrontendOrigin(string? publicApiUrlValue)
+{
+    if (string.IsNullOrWhiteSpace(publicApiUrlValue))
+    {
+        return null;
+    }
+
+    if (Uri.TryCreate(publicApiUrlValue, UriKind.Absolute, out var apiUri))
+    {
+        var host = apiUri.Host;
+        if (host.StartsWith("api.", StringComparison.OrdinalIgnoreCase))
+        {
+            host = $"frontend.{host.Substring("api.".Length)}";
+        }
+
+        var builder = new UriBuilder(apiUri.Scheme, host, apiUri.Port);
+        return builder.Uri.GetLeftPart(UriPartial.Authority);
+    }
+
+    var trimmed = publicApiUrlValue;
+    if (trimmed.EndsWith("/api", StringComparison.OrdinalIgnoreCase))
+    {
+        trimmed = trimmed[..^4];
+    }
+
+    return trimmed;
+}
 
 // PostgreSQL database (persisted locally; ACA volume permissions can prevent initdb)
 var postgres = builder.AddPostgres("postgres", password: postgresPassword);
@@ -105,9 +139,32 @@ var apiService = builder.AddProject<StudentRegistrar_Api>("api")
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
     .WithEnvironment("Keycloak__Realm", keycloakRealm)
     .WithEnvironment("Keycloak__ClientId", keycloakClientId)
+    .WithEnvironment("Database__RunMigrations", "true")
     .WithEnvironment(context =>
     {
         context.EnvironmentVariables["Keycloak__ClientSecret"] = keycloakClientSecret.Resource;
+        context.EnvironmentVariables["Keycloak__Authority"] = builder.ExecutionContext.IsRunMode
+            ? keycloak.GetEndpoint("http")
+            : publicKeycloakUrl!.Resource;
+        context.EnvironmentVariables["Keycloak__BaseUrl"] = builder.ExecutionContext.IsRunMode
+            ? keycloak.GetEndpoint("http")
+            : publicKeycloakUrl!.Resource;
+        context.EnvironmentVariables["Keycloak__AdminUsername"] = "admin";
+        context.EnvironmentVariables["Keycloak__AdminPassword"] = keycloakAdminPassword.Resource;
+        if (builder.ExecutionContext.IsRunMode)
+        {
+            context.EnvironmentVariables["Cors__AllowedOrigins__0"] = "http://localhost:3001";
+        }
+        else
+        {
+            var frontendOrigin = DeriveFrontendOrigin(publicApiUrlValue);
+            if (string.IsNullOrWhiteSpace(frontendOrigin))
+            {
+                throw new InvalidOperationException("Unable to derive frontend origin from PublicApiUrl for publish/deploy.");
+            }
+
+            context.EnvironmentVariables["Cors__AllowedOrigins__0"] = frontendOrigin;
+        }
     });
 
 IResourceBuilder<ContainerResource>? frontendContainer = null;
@@ -125,10 +182,11 @@ if (builder.ExecutionContext.IsRunMode)
 
     // Configure the frontend to use the API
     frontendDev.WithEnvironment("NEXT_PUBLIC_API_URL", apiService.GetEndpoint("http"));
+    frontendDev.WithEnvironment("API_BASE_URL", apiService.GetEndpoint("http"));
 
     // Configure the frontend to use Keycloak directly (matches frontend auth implementation)
     frontendDev
-        .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_URL", keycloak.GetEndpoint("http"))
+        .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_URL", "http://localhost:8080")
         .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_REALM", keycloakRealm)
         .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_CLIENT_ID", keycloakPublicClientId);
 }
@@ -143,6 +201,7 @@ else
         .WithEnvironment("NODE_ENV", "production")
         .WithEnvironment("NEXT_TELEMETRY_DISABLED", "1")
         .WithEnvironment("NEXT_PUBLIC_API_URL", publicApiUrl!.Resource)
+        .WithEnvironment("API_BASE_URL", publicApiUrl!.Resource)
         .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_URL", publicKeycloakUrl!.Resource)
         .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_REALM", keycloakRealm)
         .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_CLIENT_ID", keycloakPublicClientId);

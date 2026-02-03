@@ -8,11 +8,11 @@ set -e
 
 echo "🧪 Setting up E2E test users..."
 
-# Configuration
-KEYCLOAK_URL="http://localhost:8080"
+# Configuration (override via environment variables for deployed Keycloak)
+KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8080}"
 # Aspire dev default master admin username is typically 'admin'.
-ADMIN_USER="admin"
-REALM_NAME="student-registrar"
+ADMIN_USER="${KEYCLOAK_ADMIN_USER:-admin}"
+REALM_NAME="${KEYCLOAK_REALM:-student-registrar}"
 
 # Function to check if command succeeded (copied from setup-keycloak.sh)
 check_api_response() {

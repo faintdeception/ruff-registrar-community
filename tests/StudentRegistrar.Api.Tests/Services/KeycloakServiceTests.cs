@@ -39,7 +39,7 @@ public class KeycloakServiceTests
     }
 
     [Fact]
-    public void Constructor_MissingClientSecret_ThrowsInvalidOperationException()
+    public async Task CreateUserAsync_MissingClientSecretAndAdminCreds_ThrowsInvalidOperationException()
     {
         // Arrange
         var configMock = new Mock<IConfiguration>();
@@ -47,14 +47,24 @@ public class KeycloakServiceTests
         configMock.Setup(c => c["Keycloak:Realm"]).Returns("test-realm");
         configMock.Setup(c => c["Keycloak:ClientId"]).Returns("test-client");
         configMock.Setup(c => c["Keycloak:ClientSecret"]).Returns((string?)null);
+        configMock.Setup(c => c["Keycloak:AdminUsername"]).Returns((string?)null);
+        configMock.Setup(c => c["Keycloak:AdminPassword"]).Returns((string?)null);
 
         var httpClient = new HttpClient();
+        var service = new KeycloakService(httpClient, configMock.Object, _loggerMock.Object, _passwordServiceMock.Object);
+
+        var request = new CreateUserRequest
+        {
+            Email = "test@example.com",
+            FirstName = "John",
+            LastName = "Doe"
+        };
 
         // Act & Assert
-        var exception = Assert.Throws<InvalidOperationException>(() =>
-            new KeycloakService(httpClient, configMock.Object, _loggerMock.Object, _passwordServiceMock.Object));
-        
-        Assert.Equal("Keycloak ClientSecret is required", exception.Message);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CreateUserAsync(request));
+
+        Assert.Equal("Keycloak ClientSecret is required when admin credentials are not configured", exception.Message);
     }
 
     [Fact]

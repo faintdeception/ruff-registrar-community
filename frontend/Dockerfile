@@ -1,14 +1,13 @@
-# Base image for dependencies
-FROM node:18-alpine AS deps
-WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm ci --only=production
-
 # Build the application
 FROM node:18-alpine AS builder
 WORKDIR /app
+ENV NPM_CONFIG_FETCH_RETRIES=5 \
+	NPM_CONFIG_FETCH_RETRY_FACTOR=2 \
+	NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000 \
+	NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000 \
+	NPM_CONFIG_LOGLEVEL=warn
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm ci --no-audit --no-fund --prefer-offline
 COPY . .
 RUN npm run build
 

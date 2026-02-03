@@ -4,14 +4,124 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
   id-token: write
 
 jobs:
-  deploy-aca:
+  tests:
     runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Run tests
+        run: |
+          chmod +x ./run-tests.sh
+          ./run-tests.sh
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: [tests]
+    env:
+      KEYCLOAK_ADMIN_PASSWORD: admin123!
+      POSTGRES_PASSWORD: postgres123!
+      SeleniumSettings__BaseUrl: http://localhost:3000
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Start services
+        run: |
+          docker compose up -d postgres keycloak api frontend
+
+      - name: Wait for services
+        run: |
+          keycloak_ready=false
+          for i in {1..30}; do
+            if curl -fsS http://localhost:8080/realms/master > /dev/null 2>&1; then
+              keycloak_ready=true
+              break
+            fi
+            sleep 5
+          done
+
+          if [ "$keycloak_ready" != "true" ]; then
+            echo "❌ Keycloak did not become ready in time"
+            docker compose logs keycloak
+            exit 1
+          fi
+
+          frontend_ready=false
+          for i in {1..30}; do
+            if curl -fsS http://localhost:3000 > /dev/null 2>&1; then
+              frontend_ready=true
+              break
+            fi
+            sleep 5
+          done
+
+          if [ "$frontend_ready" != "true" ]; then
+            echo "❌ Frontend did not become ready in time"
+            docker compose logs frontend
+            exit 1
+          fi
+
+      - name: Bootstrap Keycloak realm
+        run: |
+          chmod +x ./setup-keycloak.sh
+          ./setup-keycloak.sh
+
+      - name: Configure SPA client
+        run: |
+          chmod +x ./scripts/keycloak/add-spa-client.sh
+          ./scripts/keycloak/add-spa-client.sh
+
+      - name: Create test users
+        run: |
+          chmod +x ./scripts/testing/setup-test-users.sh
+          ./scripts/testing/setup-test-users.sh
+
+      - name: Run E2E tests
+        run: |
+          dotnet test tests/StudentRegistrar.E2E.Tests/ --logger 'console;verbosity=normal'
+
+      - name: Print container logs
+        if: false
+        run: |
+          docker compose ps
+          docker compose logs api keycloak frontend postgres
+
+      - name: Shutdown services
+        if: ${{ always() }}
+        run: |
+          docker compose down -v
+
+  deploy-aca:
+    needs: [tests, e2e-tests]
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
     env:
       APPHOST_PROJECT: src/StudentRegistrar.AppHost/StudentRegistrar.AppHost.csproj
@@ -59,6 +169,19 @@ jobs:
             --non-interactive \
             --environment Production \
             --log-level debug
+
+      - name: Run production smoke tests
+        if: ${{ env.AZURE_CREDENTIALS != '' }}
+        env:
+          SMOKE_WEB_URL: ${{ secrets.PUBLIC_WEB_URL }}
+          SMOKE_API_URL: ${{ env.PublicApiUrl }}
+          SMOKE_KEYCLOAK_URL: ${{ env.PublicKeycloakUrl }}
+          SMOKE_REALM: student-registrar
+          SMOKE_CLIENT_ID: student-registrar-spa
+          SMOKE_USERNAME: ${{ secrets.SMOKE_USERNAME }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+        run: |
+          dotnet test tests/StudentRegistrar.Smoke.Tests/ --logger 'console;verbosity=normal'
 
       - name: Note
         if: ${{ env.AZURE_CREDENTIALS != '' }}

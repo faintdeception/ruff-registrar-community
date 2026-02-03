@@ -25,6 +25,8 @@ obj/
 
 # Entity Framework
 Migrations/
+!src/**/Migrations/
+!src/**/Migrations/**
 
 # User-specific files
 *.rsuser

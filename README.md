@@ -14,7 +14,7 @@ A comprehensive homeschool management system built with .NET Aspire, Keycloak, P
 
 ## Architecture
 
-- **Backend**: .NET 9 Web API with Entity Framework Core
+- **Backend**: .NET 10 Web API with Entity Framework Core
 - **Frontend**: Next.js 15 with TypeScript and Tailwind CSS
 - **Database**: PostgreSQL 15
 - **Authentication**: Keycloak
@@ -23,7 +23,7 @@ A comprehensive homeschool management system built with .NET Aspire, Keycloak, P
 
 ## Prerequisites
 
-- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Node.js 18+](https://nodejs.org/)
 - [Docker](https://www.docker.com/get-started)
 - [Docker Compose](https://docs.docker.com/compose/install/)
@@ -52,9 +52,9 @@ This application implements secure password management with the following featur
 - Configure proper authentication and authorization
 - Enable HTTPS/TLS for all services
 
-## Quick Start with Docker
+## Quick Start with Docker (Optional)
 
-The easiest way to get started is using Docker Compose:
+Docker Compose can stand up the services quickly, but you still need to bootstrap Keycloak and create the SPA client.
 
 ```bash
 # Clone the repository
@@ -67,7 +67,15 @@ docker-compose up -d
 # Wait for services to be ready, then open:
 # - Frontend: http://localhost:3000
 # - API: http://localhost:5000/swagger
-# - Keycloak Admin: http://localhost:8080 (admin/admin)
+# - Keycloak Admin: http://localhost:8080
+#   - Username: admin
+#   - Password: set KEYCLOAK_ADMIN_PASSWORD (see docker-compose.yml)
+
+# Bootstrap Keycloak realm + roles + test users
+./setup-keycloak.sh
+
+# Create the public SPA client used by the frontend
+./scripts/keycloak/add-spa-client.sh
 ```
 
 ## Development Setup
@@ -92,120 +100,34 @@ dotnet watch run --project src/StudentRegistrar.AppHost/StudentRegistrar.AppHost
 ```
 
 The setup script will:
-- Install .NET Aspire workload
 - Install frontend dependencies
-- Configure user secrets for development
-- Create Entity Framework migrations
-- Set up secure auto-generated passwords for all services
+- Restore local .NET tools
+- Initialize user secrets
+- Create Entity Framework migrations (if missing)
 
-### Manual Setup
+### Manual Setup (Short Form)
 
-If you prefer to set up manually:
-
-### 1. Clone the Repository
-
-```bash
-git clone <repository-url>
-cd student-registrar
-```
-
-### 2. Set up the Backend
-
-```bash
-# Restore NuGet packages
-dotnet restore
-
-# Initialize user secrets for development
-dotnet user-secrets init --project src/StudentRegistrar.AppHost
-
-# Run database migrations (after starting the application)
-dotnet ef database update --project src/StudentRegistrar.Data --startup-project src/StudentRegistrar.Api
-```
-
-### 3. Set up the Frontend
-
-```bash
-cd frontend
-npm install
-```
-
-### 4. Start Infrastructure Services
-
-```bash
-# Start PostgreSQL and Keycloak
-docker-compose up postgres keycloak -d
-```
-
-### 5. Configure Keycloak
-
-1. Start the application first:
+1. Start the AppHost:
    ```bash
    dotnet run --project src/StudentRegistrar.AppHost
-
-   # Or, to use hot reload:
-   dotnet watch run --project src/StudentRegistrar.AppHost/StudentRegistrar.AppHost.csproj
    ```
-
-2. Run the automated Keycloak setup script:
+2. Bootstrap Keycloak + test users:
    ```bash
    ./setup-keycloak.sh
    ```
-
-   The script will:
-   - Create the `student-registrar` realm
-   - Create user roles (Administrator, Educator, Member)
-   - Create the `student-registrar` client with service account enabled
-   - **Configure service account permissions** for user management (manage-users role)
-   - Generate and display the client secret
-   - Create test users (scoopadmin, scoopmember, scoopinstructor)
-   - Provide configuration commands
-
-   **Important**: The setup script now automatically configures all necessary Keycloak permissions for admin member creation functionality. No additional permission configuration is needed.
-
-3. **Alternative Manual Setup:**
-   - Open Keycloak Admin Console: http://localhost:8080
-   - Login with auto-generated admin credentials (check Aspire dashboard for credentials)
-   - Create a new realm called `student-registrar`
-   - Create roles: Administrator, Educator, Parent, Student
-   - Create a new client:
-     - Client ID: `student-registrar`
-     - Client Protocol: `openid-connect`
-     - Access Type: `confidential`
-     - Valid Redirect URIs: `http://localhost:3000/*`, `http://localhost:3001/*`
-     - Web Origins: `http://localhost:3000`, `http://localhost:3001`
-     - Service Accounts Enabled: `On`
-
-**Note:** Keycloak configuration persists across restarts thanks to persistent data volumes. This project uses named volumes for both Keycloak and Postgres; do not remove Docker volumes if you want the realm to persist.
-If the `student-registrar` realm disappears after a restart (for example, after deleting Docker volumes or running `docker system prune -a`), re-run `./setup-keycloak.sh`, update `src/StudentRegistrar.AppHost/appsettings.json` with the new client secret, and restart the AppHost.
-
-### 6. Configure AppHost Settings
-
-The AppHost requires Keycloak client configuration. Create the configuration file:
-
-1. **Copy the example configuration:**
+3. Configure the public SPA client (required for frontend login):
+   ```bash
+   ./scripts/keycloak/add-spa-client.sh
+   ```
+4. Add the confidential client secret to AppHost settings:
    ```bash
    cp src/StudentRegistrar.AppHost/appsettings.example.json src/StudentRegistrar.AppHost/appsettings.json
    ```
+   Update `Keycloak:ClientSecret` using the value printed by `setup-keycloak.sh`.
 
-2. **Update the configuration:**
-   Edit `src/StudentRegistrar.AppHost/appsettings.json` with your Keycloak client secret:
-   ```json
-   {
-     "Keycloak": {
-       "Realm": "student-registrar",
-       "ClientId": "student-registrar",
-       "ClientSecret": "YOUR_ACTUAL_CLIENT_SECRET_HERE"
-     }
-   }
-   ```
+For detailed Keycloak usage, see [scripts/keycloak/README.md](scripts/keycloak/README.md).
 
-3. **Get the client secret:**
-   - Run the setup script: `./setup-keycloak.sh` (it will display the secret)
-   - Or manually from Keycloak Admin Console → student-registrar realm → Clients → student-registrar → Credentials tab
-
-**Note:** The `appsettings.json` file is gitignored to prevent accidental secret exposure.
-
-### 7. Run the Application
+### Run the Application
 
 #### Using .NET Aspire (Recommended for Development)
 
@@ -384,74 +306,6 @@ docker-compose down
 ```
 
 ### Using Docker Images
-## Keycloak Bootstrap & Test Seeding
-
-This application ships with scripts to initialize a new Keycloak realm in a secure, repeatable way.
-
-Location: `scripts/keycloak/`
-
-Scripts:
-- `bootstrap-keycloak.sh` – One-time realm + first application Administrator creation. Fails fast if realm already exists.
-- `seed-test-users.sh` – Adds deterministic test users for development / CI (NOT for production).
-- `realm-student-registrar.template.json` – Sanitized baseline realm definition (no users / secrets).
-
-### First-Time (Interactive) Bootstrap
-```
-./scripts/keycloak/bootstrap-keycloak.sh --keycloak-url http://localhost:8080 \
-   --admin-username admin --realm student-registrar
-```
-You will be prompted for:
-1. Keycloak master admin password (from Aspire dashboard or secret store)
-2. First application admin username
-3. First application admin email
-4. Temporary password (user must change on first login)
-
-If the realm exists, the script exits with code 10 (no changes). Treat that as success in idempotent automation.
-
-### Non-Interactive (CI / Automated Install)
-```
-export KEYCLOAK_ADMIN_PASSWORD="$(cat /run/secrets/kc_admin_password)"
-export INITIAL_ADMIN_TEMP_PASS="TempAdmin!12345"
-./scripts/keycloak/bootstrap-keycloak.sh \
-   --keycloak-url http://localhost:8080 \
-   --admin-username admin \
-   --initial-admin-username registrar-admin \
-   --initial-admin-email registrar-admin@example.org
-```
-Or use a password file:
-```
-./scripts/keycloak/bootstrap-keycloak.sh \
-   --admin-password-file /run/secrets/kc_admin_password \
-   --initial-admin-username registrar-admin \
-   --initial-admin-email registrar-admin@example.org \
-   --initial-admin-temp-pass TempAdmin!12345
-```
-
-### Seeding Test Users (Dev / CI Only)
-```
-./scripts/keycloak/seed-test-users.sh --keycloak-url http://localhost:8080 --realm student-registrar
-```
-Creates:
-- scoopadmin (Administrator)
-- scoopmember (Member)
-- scoopeducator (Educator)
-
-Do NOT run the seeding script in production.
-
-### Updating Realm Template
-1. Make changes in a disposable Keycloak instance.
-2. Export (without users):
-```
-docker exec -it <kc-container> /opt/keycloak/bin/kc.sh export --realm student-registrar --dir /tmp/export --users skip
-```
-3. Copy JSON out, sanitize, replace `realm-student-registrar.template.json`.
-4. Commit changes.
-
-### Future Enhancements (Planned)
-- Automated smoke test: client credentials token retrieval
-- Optional password policy enforcement script
-- Redirect URI dynamic injection for production hostnames
-
 
 Build individual images:
 
@@ -462,6 +316,11 @@ docker build -t student-registrar-api -f src/StudentRegistrar.Api/Dockerfile .
 # Build frontend image
 docker build -t student-registrar-frontend -f frontend/Dockerfile ./frontend
 ```
+
+## Keycloak Bootstrap & Test Seeding
+
+For Keycloak bootstrap, SPA client setup, and test user seeding, see
+[scripts/keycloak/README.md](scripts/keycloak/README.md).
 
 ## Testing
 

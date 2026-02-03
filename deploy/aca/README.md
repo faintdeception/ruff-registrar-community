@@ -52,9 +52,10 @@ Override these defaults by changing the parameter defaults in the AppHost, or (i
 - Ensure the AppHost’s ACA publish/deploy wiring builds the frontend as a container and exposes the correct public endpoints.
 - Verify required secrets and parameters are set for deploy (Keycloak admin password, client secret, Postgres password, hostnames).
 - Decide on resource group naming and lifecycle (dev vs. prod).
+- Configure the public SPA client in Keycloak with ACA redirect URI and web origin (see scripts/keycloak/README.md).
 
 ## Notes / limitations
 
 - This is intended for side-by-side evaluation with AKS.
 - Keycloak is made externally reachable in ACA mode so the browser frontend can reach it.
-- The current frontend auth flow uses a browser-exposed Keycloak client secret, which is not production-safe; hardening that is a separate task.
+- The frontend uses a public SPA client for browser login; production hardening (PKCE/BFF, stricter CORS/redirects) is still recommended.

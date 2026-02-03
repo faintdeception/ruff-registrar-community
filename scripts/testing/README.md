@@ -51,16 +51,14 @@ scripts/testing/
 ## 📋 Prerequisites
 
 1. **Application Running**: Student Registrar must be running at `http://localhost:3001`
-   ```bash
-   docker-compose up frontend
-   ```
+   - Recommended: `dotnet run --project src/StudentRegistrar.AppHost`
+   - Or via Docker Compose: `docker-compose up frontend`
 
 2. **Keycloak Running**: For user management (if using `--setup-users`)
-   ```bash
-   docker-compose up keycloak
-   ```
+   - If using Aspire: Keycloak starts with the AppHost
+   - If using Docker Compose: `docker-compose up keycloak`
 
-3. **Database Seeded**: For realistic testing scenarios
+3. **Database Seeded** (optional for realistic scenarios)
    ```bash
    ./scripts/testing/seed-database.sh
    ```
@@ -188,13 +186,13 @@ docker run --rm student-registrar-e2e
 ```
 ❌ Application is not running at http://localhost:3001
 ```
-**Solution**: Start the application with `docker-compose up frontend`
+**Solution**: Start the application with `dotnet run --project src/StudentRegistrar.AppHost` or `docker-compose up frontend`
 
 ### Keycloak Not Accessible
 ```
 ❌ Keycloak is not accessible at http://localhost:8080
 ```
-**Solution**: Start Keycloak with `docker-compose up keycloak`
+**Solution**: Start Keycloak by running the AppHost or `docker-compose up keycloak`
 
 ### Realm Missing / Login Fails
 Symptoms: login tests stay on `/login` or Keycloak returns `Realm does not exist`.
@@ -202,8 +200,9 @@ Symptoms: login tests stay on `/login` or Keycloak returns `Realm does not exist
 **Solution**:
 1. Run `./setup-keycloak.sh` to recreate the realm/client.
 2. Update `src/StudentRegistrar.AppHost/appsettings.json` with the new client secret.
-3. Restart the AppHost.
-4. Run `./scripts/testing/setup-test-users.sh`.
+3. Run `./scripts/keycloak/add-spa-client.sh` to ensure the public SPA client exists.
+4. Restart the AppHost.
+5. Run `./scripts/testing/setup-test-users.sh`.
 
 ### Test Failures
 1. Check application logs: `docker-compose logs frontend`

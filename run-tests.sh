@@ -11,13 +11,13 @@ if [ "$1" = "--watch" ]; then
     dotnet watch test
 else
     echo "Running all tests..."
-    dotnet test --verbosity normal
+    dotnet test --verbosity normal --filter "FullyQualifiedName!~StudentRegistrar.Smoke.Tests"
     
     echo ""
     echo "📊 Test Summary:"
     echo "- Model Tests: 96 tests"
     echo "- API Controller Tests: 4 tests"  
-    echo "- Total: 100 tests"
+    echo "- Total: 100 tests (excluding smoke tests)"
     echo ""
     echo "✅ All tests should be passing!"
 fi

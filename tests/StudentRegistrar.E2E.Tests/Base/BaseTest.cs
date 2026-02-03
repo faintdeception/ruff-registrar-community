@@ -19,6 +19,7 @@ public abstract class BaseTest : IDisposable
         Configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: false)
+            .AddEnvironmentVariables()
             .Build();
 
         BaseUrl = Configuration["SeleniumSettings:BaseUrl"] ?? "http://localhost:3001";

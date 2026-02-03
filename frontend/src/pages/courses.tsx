@@ -995,6 +995,7 @@ export default function CoursesPage() {
               </div>
               {semesters.length > 0 && (
                 <select
+                  data-testid="semester-select"
                   value={selectedSemester}
                   onChange={(e) => setSelectedSemester(e.target.value)}
                   className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 text-sm"

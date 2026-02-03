@@ -14,7 +14,10 @@ public class KeycloakService : IKeycloakService
     private readonly string _keycloakBaseUrl;
     private readonly string _realm;
     private readonly string _clientId;
-    private readonly string _clientSecret;
+    private readonly string? _clientSecret;
+    private readonly string? _adminUsername;
+    private readonly string? _adminPassword;
+    private readonly string _adminRealm;
 
     public KeycloakService(
         HttpClient httpClient,
@@ -31,7 +34,10 @@ public class KeycloakService : IKeycloakService
         _keycloakBaseUrl = _configuration["Keycloak:BaseUrl"] ?? "http://localhost:8080";
         _realm = _configuration["Keycloak:Realm"] ?? "student-registrar";
         _clientId = _configuration["Keycloak:ClientId"] ?? "student-registrar";
-        _clientSecret = _configuration["Keycloak:ClientSecret"] ?? throw new InvalidOperationException("Keycloak ClientSecret is required");
+        _clientSecret = _configuration["Keycloak:ClientSecret"];
+        _adminUsername = _configuration["Keycloak:AdminUsername"];
+        _adminPassword = _configuration["Keycloak:AdminPassword"];
+        _adminRealm = _configuration["Keycloak:AdminRealm"] ?? "master";
         
         _logger.LogInformation("Keycloak service initialized with base URL: {BaseUrl}, realm: {Realm}", _keycloakBaseUrl, _realm);
     }
@@ -256,7 +262,48 @@ public class KeycloakService : IKeycloakService
         try
         {
             _logger.LogDebug("Obtaining admin access token from Keycloak");
+
+            if (!string.IsNullOrWhiteSpace(_adminUsername) && !string.IsNullOrWhiteSpace(_adminPassword))
+            {
+                var adminTokenRequest = new Dictionary<string, string>
+                {
+                    { "grant_type", "password" },
+                    { "client_id", "admin-cli" },
+                    { "username", _adminUsername },
+                    { "password", _adminPassword }
+                };
+
+                using var adminRequest = new HttpRequestMessage(HttpMethod.Post, $"{_keycloakBaseUrl}/realms/{_adminRealm}/protocol/openid-connect/token");
+                adminRequest.Content = new FormUrlEncodedContent(adminTokenRequest);
+
+                var adminResponse = await _httpClient.SendAsync(adminRequest);
+                if (adminResponse.IsSuccessStatusCode)
+                {
+                    var responseContent = await adminResponse.Content.ReadAsStringAsync();
+                    using var jsonDoc = System.Text.Json.JsonDocument.Parse(responseContent);
+                    var accessToken = jsonDoc.RootElement.GetProperty("access_token").GetString();
+
+                    if (string.IsNullOrEmpty(accessToken))
+                    {
+                        throw new InvalidOperationException("Access token is null or empty in Keycloak admin response");
+                    }
+
+                    _logger.LogDebug("Successfully obtained admin access token via admin credentials");
+                    return accessToken;
+                }
+                else
+                {
+                    var adminError = await adminResponse.Content.ReadAsStringAsync();
+                    _logger.LogWarning("Failed to obtain admin token via admin credentials. Status: {Status}, Error: {Error}",
+                        adminResponse.StatusCode, adminError);
+                }
+            }
             
+            if (string.IsNullOrWhiteSpace(_clientSecret))
+            {
+                throw new InvalidOperationException("Keycloak ClientSecret is required when admin credentials are not configured");
+            }
+
             var tokenRequest = new Dictionary<string, string>
             {
                 { "grant_type", "client_credentials" },

@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using StudentRegistrar.Data;
 using StudentRegistrar.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -79,7 +81,12 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:3001") // Support both common Next.js ports
+        var configuredOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+            ?? Array.Empty<string>();
+        var defaultOrigins = new[] { "http://localhost:3000", "http://localhost:3001" };
+        var allowedOrigins = configuredOrigins.Length > 0 ? configuredOrigins : defaultOrigins;
+
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -90,11 +97,24 @@ builder.Services.AddCors(options =>
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        var keycloakUrl = builder.Configuration.GetConnectionString("keycloak") ?? "http://localhost:8080";
         var realm = builder.Configuration["Keycloak:Realm"] ?? "student-registrar";
-        
-        options.Authority = $"{keycloakUrl}/realms/{realm}";
-        options.Audience = "student-registrar";
+        var clientId = builder.Configuration["Keycloak:ClientId"] ?? "student-registrar";
+        var publicClientId = builder.Configuration["Keycloak:PublicClientId"] ?? "student-registrar-spa";
+        var authority = builder.Configuration["Keycloak:Authority"];
+        if (string.IsNullOrWhiteSpace(authority))
+        {
+            var keycloakUrl = builder.Configuration.GetConnectionString("keycloak") ?? "http://localhost:8080";
+            authority = keycloakUrl;
+        }
+
+        authority = authority!.TrimEnd('/');
+        if (!authority.Contains("/realms/", StringComparison.OrdinalIgnoreCase))
+        {
+            authority = $"{authority}/realms/{realm}";
+        }
+
+        options.Authority = authority;
+        options.Audience = clientId;
         options.RequireHttpsMetadata = false; // Only for development
 
         if (allowUntrustedKeycloakCertificates)
@@ -109,7 +129,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             ValidateIssuer = true,
             ValidateAudience = true,
-            ValidAudiences = new[] { "student-registrar", "account" }, // Accept both audiences
+            ValidAudiences = new[] { clientId, publicClientId, "account" }, // Accept configured audiences
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             ClockSkew = TimeSpan.Zero
@@ -164,24 +184,46 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+{
+    var configuredOrigins = app.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+        ?? Array.Empty<string>();
+    var defaultOrigins = new[] { "http://localhost:3000", "http://localhost:3001" };
+    var allowedOrigins = configuredOrigins.Length > 0 ? configuredOrigins : defaultOrigins;
+    app.Logger.LogInformation("CORS allowed origins: {Origins}", string.Join(", ", allowedOrigins));
+}
+
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    
-    // Apply migrations on startup in development
+}
+
+var runMigrations = app.Configuration.GetValue<bool?>("Database:RunMigrations") ?? app.Environment.IsDevelopment();
+app.Logger.LogInformation("Database migrations enabled: {RunMigrations}. Environment: {EnvironmentName}",
+    runMigrations, app.Environment.EnvironmentName);
+if (runMigrations)
+{
     using (var scope = app.Services.CreateScope())
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<StudentRegistrarDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        var migrationsAssembly = dbContext.GetService<IMigrationsAssembly>();
+        var migrationIds = migrationsAssembly.Migrations.Keys.ToList();
+        logger.LogInformation("Available migrations ({Count}): {Migrations}",
+            migrationIds.Count, string.Join(", ", migrationIds));
         var connectionString = dbContext.Database.GetConnectionString();
-        logger.LogInformation($"Using connection string: {connectionString}");
-        
+        var redactedConnectionString = System.Text.RegularExpressions.Regex.Replace(
+            connectionString ?? "", 
+            @"(password|pwd)\s*=\s*[^;]*", 
+            "$1=***", 
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        logger.LogInformation($"Using connection string: {redactedConnectionString}");
+
         // Add retry logic for database connection
         var maxRetries = 10;
         var delay = TimeSpan.FromSeconds(2);
-        
+
         for (int i = 0; i < maxRetries; i++)
         {
             try
@@ -211,6 +253,7 @@ if (app.Environment.IsProduction())
     app.UseHttpsRedirection();
 }
 
+app.UseRouting();
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();

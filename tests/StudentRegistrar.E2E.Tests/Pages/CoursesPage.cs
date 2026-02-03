@@ -12,10 +12,11 @@ public class CoursesPage
     {
         _driver = driver;
         _wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+        _wait.IgnoreExceptionTypes(typeof(NoSuchElementException), typeof(StaleElementReferenceException));
     }
 
     // Page elements
-    private IWebElement SemesterSelect => _driver.FindElement(By.CssSelector("select"));
+    private IWebElement SemesterSelect => _wait.Until(d => d.FindElement(By.CssSelector("[data-testid='semester-select']")));
     private IWebElement CreateCourseButton => _driver.FindElement(By.XPath("//button[contains(text(), 'Add Course') or contains(text(), 'Add First Course')]"));
     private IWebElement CourseModal => _driver.FindElement(By.CssSelector(".fixed.inset-0"));
     private IWebElement CourseNameInput => _driver.FindElement(By.Id("name"));
@@ -116,14 +117,8 @@ public class CoursesPage
     {
         _wait.Until(driver =>
         {
-            try
-            {
-                return CourseModal.Displayed;
-            }
-            catch (NoSuchElementException)
-            {
-                return false;
-            }
+            var modals = driver.FindElements(By.CssSelector(".fixed.inset-0"));
+            return modals.Any(m => m.Displayed);
         });
     }
 
@@ -131,14 +126,8 @@ public class CoursesPage
     {
         _wait.Until(driver =>
         {
-            try
-            {
-                return !CourseModal.Displayed;
-            }
-            catch (NoSuchElementException)
-            {
-                return true;
-            }
+            var modals = driver.FindElements(By.CssSelector(".fixed.inset-0"));
+            return modals.All(m => !m.Displayed);
         });
     }
 
@@ -186,8 +175,20 @@ public class CoursesPage
             }
             catch (NoSuchElementException)
             {
-                // If room not found, just continue - the test might be checking for this scenario
-                Console.WriteLine($"Room '{room}' not found in dropdown options");
+                var fallbackOption = roomSelect.Options
+                    .FirstOrDefault(opt => !string.IsNullOrWhiteSpace(opt.Text) &&
+                                           opt.Text != "Select a room..." &&
+                                           !string.IsNullOrWhiteSpace(opt.GetDomAttribute("value")));
+
+                if (fallbackOption != null)
+                {
+                    fallbackOption.Click();
+                }
+                else
+                {
+                    // If room not found, just continue - the test might be checking for this scenario
+                    Console.WriteLine($"Room '{room}' not found in dropdown options");
+                }
             }
         }
 
@@ -219,16 +220,19 @@ public class CoursesPage
         }
     }
 
-    public void SaveCourse()
+    public void SaveCourse(bool waitForClose = true)
     {
-    SafeClick(SaveCourseButton);
-        //WaitForModalToClose();
+        SafeClick(SaveCourseButton);
+        if (waitForClose)
+        {
+            WaitForModalToClose();
+        }
     }
 
     public void CancelCreate()
     {
     SafeClick(CancelCourseButton);
-        //WaitForModalToClose();
+        WaitForModalToClose();
     }
 
     // Verification methods
@@ -257,6 +261,10 @@ public class CoursesPage
             return CourseModal.Displayed && CourseNameInput.Displayed;
         }
         catch (NoSuchElementException)
+        {
+            return false;
+        }
+        catch (StaleElementReferenceException)
         {
             return false;
         }

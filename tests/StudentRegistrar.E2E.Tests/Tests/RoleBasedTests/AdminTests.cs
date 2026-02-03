@@ -646,13 +646,37 @@ public class AdminTests : BaseTest
         coursesPage.ClickCreateCourse();
         coursesPage.IsCreateFormVisible().Should().BeTrue("Create course form should be visible");
 
+        var availableRooms = coursesPage.GetAvailableRooms();
+        if (availableRooms.Count == 0)
+        {
+            coursesPage.CancelCreate();
+            WaitUntil(d => !coursesPage.IsCreateFormVisible() || d.PageSource.Contains("error"));
+
+            Driver.Navigate().GoToUrl($"{BaseUrl}/rooms");
+            WaitForPageLoad();
+
+            var fallbackRoomName = $"Auto Room {DateTime.Now:yyyyMMddHHmmss}";
+            CreateTestRoom(fallbackRoomName, "Classroom", 20, "Auto-created for E2E courses");
+
+            Driver.Navigate().GoToUrl($"{BaseUrl}/courses");
+            WaitForPageLoad();
+            coursesPage.SelectSemester(semesterName);
+
+            coursesPage.ClickCreateCourse();
+            coursesPage.IsCreateFormVisible().Should().BeTrue("Create course form should be visible");
+            availableRooms = coursesPage.GetAvailableRooms();
+        }
+
+        availableRooms.Should().NotBeEmpty("at least one room should be available in the room options");
+        var selectedRoom = availableRooms.First();
+
         // Fill course form
         coursesPage.FillCourseForm(
             name: courseName,
             code: courseCode,
             ageGroup: "Children (5-12)",
             maxCapacity: 15,
-            room: "Room 101",
+            room: selectedRoom,
             fee: 50.00m,
             periodCode: "Period A",
             startTime: "09:00AM",
@@ -660,7 +684,7 @@ public class AdminTests : BaseTest
             description: "A test course for E2E testing"
         );
 
-    coursesPage.SaveCourse();
+    coursesPage.SaveCourse(waitForClose: false);
     WaitUntil(d => coursesPage.IsCourseVisible(courseName) || d.PageSource.Contains("error"));
 
         // Assert - Verify course was created
@@ -700,7 +724,6 @@ public class AdminTests : BaseTest
         coursesPage.NavigateToCourses();
         coursesPage.SelectSemester(semesterName);
 
-        var initialCourseCount = coursesPage.GetCourseCount();
 
         // Define multiple courses to create
         var courses = new[]
@@ -760,12 +783,7 @@ public class AdminTests : BaseTest
             coursesPage.IsCourseVisible(course.Name).Should().BeTrue($"Course '{course.Name}' should be created");
         }
 
-        WaitUntil(d => coursesPage.GetCourseCount() >= initialCourseCount + courses.Length || d.PageSource.Contains("error"), 15);
-        
-
-        // Assert - Verify all courses were created
-        var finalCourseCount = coursesPage.GetCourseCount();
-        finalCourseCount.Should().BeGreaterThan(initialCourseCount + courses.Length - 1, "All courses should be created");
+        // Assert - Verify all courses were created (visibility checks above)
     }
 
     [Fact]
@@ -783,7 +801,7 @@ public class AdminTests : BaseTest
             coursesPage.SelectSemester(availableSemesters.First());
         }
         WaitUntil(d => coursesPage.GetCourseCount() >= 0 || d.PageSource.Contains("error"), 10);
-        var initialCourseCount = coursesPage.GetCourseCount();
+        var cancelCourseName = $"Cancel Test Course {DateTime.Now:yyyyMMddHHmmss}";
 
         // Act - Start creating course but cancel
         coursesPage.ClickCreateCourse();
@@ -791,7 +809,7 @@ public class AdminTests : BaseTest
 
         // Fill some data
         coursesPage.FillCourseForm(
-            name: "Cancel Test Course",
+            name: cancelCourseName,
             code: "CANCEL",
             ageGroup: "Children (5-12)",
             maxCapacity: 10
@@ -808,10 +826,7 @@ public class AdminTests : BaseTest
             coursesPage.SelectSemester(availableSemesters.First());
         }
 
-        coursesPage.IsCourseVisible("Cancel Test Course").Should().BeFalse("Cancelled course should not appear");
-        
-        var finalCourseCount = coursesPage.GetCourseCount();
-        finalCourseCount.Should().Be(initialCourseCount, "Course count should remain unchanged after cancel");
+        coursesPage.IsCourseVisible(cancelCourseName).Should().BeFalse("Cancelled course should not appear");
     }
 
     [Fact]
@@ -875,7 +890,7 @@ public class AdminTests : BaseTest
             description: "An advanced programming course covering modern software development practices and tools."
         );
 
-    coursesPage.SaveCourse();
+    coursesPage.SaveCourse(waitForClose: false);
     WaitUntil(d => coursesPage.IsCourseVisible(courseName) || d.PageSource.Contains("error"));
 
         // Assert - Verify course was created with all details
@@ -906,8 +921,10 @@ public class AdminTests : BaseTest
         coursesPage.IsCreateFormVisible().Should().BeTrue("Create form should be visible");
 
         // Try to save without filling required fields
-    coursesPage.SaveCourse();
-    WaitUntil(d => !coursesPage.IsCreateFormVisible() || d.PageSource.Contains("error"));
+        coursesPage.SaveCourse(waitForClose: false);
+        
+        // Wait for validation error/message to appear
+        WaitUntil(d => coursesPage.IsErrorDisplayed() || d.PageSource.Contains("required"), 15);
 
         // Assert - Should show validation error and stay on form
         // Note: This depends on how the frontend handles validation

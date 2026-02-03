@@ -11,6 +11,8 @@ REALM="student-registrar"
 KEYCLOAK_URL="http://localhost:8080"
 ADMIN_USERNAME="admin"
 CLIENT_ID="student-registrar-spa"
+DEFAULT_REDIRECT_URIS="http://localhost:3000/*,http://localhost:3001/*"
+DEFAULT_WEB_ORIGINS="http://localhost:3000,http://localhost:3001"
 
 usage() {
   cat <<EOF
@@ -19,10 +21,14 @@ Usage: $0 [options]
   --keycloak-url URL    Base Keycloak URL (default: ${KEYCLOAK_URL})
   --admin-username NAME Master realm admin username (default: ${ADMIN_USERNAME})
   --client-id NAME      SPA client id (default: ${CLIENT_ID})
+  --redirect-uris CSV   Comma-separated redirect URIs
+  --web-origins CSV     Comma-separated web origins
   --help                Show this help
 
 Environment:
   KEYCLOAK_ADMIN_PASSWORD   Master admin password (skips prompt)
+  REDIRECT_URIS             Comma-separated redirect URIs (overrides default)
+  WEB_ORIGINS               Comma-separated web origins (overrides default)
 EOF
 }
 
@@ -32,10 +38,34 @@ while [[ $# -gt 0 ]]; do
     --keycloak-url) KEYCLOAK_URL="$2"; shift 2;;
     --admin-username) ADMIN_USERNAME="$2"; shift 2;;
     --client-id) CLIENT_ID="$2"; shift 2;;
+    --redirect-uris) REDIRECT_URIS="$2"; shift 2;;
+    --web-origins) WEB_ORIGINS="$2"; shift 2;;
     --help|-h) usage; exit 0;;
     *) echo "Unknown option: $1" >&2; usage; exit 1;;
   esac
 done
+
+REDIRECT_URIS="${REDIRECT_URIS:-$DEFAULT_REDIRECT_URIS}"
+WEB_ORIGINS="${WEB_ORIGINS:-$DEFAULT_WEB_ORIGINS}"
+
+json_array_from_csv() {
+  local csv="$1"
+  local out="["
+  local first=1
+  IFS=',' read -r -a items <<< "$csv"
+  for item in "${items[@]}"; do
+    item="$(echo "$item" | xargs)"
+    [[ -z "$item" ]] && continue
+    if [[ $first -eq 0 ]]; then
+      out+=" , "
+    else
+      first=0
+    fi
+    out+="\"$item\""
+  done
+  out+="]"
+  echo "$out"
+}
 
 if ! command -v jq >/dev/null; then
   echo "jq is required" >&2; exit 2; fi
@@ -60,7 +90,12 @@ if [[ -z "$TOKEN" || "$TOKEN" == null ]]; then
 CLIENT_UUID=$(curl -s -H "Authorization: Bearer $TOKEN" \
   "${KEYCLOAK_URL}/admin/realms/${REALM}/clients?clientId=${CLIENT_ID}" | jq -r '.[0].id')
 
-CLIENT_PAYLOAD=$(jq -n --arg clientId "$CLIENT_ID" '{
+REDIRECT_URIS_JSON=$(json_array_from_csv "$REDIRECT_URIS")
+WEB_ORIGINS_JSON=$(json_array_from_csv "$WEB_ORIGINS")
+
+CLIENT_PAYLOAD=$(jq -n --arg clientId "$CLIENT_ID" \
+  --argjson redirectUris "$REDIRECT_URIS_JSON" \
+  --argjson webOrigins "$WEB_ORIGINS_JSON" '{
   clientId: $clientId,
   enabled: true,
   publicClient: true,
@@ -68,8 +103,8 @@ CLIENT_PAYLOAD=$(jq -n --arg clientId "$CLIENT_ID" '{
   standardFlowEnabled: true,
   directAccessGrantsEnabled: true,
   serviceAccountsEnabled: false,
-  redirectUris: ["http://localhost:3000/*", "http://localhost:3001/*"],
-  webOrigins: ["http://localhost:3000", "http://localhost:3001"],
+  redirectUris: $redirectUris,
+  webOrigins: $webOrigins,
   attributes: {}
 }')
 

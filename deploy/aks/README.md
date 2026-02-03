@@ -32,4 +32,4 @@ This workflow is **not production-ready** yet. It does **not** deploy to a clust
 ## Notes
 
 - Keycloak production hardening should run it in non-dev mode (`start`, not `start-dev`) and back it with a persistent Postgres DB.
-- Do not ship browser-exposed Keycloak client secrets in production; the current frontend auth flow will need to be redesigned (PKCE/BFF) before a hardened public deployment.
+- The frontend uses a public SPA client for browser login; production hardening (PKCE/BFF, stricter CORS/redirects) is still recommended.

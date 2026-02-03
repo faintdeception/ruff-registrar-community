@@ -4,9 +4,9 @@
 
 set -e
 
-KEYCLOAK_URL="http://localhost:8080"
+KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8080}"
 # Aspire dev default master admin username is typically 'admin'.
-ADMIN_USER="admin"
+ADMIN_USER="${KEYCLOAK_ADMIN_USERNAME:-${KEYCLOAK_ADMIN_USER:-admin}}"
 REALM_NAME="student-registrar"
 CLIENT_ID="student-registrar"
 
@@ -56,34 +56,47 @@ echo "   2. Open Aspire Dashboard: http://localhost:15888"
 echo "   3. Go to Resources tab and find the Keycloak admin password"
 echo ""
 
-# Test Keycloak connectivity first
+# Test Keycloak connectivity first (with retries)
 echo "🔍 Testing Keycloak connectivity..."
 echo "   Trying to reach: ${KEYCLOAK_URL}/realms/master"
-KEYCLOAK_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${KEYCLOAK_URL}/realms/master")
-CURL_EXIT_CODE=$?
+MAX_WAIT_SECONDS=${KEYCLOAK_MAX_WAIT_SECONDS:-180}
+SLEEP_SECONDS=5
+ELAPSED=0
 
-if [ $CURL_EXIT_CODE -ne 0 ]; then
-    echo "❌ Failed to connect to Keycloak (curl exit code: $CURL_EXIT_CODE)"
-    case $CURL_EXIT_CODE in
-        7) echo "   Error: Failed to connect to host" ;;
-        28) echo "   Error: Connection timeout" ;;
-        *) echo "   Error: Unknown curl error" ;;
-    esac
-    echo ""
-    echo "💡 Troubleshooting steps:"
-    echo "   1. Check if your application is running: dotnet run --project src/StudentRegistrar.AppHost"
-    echo "   2. Check if Keycloak is accessible in browser: ${KEYCLOAK_URL}"
-    echo "   3. Verify the port in Aspire Dashboard: http://localhost:15888"
-    exit 1
-fi
+while true; do
+    set +e
+    KEYCLOAK_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${KEYCLOAK_URL}/realms/master")
+    CURL_EXIT_CODE=$?
+    set -e
 
-if [ "$KEYCLOAK_STATUS" != "200" ]; then
-    echo "❌ Keycloak returned HTTP status: $KEYCLOAK_STATUS"
-    echo "   URL: ${KEYCLOAK_URL}/realms/master"
-    echo "   Please ensure Keycloak is running and accessible."
-    exit 1
-fi
-echo "✅ Keycloak is accessible"
+    if [ $CURL_EXIT_CODE -eq 0 ] && [ "$KEYCLOAK_STATUS" = "200" ]; then
+        echo "✅ Keycloak is accessible"
+        break
+    fi
+
+    if [ $ELAPSED -ge $MAX_WAIT_SECONDS ]; then
+        echo "❌ Failed to connect to Keycloak after ${MAX_WAIT_SECONDS}s"
+        if [ $CURL_EXIT_CODE -ne 0 ]; then
+            echo "   Curl exit code: $CURL_EXIT_CODE"
+            case $CURL_EXIT_CODE in
+                7) echo "   Error: Failed to connect to host" ;;
+                28) echo "   Error: Connection timeout" ;;
+                *) echo "   Error: Unknown curl error" ;;
+            esac
+        else
+            echo "   HTTP status: $KEYCLOAK_STATUS"
+        fi
+        echo ""
+        echo "💡 Troubleshooting steps:"
+        echo "   1. Check if your application is running: dotnet run --project src/StudentRegistrar.AppHost"
+        echo "   2. Check if Keycloak is accessible in browser: ${KEYCLOAK_URL}"
+        echo "   3. Verify the port in Aspire Dashboard: http://localhost:15888"
+        exit 1
+    fi
+
+    sleep $SLEEP_SECONDS
+    ELAPSED=$((ELAPSED + SLEEP_SECONDS))
+done
 
 if [ -n "${KEYCLOAK_ADMIN_PASSWORD:-}" ]; then
     ADMIN_PASSWORD="$KEYCLOAK_ADMIN_PASSWORD"
@@ -93,26 +106,38 @@ else
     echo ""
 fi
 
-# Get admin token
+# Get admin token (with retries)
 echo "🔑 Getting admin access token..."
-TOKEN_RESPONSE=$(curl -s -X POST "${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token" \
-    -H "Content-Type: application/x-www-form-urlencoded" \
-    --data-urlencode "username=${ADMIN_USER}" \
-    --data-urlencode "password=${ADMIN_PASSWORD}" \
-    -d "grant_type=password" \
-    -d "client_id=admin-cli")
+TOKEN=""
+TOKEN_RESPONSE=""
+TOKEN_MAX_WAIT_SECONDS=${KEYCLOAK_TOKEN_MAX_WAIT_SECONDS:-120}
+TOKEN_ELAPSED=0
 
-echo "Debug - Token response: $TOKEN_RESPONSE"
+while [ $TOKEN_ELAPSED -le $TOKEN_MAX_WAIT_SECONDS ]; do
+    TOKEN_RESPONSE=$(curl -s -X POST "${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token" \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        --data-urlencode "username=${ADMIN_USER}" \
+        --data-urlencode "password=${ADMIN_PASSWORD}" \
+        -d "grant_type=password" \
+        -d "client_id=admin-cli" || true)
 
-TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token')
+    TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token')
+
+    if [ "$TOKEN" != "null" ] && [ -n "$TOKEN" ]; then
+        echo "✅ Admin token obtained successfully"
+        break
+    fi
+
+    sleep 5
+    TOKEN_ELAPSED=$((TOKEN_ELAPSED + 5))
+done
 
 if [ "$TOKEN" == "null" ] || [ -z "$TOKEN" ]; then
+    echo "Debug - Token response: $TOKEN_RESPONSE"
     echo "❌ Failed to get admin token. Please check your password and try again."
     echo "Full response: $TOKEN_RESPONSE"
     exit 1
 fi
-
-echo "✅ Admin token obtained successfully"
 
 # Create realm
 echo "🏗️  Creating realm: $REALM_NAME"
