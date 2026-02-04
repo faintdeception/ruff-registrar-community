@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth';
+import { getAppVersion } from '@/lib/runtime-env';
 import { useRouter } from 'next/router';
 import { AcademicCapIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 export default function Login() {
+  const appVersion = getAppVersion();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -157,6 +159,10 @@ export default function Login() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="fixed bottom-2 right-3 text-xs text-gray-400">
+        v{appVersion}
       </div>
     </div>
   );
