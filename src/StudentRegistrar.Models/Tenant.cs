@@ -32,7 +32,7 @@ public enum SubscriptionStatus
 /// Represents an organization (tenant) in the multi-tenant SaaS system.
 /// In self-hosted mode, there is typically one tenant or tenant logic is bypassed.
 /// </summary>
-public class Tenant
+public partial class Tenant
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
@@ -140,7 +140,7 @@ public class Tenant
 /// <summary>
 /// Theme configuration for Enterprise tier whitelabeling.
 /// </summary>
-public class TenantTheme
+public partial class TenantTheme
 {
     /// <summary>
     /// Primary brand color (hex, e.g., "#3B82F6")
@@ -183,32 +183,50 @@ public class TenantTheme
     {
         if (string.IsNullOrWhiteSpace(css))
             return string.Empty;
+        
+        // Limit input length to prevent ReDoS attacks
+        const int maxLength = 50000; // 50KB of CSS should be plenty
+        if (css.Length > maxLength)
+            css = css.Substring(0, maxLength);
             
-        // Remove potentially dangerous content
+        // Remove potentially dangerous content using compiled regex patterns
         var sanitized = css;
         
         // Remove script-related content
-        sanitized = System.Text.RegularExpressions.Regex.Replace(sanitized, 
-            @"<script[^>]*>.*?</script>", "", 
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
+        sanitized = ScriptTagRegex().Replace(sanitized, "");
             
         // Remove javascript: urls
-        sanitized = System.Text.RegularExpressions.Regex.Replace(sanitized, 
-            @"javascript\s*:", "", 
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        sanitized = JavaScriptUrlRegex().Replace(sanitized, "");
             
         // Remove expressions (IE specific)
-        sanitized = System.Text.RegularExpressions.Regex.Replace(sanitized, 
-            @"expression\s*\(", "", 
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        sanitized = ExpressionRegex().Replace(sanitized, "");
             
         // Remove import statements (could load external malicious CSS)
-        sanitized = System.Text.RegularExpressions.Regex.Replace(sanitized, 
-            @"@import", "", 
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        sanitized = ImportRegex().Replace(sanitized, "");
             
         return sanitized;
     }
+    
+    // Compiled regex patterns for performance and safety
+    [System.Text.RegularExpressions.GeneratedRegex(@"<script[^>]*?>.*?</script>", 
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline, 
+        matchTimeoutMilliseconds: 1000)]
+    private static partial System.Text.RegularExpressions.Regex ScriptTagRegex();
+    
+    [System.Text.RegularExpressions.GeneratedRegex(@"javascript\s*:", 
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase,
+        matchTimeoutMilliseconds: 1000)]
+    private static partial System.Text.RegularExpressions.Regex JavaScriptUrlRegex();
+    
+    [System.Text.RegularExpressions.GeneratedRegex(@"expression\s*\(", 
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase,
+        matchTimeoutMilliseconds: 1000)]
+    private static partial System.Text.RegularExpressions.Regex ExpressionRegex();
+    
+    [System.Text.RegularExpressions.GeneratedRegex(@"@import", 
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase,
+        matchTimeoutMilliseconds: 1000)]
+    private static partial System.Text.RegularExpressions.Regex ImportRegex();
 
     /// <summary>
     /// Extensible custom fields

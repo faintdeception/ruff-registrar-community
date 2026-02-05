@@ -245,13 +245,13 @@ public static class TenantMiddlewareExtensions
         services.AddSingleton<ITenantContextAccessor, TenantContextAccessor>();
         
         // Register ITenantContext as scoped, resolved from accessor.
-        // This may be null for routes that do not use tenant resolution;
-        // consumers that require a tenant should handle the null case explicitly
-        // or use ITenantContextAccessor to check for availability.
+        // Returns the current tenant context or throws if not available.
+        // Routes that don't require tenant context should use ITenantContextAccessor instead.
         services.AddScoped<ITenantContext>(sp =>
         {
             var accessor = sp.GetRequiredService<ITenantContextAccessor>();
-            return accessor.TenantContext!;
+            return accessor.TenantContext 
+                ?? throw new InvalidOperationException("Tenant context not available. Ensure TenantResolutionMiddleware is configured and the request has a valid tenant.");
         });
         
         return services;
