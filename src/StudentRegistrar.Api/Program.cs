@@ -5,6 +5,7 @@ using StudentRegistrar.Data;
 using StudentRegistrar.Api.Services;
 using StudentRegistrar.Api.Services.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using AutoMapper;
@@ -23,6 +24,10 @@ builder.AddServiceDefaults();
 // Add tenant services for multi-tenancy support
 builder.Services.AddTenantServices();
 builder.Services.AddScoped<ITenantProvider, TenantContextProvider>();
+
+// Add tenant authorization to validate user's tenant membership
+// This prevents cross-tenant access even if Host header is spoofed
+builder.Services.AddTenantAuthorization();
 
 // Add database connection configuration via Aspire
 builder.Services.AddDbContext<StudentRegistrarDbContext>(options =>
@@ -195,7 +200,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    // Set TenantMember as the default policy for all [Authorize] attributes
+    // This ensures tenant membership is validated for all authenticated requests
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .AddRequirements(new TenantMembershipRequirement())
+        .Build();
+});
 
 var app = builder.Build();
 

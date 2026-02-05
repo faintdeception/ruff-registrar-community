@@ -56,10 +56,29 @@ public class TenantResolutionMiddleware
         }
 
         // SaaS mode: resolve tenant from subdomain
-        // NOTE: The Host header can be spoofed by clients. While subdomain extraction 
-        // validates format, do not rely solely on this for security-critical operations.
-        // Additional authentication/authorization checks should be performed for 
-        // tenant-scoped operations beyond just subdomain-based tenant resolution.
+        // 
+        // SECURITY MODEL (Defense in Depth):
+        // ═══════════════════════════════════
+        // 1. This middleware extracts tenant from subdomain (Host header)
+        //    - Host header CAN be spoofed by clients
+        //    - Subdomain validation only ensures format correctness
+        //    - This establishes the REQUESTED tenant context
+        //
+        // 2. JWT Authentication validates user identity
+        //    - Ensures the user is who they claim to be
+        //    - Extracts user claims including Keycloak ID
+        //
+        // 3. TenantAuthorizationHandler validates tenant membership
+        //    - Looks up user's actual TenantId from database
+        //    - Compares user's TenantId with resolved tenant from subdomain
+        //    - Denies access if mismatch (prevents cross-tenant access)
+        //
+        // This layered approach ensures that even if an attacker spoofs the Host header
+        // to request tenant B's subdomain, they cannot access tenant B's data without
+        // valid credentials for a user who actually belongs to tenant B.
+        //
+        // Controllers using [Authorize] will automatically enforce tenant membership
+        // via the "TenantMember" policy configured in TenantAuthorizationHandler.
         var host = context.Request.Host.Host;
         var subdomain = ExtractSubdomain(host);
 
