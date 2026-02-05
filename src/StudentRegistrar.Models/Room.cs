@@ -2,9 +2,15 @@ using System.ComponentModel.DataAnnotations;
 
 namespace StudentRegistrar.Models;
 
-public class Room
+public class Room : ITenantEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    
+    /// <summary>
+    /// The tenant (organization) this room belongs to.
+    /// </summary>
+    [Required]
+    public Guid TenantId { get; set; }
     
     [Required]
     [MaxLength(100)]

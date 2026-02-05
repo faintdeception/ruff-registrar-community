@@ -4,9 +4,15 @@ using System.Text.Json;
 
 namespace StudentRegistrar.Models;
 
-public class AccountHolder
+public class AccountHolder : ITenantEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    
+    /// <summary>
+    /// The tenant (organization) this account holder belongs to.
+    /// </summary>
+    [Required]
+    public Guid TenantId { get; set; }
     
     // Primary Contact
     [Required]

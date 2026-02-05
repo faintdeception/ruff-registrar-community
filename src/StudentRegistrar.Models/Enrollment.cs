@@ -20,9 +20,15 @@ public enum PaymentStatus
     Refunded
 }
 
-public class Enrollment
+public class Enrollment : ITenantEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    
+    /// <summary>
+    /// The tenant (organization) this enrollment belongs to.
+    /// </summary>
+    [Required]
+    public Guid TenantId { get; set; }
     
     [Required]
     public Guid StudentId { get; set; }

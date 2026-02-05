@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using StudentRegistrar.Data;
 using StudentRegistrar.Api.Services;
+using StudentRegistrar.Api.Services.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -19,8 +20,24 @@ var allowUntrustedKeycloakCertificates =
 // Add service defaults & Aspire components
 builder.AddServiceDefaults();
 
-// Add database
-builder.AddNpgsqlDbContext<StudentRegistrarDbContext>("studentregistrar");
+// Add tenant services for multi-tenancy support
+builder.Services.AddTenantServices();
+builder.Services.AddScoped<ITenantProvider, TenantContextProvider>();
+
+// Add database with tenant provider
+builder.AddNpgsqlDbContext<StudentRegistrarDbContext>("studentregistrar", 
+    configureDbContextOptions: options =>
+    {
+        // DbContext will be constructed with ITenantProvider from DI
+    });
+
+// Override DbContext registration to include ITenantProvider
+builder.Services.AddScoped<StudentRegistrarDbContext>(sp =>
+{
+    var options = sp.GetRequiredService<DbContextOptions<StudentRegistrarDbContext>>();
+    var tenantProvider = sp.GetRequiredService<ITenantProvider>();
+    return new StudentRegistrarDbContext(options, tenantProvider);
+});
 
 // Add enhanced logging for debugging
 builder.Services.AddLogging(config =>
@@ -255,6 +272,11 @@ if (app.Environment.IsProduction())
 
 app.UseRouting();
 app.UseCors("AllowFrontend");
+
+// Add tenant resolution middleware
+// This must come before authentication to allow tenant-specific auth configuration
+app.UseTenantResolution();
+
 app.UseAuthentication();
 app.UseAuthorization();
 

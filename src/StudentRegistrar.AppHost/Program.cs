@@ -140,6 +140,7 @@ var apiService = builder.AddProject<StudentRegistrar_Api>("api")
     .WithEnvironment("Keycloak__Realm", keycloakRealm)
     .WithEnvironment("Keycloak__ClientId", keycloakClientId)
     .WithEnvironment("Database__RunMigrations", "true")
+    .WithEnvironment("DEPLOYMENT_MODE", "selfhosted") // Default to self-hosted; override for SaaS
     .WithEnvironment(context =>
     {
         context.EnvironmentVariables["Keycloak__ClientSecret"] = keycloakClientSecret.Resource;
@@ -166,6 +167,13 @@ var apiService = builder.AddProject<StudentRegistrar_Api>("api")
             context.EnvironmentVariables["Cors__AllowedOrigins__0"] = frontendOrigin;
         }
     });
+
+// Portal service (marketing site, tenant onboarding)
+var portalService = builder.AddProject<StudentRegistrar_Portal>("portal")
+    .WithReference(studentRegistrarDb)
+    .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+    .WithHttpEndpoint(port: 5002, name: "portal-http", env: "PORT")
+    .WithExternalHttpEndpoints();
 
 IResourceBuilder<ContainerResource>? frontendContainer = null;
 

@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\StudentRegistrar.ServiceDefaults\StudentRegistrar.ServiceDefaults.csproj" IsAspireProjectResource="false" />
     <ProjectReference Include="..\StudentRegistrar.Api\StudentRegistrar.Api.csproj" />
+    <ProjectReference Include="..\StudentRegistrar.Portal\StudentRegistrar.Portal.csproj" />
   </ItemGroup>
 
 </Project>

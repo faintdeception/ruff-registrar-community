@@ -25,9 +25,15 @@ public enum PaymentMethod
     Other
 }
 
-public class Payment
+public class Payment : ITenantEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    
+    /// <summary>
+    /// The tenant (organization) this payment belongs to.
+    /// </summary>
+    [Required]
+    public Guid TenantId { get; set; }
     
     [Required]
     public Guid AccountHolderId { get; set; }

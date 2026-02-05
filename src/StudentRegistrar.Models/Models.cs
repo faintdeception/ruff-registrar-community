@@ -6,9 +6,15 @@ namespace StudentRegistrar.Models;
 // LegacyStudent, LegacyCourse, and LegacyEnrollment have been removed.
 // Use the new Student, Course, and Enrollment models instead.
 
-public class GradeRecord
+public class GradeRecord : ITenantEntity
 {
     public int Id { get; set; }
+    
+    /// <summary>
+    /// The tenant (organization) this grade record belongs to.
+    /// </summary>
+    [Required]
+    public Guid TenantId { get; set; }
     
     public Guid StudentId { get; set; }
     public Student Student { get; set; } = null!;
@@ -32,9 +38,15 @@ public class GradeRecord
     public DateTime UpdatedAt { get; set; }
 }
 
-public class AcademicYear
+public class AcademicYear : ITenantEntity
 {
     public int Id { get; set; }
+    
+    /// <summary>
+    /// The tenant (organization) this academic year belongs to.
+    /// </summary>
+    [Required]
+    public Guid TenantId { get; set; }
     
     [Required]
     [StringLength(20)]
@@ -50,9 +62,16 @@ public class AcademicYear
 }
 
 // User Management Models
-public class User
+public class User : ITenantEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    
+    /// <summary>
+    /// The tenant (organization) this user belongs to.
+    /// </summary>
+    [Required]
+    public Guid TenantId { get; set; }
+    
     public string Email { get; set; } = string.Empty;
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
@@ -73,9 +92,16 @@ public enum UserRole
     Administrator = 3
 }
 
-public class UserProfile
+public class UserProfile : ITenantEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    
+    /// <summary>
+    /// The tenant (organization) this user profile belongs to.
+    /// </summary>
+    [Required]
+    public Guid TenantId { get; set; }
+    
     public Guid UserId { get; set; }
     public string? PhoneNumber { get; set; }
     public string? Address { get; set; }
