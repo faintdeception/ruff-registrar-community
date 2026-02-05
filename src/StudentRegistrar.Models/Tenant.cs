@@ -125,6 +125,8 @@ public partial class Tenant
         }
         catch (JsonException ex)
         {
+            // Note: Using Console.Error as this is a model class without DI access.
+            // In production, consider a logging abstraction that can be injected at the service layer.
             Console.Error.WriteLine($"Failed to deserialize TenantTheme from ThemeConfigJson for tenant {Id}: {ex.Message}");
             return new TenantTheme();
         }
@@ -185,9 +187,10 @@ public partial class TenantTheme
             return string.Empty;
         
         // Limit input length to prevent ReDoS attacks
-        const int maxLength = 50000; // 50KB of CSS should be plenty
+        // Note: C# strings are UTF-16, so 50000 chars ≈ 100KB in memory
+        const int maxLength = 50000;
         if (css.Length > maxLength)
-            css = css.Substring(0, maxLength);
+            css = css[..maxLength];
             
         // Remove potentially dangerous content using compiled regex patterns
         var sanitized = css;

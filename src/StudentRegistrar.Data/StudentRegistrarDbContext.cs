@@ -42,10 +42,11 @@ public class StudentRegistrarDbContext : DbContext
     /// Constructor for EF Core migrations and design-time tools.
     /// This simpler constructor is used by migration tools that don't have access to DI.
     /// It delegates to the primary constructor with a DefaultTenantProvider.
-    /// Note: This is internal to prevent accidental use in application code where
-    /// the DI-based constructor should be used instead.
+    /// WARNING: This constructor is public for EF Core tooling compatibility.
+    /// Do not use this constructor directly in application code - use DI instead
+    /// to ensure the proper ITenantProvider is injected.
     /// </summary>
-    internal StudentRegistrarDbContext(DbContextOptions<StudentRegistrarDbContext> options) 
+    public StudentRegistrarDbContext(DbContextOptions<StudentRegistrarDbContext> options) 
         : this(options, new DefaultTenantProvider())
     {
     }
