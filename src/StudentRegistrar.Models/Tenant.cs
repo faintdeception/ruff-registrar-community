@@ -173,12 +173,21 @@ public partial class TenantTheme
     private string? _customCss;
 
     /// <summary>
-    /// Sets the custom CSS. The value will be automatically sanitized when retrieved.
-    /// This property stores the raw CSS but always returns sanitized CSS through GetSanitizedCustomCss().
-    /// DO NOT use this property directly for rendering - use GetSanitizedCustomCss() instead.
+    /// Raw custom CSS value (unsanitized). This property is used for storage and serialization.
+    /// 
+    /// SECURITY WARNING: This property returns the raw, unsanitized CSS value. 
+    /// DO NOT use this property directly for rendering in HTML/views - use GetSanitizedCustomCss() instead.
+    /// 
+    /// When rendering custom CSS:
+    /// - ALWAYS call theme.GetSanitizedCustomCss() to get the safe, sanitized version
+    /// - NEVER render theme.CustomCss directly in HTML, style tags, or inline styles
+    /// 
+    /// This property is safe for:
+    /// - Storing values in the database
+    /// - JSON serialization/deserialization
+    /// - Editing/updating CSS values
     /// </summary>
-    [System.Text.Json.Serialization.JsonIgnore]
-    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    [System.Text.Json.Serialization.JsonPropertyName("customCss")]
     public string? CustomCss
     {
         get => _customCss;
@@ -188,23 +197,14 @@ public partial class TenantTheme
     /// <summary>
     /// Gets the sanitized custom CSS safe for rendering in HTML.
     /// This method automatically sanitizes the CSS to prevent XSS vulnerabilities.
-    /// Always use this method when rendering custom CSS in views or APIs.
+    /// 
+    /// ALWAYS use this method when rendering custom CSS in views, APIs, or any HTML output.
+    /// This ensures all potentially dangerous CSS patterns are removed before rendering.
     /// </summary>
     /// <returns>Sanitized CSS string safe for rendering, or empty string if no custom CSS is set.</returns>
     public string GetSanitizedCustomCss()
     {
         return SanitizeCustomCss(_customCss);
-    }
-
-    /// <summary>
-    /// Internal storage for custom CSS in database (stores raw value).
-    /// Use CustomCss property to set/get values in code.
-    /// </summary>
-    [System.Text.Json.Serialization.JsonPropertyName("customCss")]
-    public string? CustomCssRaw
-    {
-        get => _customCss;
-        set => _customCss = value;
     }
     
     /// <summary>

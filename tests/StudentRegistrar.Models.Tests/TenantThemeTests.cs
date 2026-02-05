@@ -223,7 +223,7 @@ public class TenantThemeTests
     }
 
     [Fact]
-    public void CustomCssRaw_IsUsedForSerialization()
+    public void CustomCss_IsUsedForSerialization()
     {
         // Arrange
         var theme = new TenantTheme
