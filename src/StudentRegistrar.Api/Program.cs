@@ -25,7 +25,16 @@ builder.Services.AddTenantServices();
 builder.Services.AddScoped<ITenantProvider, TenantContextProvider>();
 
 // Add database connection configuration via Aspire
-builder.AddNpgsqlDbContext<StudentRegistrarDbContext>("studentregistrar");
+builder.Services.AddDbContext<StudentRegistrarDbContext>(options =>
+{
+    var connectionString = builder.Configuration.GetConnectionString("studentregistrar");
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        throw new InvalidOperationException("Connection string 'studentregistrar' is not configured.");
+    }
+
+    options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.EnableRetryOnFailure());
+});
 
 // Add enhanced logging for debugging
 builder.Services.AddLogging(config =>
@@ -38,6 +47,7 @@ builder.Services.AddLogging(config =>
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddMemoryCache();
 
 // Add AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));

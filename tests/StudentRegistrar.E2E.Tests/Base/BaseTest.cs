@@ -35,15 +35,20 @@ public abstract class BaseTest : IDisposable
 
     protected void NavigateToHome()
     {
+        NavigateToUrl(BaseUrl);
+    }
+
+    protected void NavigateToUrl(string url)
+    {
         try
         {
-            Driver.Navigate().GoToUrl(BaseUrl);
+            Driver.Navigate().GoToUrl(url);
             // Wait a moment for the page to load
             WaitForPageLoad();
         }
         catch (Exception ex)
         {
-            throw new Exception($"Failed to navigate to {BaseUrl}. Make sure the application is running.", ex);
+            throw new Exception($"Failed to navigate to {url}. Make sure the application is running.", ex);
         }
     }
 
