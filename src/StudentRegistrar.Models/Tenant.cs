@@ -169,13 +169,43 @@ public partial class TenantTheme
     /// </summary>
     public bool HidePoweredBy { get; set; } = false;
 
+    // Private backing field for raw custom CSS
+    private string? _customCss;
+
     /// <summary>
-    /// Additional custom CSS. 
-    /// SECURITY WARNING: This value MUST be validated and sanitized before rendering
-    /// to prevent XSS vulnerabilities. Use the SanitizeCustomCss method before use.
-    /// Never render this directly in a style tag without sanitization.
+    /// Raw custom CSS value (unsanitized). This property is used for storage and serialization.
+    /// 
+    /// SECURITY WARNING: This property returns the raw, unsanitized CSS value. 
+    /// DO NOT use this property directly for rendering in HTML/views - use GetSanitizedCustomCss() instead.
+    /// 
+    /// When rendering custom CSS:
+    /// - ALWAYS call theme.GetSanitizedCustomCss() to get the safe, sanitized version
+    /// - NEVER render theme.CustomCss directly in HTML, style tags, or inline styles
+    /// 
+    /// This property is safe for:
+    /// - Storing values in the database
+    /// - JSON serialization/deserialization
+    /// - Editing/updating CSS values
     /// </summary>
-    public string? CustomCss { get; set; }
+    [System.Text.Json.Serialization.JsonPropertyName("customCss")]
+    public string? CustomCss
+    {
+        get => _customCss;
+        set => _customCss = value;
+    }
+
+    /// <summary>
+    /// Gets the sanitized custom CSS safe for rendering in HTML.
+    /// This method automatically sanitizes the CSS to prevent XSS vulnerabilities.
+    /// 
+    /// ALWAYS use this method when rendering custom CSS in views, APIs, or any HTML output.
+    /// This ensures all potentially dangerous CSS patterns are removed before rendering.
+    /// </summary>
+    /// <returns>Sanitized CSS string safe for rendering, or empty string if no custom CSS is set.</returns>
+    public string GetSanitizedCustomCss()
+    {
+        return SanitizeCustomCss(_customCss);
+    }
     
     /// <summary>
     /// Sanitizes custom CSS to prevent XSS attacks.
