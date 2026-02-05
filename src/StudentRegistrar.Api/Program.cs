@@ -27,14 +27,6 @@ builder.Services.AddScoped<ITenantProvider, TenantContextProvider>();
 // Add database connection configuration via Aspire
 builder.AddNpgsqlDbContext<StudentRegistrarDbContext>("studentregistrar");
 
-// Override DbContext registration to include ITenantProvider
-builder.Services.AddScoped<StudentRegistrarDbContext>(sp =>
-{
-    var options = sp.GetRequiredService<DbContextOptions<StudentRegistrarDbContext>>();
-    var tenantProvider = sp.GetRequiredService<ITenantProvider>();
-    return new StudentRegistrarDbContext(options, tenantProvider);
-});
-
 // Add enhanced logging for debugging
 builder.Services.AddLogging(config =>
 {
