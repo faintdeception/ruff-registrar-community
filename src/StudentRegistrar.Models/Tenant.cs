@@ -169,13 +169,43 @@ public partial class TenantTheme
     /// </summary>
     public bool HidePoweredBy { get; set; } = false;
 
+    // Private backing field for raw custom CSS
+    private string? _customCss;
+
     /// <summary>
-    /// Additional custom CSS. 
-    /// SECURITY WARNING: This value MUST be validated and sanitized before rendering
-    /// to prevent XSS vulnerabilities. Use the SanitizeCustomCss method before use.
-    /// Never render this directly in a style tag without sanitization.
+    /// Sets the custom CSS. The value will be automatically sanitized when retrieved.
+    /// This property stores the raw CSS but always returns sanitized CSS through GetSanitizedCustomCss().
+    /// DO NOT use this property directly for rendering - use GetSanitizedCustomCss() instead.
     /// </summary>
-    public string? CustomCss { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public string? CustomCss
+    {
+        get => _customCss;
+        set => _customCss = value;
+    }
+
+    /// <summary>
+    /// Gets the sanitized custom CSS safe for rendering in HTML.
+    /// This method automatically sanitizes the CSS to prevent XSS vulnerabilities.
+    /// Always use this method when rendering custom CSS in views or APIs.
+    /// </summary>
+    /// <returns>Sanitized CSS string safe for rendering, or empty string if no custom CSS is set.</returns>
+    public string GetSanitizedCustomCss()
+    {
+        return SanitizeCustomCss(_customCss);
+    }
+
+    /// <summary>
+    /// Internal storage for custom CSS in database (stores raw value).
+    /// Use CustomCss property to set/get values in code.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("customCss")]
+    public string? CustomCssRaw
+    {
+        get => _customCss;
+        set => _customCss = value;
+    }
     
     /// <summary>
     /// Sanitizes custom CSS to prevent XSS attacks.
