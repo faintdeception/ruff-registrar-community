@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using StudentRegistrar.Data;
 using StudentRegistrar.Models;
 
@@ -15,14 +16,18 @@ public class TenantResolutionMiddleware
     private readonly ILogger<TenantResolutionMiddleware> _logger;
     private readonly DeploymentMode _deploymentMode;
     private readonly string _baseDomain;
+    private readonly IMemoryCache _cache;
+    private const int CacheExpirationMinutes = 5;
 
     public TenantResolutionMiddleware(
         RequestDelegate next,
         ILogger<TenantResolutionMiddleware> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IMemoryCache cache)
     {
         _next = next;
         _logger = logger;
+        _cache = cache;
         
         // Determine deployment mode from environment
         var modeString = configuration["DEPLOYMENT_MODE"] 
@@ -51,6 +56,10 @@ public class TenantResolutionMiddleware
         }
 
         // SaaS mode: resolve tenant from subdomain
+        // NOTE: The Host header can be spoofed by clients. While subdomain extraction 
+        // validates format, do not rely solely on this for security-critical operations.
+        // Additional authentication/authorization checks should be performed for 
+        // tenant-scoped operations beyond just subdomain-based tenant resolution.
         var host = context.Request.Host.Host;
         var subdomain = ExtractSubdomain(host);
 
@@ -65,10 +74,16 @@ public class TenantResolutionMiddleware
             return;
         }
 
-        // Look up tenant by subdomain
-        var tenant = await dbContext.Set<Tenant>()
-            .AsNoTracking()
-            .FirstOrDefaultAsync(t => t.Subdomain == subdomain && t.IsActive);
+        // Look up tenant by subdomain (with caching)
+        var cacheKey = $"tenant:subdomain:{subdomain}";
+        var tenant = await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(CacheExpirationMinutes);
+            
+            return await dbContext.Set<Tenant>()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Subdomain == subdomain && t.IsActive);
+        });
 
         if (tenant == null)
         {
@@ -229,12 +244,14 @@ public static class TenantMiddlewareExtensions
         // Register tenant context accessor as singleton (holds AsyncLocal)
         services.AddSingleton<ITenantContextAccessor, TenantContextAccessor>();
         
-        // Register ITenantContext as scoped, resolved from accessor
+        // Register ITenantContext as scoped, resolved from accessor.
+        // This may be null for routes that do not use tenant resolution;
+        // consumers that require a tenant should handle the null case explicitly
+        // or use ITenantContextAccessor to check for availability.
         services.AddScoped<ITenantContext>(sp =>
         {
             var accessor = sp.GetRequiredService<ITenantContextAccessor>();
-            return accessor.TenantContext 
-                ?? throw new InvalidOperationException("Tenant context not available. Ensure TenantResolutionMiddleware is configured.");
+            return accessor.TenantContext!;
         });
         
         return services;

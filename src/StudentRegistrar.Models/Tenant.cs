@@ -123,8 +123,9 @@ public class Tenant
         {
             return JsonSerializer.Deserialize<TenantTheme>(ThemeConfigJson) ?? new TenantTheme();
         }
-        catch
+        catch (JsonException ex)
         {
+            Console.Error.WriteLine($"Failed to deserialize TenantTheme from ThemeConfigJson for tenant {Id}: {ex.Message}");
             return new TenantTheme();
         }
     }
@@ -167,9 +168,47 @@ public class TenantTheme
     public bool HidePoweredBy { get; set; } = false;
 
     /// <summary>
-    /// Additional custom CSS (validated/sanitized before use)
+    /// Additional custom CSS. 
+    /// SECURITY WARNING: This value MUST be validated and sanitized before rendering
+    /// to prevent XSS vulnerabilities. Use the SanitizeCustomCss method before use.
+    /// Never render this directly in a style tag without sanitization.
     /// </summary>
     public string? CustomCss { get; set; }
+    
+    /// <summary>
+    /// Sanitizes custom CSS to prevent XSS attacks.
+    /// This is a basic sanitizer - consider using a robust CSS parser library for production.
+    /// </summary>
+    public static string SanitizeCustomCss(string? css)
+    {
+        if (string.IsNullOrWhiteSpace(css))
+            return string.Empty;
+            
+        // Remove potentially dangerous content
+        var sanitized = css;
+        
+        // Remove script-related content
+        sanitized = System.Text.RegularExpressions.Regex.Replace(sanitized, 
+            @"<script[^>]*>.*?</script>", "", 
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
+            
+        // Remove javascript: urls
+        sanitized = System.Text.RegularExpressions.Regex.Replace(sanitized, 
+            @"javascript\s*:", "", 
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            
+        // Remove expressions (IE specific)
+        sanitized = System.Text.RegularExpressions.Regex.Replace(sanitized, 
+            @"expression\s*\(", "", 
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            
+        // Remove import statements (could load external malicious CSS)
+        sanitized = System.Text.RegularExpressions.Regex.Replace(sanitized, 
+            @"@import", "", 
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            
+        return sanitized;
+    }
 
     /// <summary>
     /// Extensible custom fields

@@ -48,70 +48,70 @@ namespace StudentRegistrar.Data.Migrations
                 table: "Users",
                 type: "uuid",
                 nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000001"));
 
             migrationBuilder.AddColumn<Guid>(
                 name: "TenantId",
                 table: "UserProfiles",
                 type: "uuid",
                 nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000001"));
 
             migrationBuilder.AddColumn<Guid>(
                 name: "TenantId",
                 table: "Students",
                 type: "uuid",
                 nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000001"));
 
             migrationBuilder.AddColumn<Guid>(
                 name: "TenantId",
                 table: "Semesters",
                 type: "uuid",
                 nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000001"));
 
             migrationBuilder.AddColumn<Guid>(
                 name: "TenantId",
                 table: "Rooms",
                 type: "uuid",
                 nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000001"));
 
             migrationBuilder.AddColumn<Guid>(
                 name: "TenantId",
                 table: "Payments",
                 type: "uuid",
                 nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000001"));
 
             migrationBuilder.AddColumn<Guid>(
                 name: "TenantId",
                 table: "GradeRecords",
                 type: "uuid",
                 nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000001"));
 
             migrationBuilder.AddColumn<Guid>(
                 name: "TenantId",
                 table: "Enrollments",
                 type: "uuid",
                 nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000001"));
 
             migrationBuilder.AddColumn<Guid>(
                 name: "TenantId",
                 table: "Educators",
                 type: "uuid",
                 nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000001"));
 
             migrationBuilder.AddColumn<Guid>(
                 name: "TenantId",
                 table: "Courses",
                 type: "uuid",
                 nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000001"));
 
             migrationBuilder.AddColumn<string>(
                 name: "StripeAccountId",
@@ -125,21 +125,21 @@ namespace StudentRegistrar.Data.Migrations
                 table: "CourseInstructors",
                 type: "uuid",
                 nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000001"));
 
             migrationBuilder.AddColumn<Guid>(
                 name: "TenantId",
                 table: "AccountHolders",
                 type: "uuid",
                 nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000001"));
 
             migrationBuilder.AddColumn<Guid>(
                 name: "TenantId",
                 table: "AcademicYears",
                 type: "uuid",
                 nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000001"));
 
             migrationBuilder.CreateTable(
                 name: "Tenants",
