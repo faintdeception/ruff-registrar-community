@@ -168,13 +168,6 @@ var apiService = builder.AddProject<StudentRegistrar_Api>("api")
         }
     });
 
-// Portal service (marketing site, tenant onboarding)
-var portalService = builder.AddProject<StudentRegistrar_Portal>("portal")
-    .WithReference(studentRegistrarDb)
-    .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
-    .WithHttpEndpoint(port: 5002, name: "portal-http", env: "PORT")
-    .WithExternalHttpEndpoints();
-
 IResourceBuilder<ContainerResource>? frontendContainer = null;
 
 if (builder.ExecutionContext.IsRunMode)

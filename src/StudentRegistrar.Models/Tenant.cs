@@ -32,7 +32,7 @@ public enum SubscriptionStatus
 /// Represents an organization (tenant) in the multi-tenant SaaS system.
 /// In self-hosted mode, there is typically one tenant or tenant logic is bypassed.
 /// </summary>
-public class Tenant
+public partial class Tenant
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
@@ -123,8 +123,11 @@ public class Tenant
         {
             return JsonSerializer.Deserialize<TenantTheme>(ThemeConfigJson) ?? new TenantTheme();
         }
-        catch
+        catch (JsonException ex)
         {
+            // Note: Using Console.Error as this is a model class without DI access.
+            // In production, consider a logging abstraction that can be injected at the service layer.
+            Console.Error.WriteLine($"Failed to deserialize TenantTheme from ThemeConfigJson for tenant {Id}: {ex.Message}");
             return new TenantTheme();
         }
     }
@@ -139,7 +142,7 @@ public class Tenant
 /// <summary>
 /// Theme configuration for Enterprise tier whitelabeling.
 /// </summary>
-public class TenantTheme
+public partial class TenantTheme
 {
     /// <summary>
     /// Primary brand color (hex, e.g., "#3B82F6")
@@ -167,9 +170,66 @@ public class TenantTheme
     public bool HidePoweredBy { get; set; } = false;
 
     /// <summary>
-    /// Additional custom CSS (validated/sanitized before use)
+    /// Additional custom CSS. 
+    /// SECURITY WARNING: This value MUST be validated and sanitized before rendering
+    /// to prevent XSS vulnerabilities. Use the SanitizeCustomCss method before use.
+    /// Never render this directly in a style tag without sanitization.
     /// </summary>
     public string? CustomCss { get; set; }
+    
+    /// <summary>
+    /// Sanitizes custom CSS to prevent XSS attacks.
+    /// This is a basic sanitizer - consider using a robust CSS parser library for production.
+    /// </summary>
+    public static string SanitizeCustomCss(string? css)
+    {
+        if (string.IsNullOrWhiteSpace(css))
+            return string.Empty;
+        
+        // Limit input length to prevent ReDoS attacks
+        // Note: C# strings are UTF-16, so 50000 chars ≈ 100KB in memory
+        const int maxLength = 50000;
+        if (css.Length > maxLength)
+            css = css[..maxLength];
+            
+        // Remove potentially dangerous content using compiled regex patterns
+        var sanitized = css;
+        
+        // Remove script-related content
+        sanitized = ScriptTagRegex().Replace(sanitized, "");
+            
+        // Remove javascript: urls
+        sanitized = JavaScriptUrlRegex().Replace(sanitized, "");
+            
+        // Remove expressions (IE specific)
+        sanitized = ExpressionRegex().Replace(sanitized, "");
+            
+        // Remove import statements (could load external malicious CSS)
+        sanitized = ImportRegex().Replace(sanitized, "");
+            
+        return sanitized;
+    }
+    
+    // Compiled regex patterns for performance and safety
+    [System.Text.RegularExpressions.GeneratedRegex(@"<script[^>]*?>.*?</script>", 
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline, 
+        matchTimeoutMilliseconds: 1000)]
+    private static partial System.Text.RegularExpressions.Regex ScriptTagRegex();
+    
+    [System.Text.RegularExpressions.GeneratedRegex(@"javascript\s*:", 
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase,
+        matchTimeoutMilliseconds: 1000)]
+    private static partial System.Text.RegularExpressions.Regex JavaScriptUrlRegex();
+    
+    [System.Text.RegularExpressions.GeneratedRegex(@"expression\s*\(", 
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase,
+        matchTimeoutMilliseconds: 1000)]
+    private static partial System.Text.RegularExpressions.Regex ExpressionRegex();
+    
+    [System.Text.RegularExpressions.GeneratedRegex(@"@import", 
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase,
+        matchTimeoutMilliseconds: 1000)]
+    private static partial System.Text.RegularExpressions.Regex ImportRegex();
 
     /// <summary>
     /// Extensible custom fields

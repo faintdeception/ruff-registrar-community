@@ -10,14 +10,19 @@ namespace StudentRegistrar.Api.Services.Infrastructure;
 public class TenantContextProvider : ITenantProvider
 {
     private readonly ITenantContextAccessor _tenantContextAccessor;
-    private readonly IConfiguration _configuration;
+    private readonly bool _isSaaSMode;
 
     public TenantContextProvider(
         ITenantContextAccessor tenantContextAccessor, 
         IConfiguration configuration)
     {
         _tenantContextAccessor = tenantContextAccessor;
-        _configuration = configuration;
+        
+        // Cache deployment mode determination
+        var modeString = configuration["DEPLOYMENT_MODE"] 
+            ?? Environment.GetEnvironmentVariable("DEPLOYMENT_MODE") 
+            ?? "selfhosted";
+        _isSaaSMode = !modeString.Equals("selfhosted", StringComparison.OrdinalIgnoreCase);
     }
 
     public Guid? CurrentTenantId => _tenantContextAccessor.TenantContext?.TenantId;
@@ -26,14 +31,9 @@ public class TenantContextProvider : ITenantProvider
     {
         get
         {
-            // Check deployment mode
-            var modeString = _configuration["DEPLOYMENT_MODE"] 
-                ?? Environment.GetEnvironmentVariable("DEPLOYMENT_MODE") 
-                ?? "selfhosted";
-            
-            if (modeString.Equals("selfhosted", StringComparison.OrdinalIgnoreCase))
+            // Self-hosted mode: no tenant filtering
+            if (!_isSaaSMode)
             {
-                // Self-hosted mode: no tenant filtering
                 return false;
             }
 
