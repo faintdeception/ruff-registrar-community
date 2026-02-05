@@ -81,17 +81,21 @@ public class TenantAuthorizationHandler : AuthorizationHandler<TenantMembershipR
         }
 
         // Look up the user's tenant membership with caching
-        var cacheKey = $"user:tenant:{userId}";
+        // Cache key includes tenant ID to prevent cross-tenant information leakage
+        var cacheKey = $"user:tenant:{userId}:{tenantContext.TenantId}";
         var userTenantId = await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(CacheExpirationMinutes);
             
             // We use the Keycloak ID (sub claim) to find the user, then get their TenantId
-            var user = await _dbContext.Set<Models.User>()
+            // Use projection to only fetch TenantId field for better performance
+            var result = await _dbContext.Set<Models.User>()
                 .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.KeycloakId == userId);
+                .Where(u => u.KeycloakId == userId)
+                .Select(u => new { u.TenantId })
+                .FirstOrDefaultAsync();
 
-            return user?.TenantId;
+            return result?.TenantId;
         });
 
         if (userTenantId == null)
