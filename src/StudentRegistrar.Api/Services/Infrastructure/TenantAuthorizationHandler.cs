@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using StudentRegistrar.Data;
 using System.Security.Claims;
 
@@ -20,27 +21,33 @@ public class TenantMembershipRequirement : IAuthorizationRequirement
 /// Security Model:
 /// 1. TenantResolutionMiddleware resolves tenant from subdomain (Host header)
 /// 2. JWT authentication validates user identity and extracts claims
-/// 3. This handler verifies user's TenantId claim matches the resolved tenant
+/// 3. This handler verifies user's TenantId matches the resolved tenant
 /// 4. Access is denied if there's a mismatch, preventing cross-tenant access
 /// 
 /// This layered approach ensures that even if an attacker spoofs the Host header,
 /// they cannot access another tenant's data without also having valid credentials
 /// for a user in that tenant.
+/// 
+/// Performance: User-tenant mappings are cached to avoid database lookups on every request.
 /// </summary>
 public class TenantAuthorizationHandler : AuthorizationHandler<TenantMembershipRequirement>
 {
     private readonly ITenantContextAccessor _tenantContextAccessor;
     private readonly ILogger<TenantAuthorizationHandler> _logger;
     private readonly StudentRegistrarDbContext _dbContext;
+    private readonly IMemoryCache _cache;
+    private const int CacheExpirationMinutes = 5;
 
     public TenantAuthorizationHandler(
         ITenantContextAccessor tenantContextAccessor,
         ILogger<TenantAuthorizationHandler> logger,
-        StudentRegistrarDbContext dbContext)
+        StudentRegistrarDbContext dbContext,
+        IMemoryCache cache)
     {
         _tenantContextAccessor = tenantContextAccessor;
         _logger = logger;
         _dbContext = dbContext;
+        _cache = cache;
     }
 
     protected override async Task HandleRequirementAsync(
@@ -69,33 +76,41 @@ public class TenantAuthorizationHandler : AuthorizationHandler<TenantMembershipR
         if (string.IsNullOrEmpty(userId))
         {
             _logger.LogWarning("Tenant authorization failed: No user ID in claims");
-            context.Fail();
+            // Don't call Fail() - let framework handle authorization failure naturally
             return;
         }
 
-        // Look up the user's tenant membership
-        // We use the Keycloak ID (sub claim) to find the user, then check their TenantId
-        var user = await _dbContext.Set<Models.User>()
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.KeycloakId == userId);
+        // Look up the user's tenant membership with caching
+        var cacheKey = $"user:tenant:{userId}";
+        var userTenantId = await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(CacheExpirationMinutes);
+            
+            // We use the Keycloak ID (sub claim) to find the user, then get their TenantId
+            var user = await _dbContext.Set<Models.User>()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.KeycloakId == userId);
 
-        if (user == null)
+            return user?.TenantId;
+        });
+
+        if (userTenantId == null)
         {
             _logger.LogWarning(
                 "Tenant authorization failed: User {UserId} not found in database", 
                 userId);
-            context.Fail();
+            // Don't call Fail() - let framework handle authorization failure naturally
             return;
         }
 
-        if (user.TenantId != tenantContext.TenantId)
+        if (userTenantId != tenantContext.TenantId)
         {
             _logger.LogWarning(
                 "Tenant authorization failed: User {UserId} (tenant {UserTenantId}) attempted to access tenant {RequestTenantId}",
                 userId,
-                user.TenantId,
+                userTenantId,
                 tenantContext.TenantId);
-            context.Fail();
+            // Don't call Fail() - let framework handle authorization failure naturally
             return;
         }
 
@@ -119,8 +134,8 @@ public static class TenantAuthorizationExtensions
     /// </summary>
     public static IServiceCollection AddTenantAuthorization(this IServiceCollection services)
     {
-        // Register the authorization handler
-        services.AddSingleton<IAuthorizationHandler, TenantAuthorizationHandler>();
+        // Register the authorization handler as scoped (not singleton) because it depends on DbContext
+        services.AddScoped<IAuthorizationHandler, TenantAuthorizationHandler>();
         
         // Add authorization policy that requires tenant membership
         services.AddAuthorizationBuilder()
