@@ -4,15 +4,28 @@ using System.Text.Json;
 
 namespace StudentRegistrar.Models;
 
-public class CourseInstructor
+public class CourseInstructor : ITenantEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    
+    /// <summary>
+    /// The tenant (organization) this instructor belongs to.
+    /// </summary>
+    [Required]
+    public Guid TenantId { get; set; }
     
     [Required]
     public Guid CourseId { get; set; }
     
     // Optional link to AccountHolder (for co-op members who are teaching)
     public Guid? AccountHolderId { get; set; }
+    
+    /// <summary>
+    /// Stripe Connect account ID for receiving course payments.
+    /// Only used in SaaS mode for paid courses.
+    /// </summary>
+    [MaxLength(255)]
+    public string? StripeAccountId { get; set; }
     
     [Required]
     [MaxLength(100)]

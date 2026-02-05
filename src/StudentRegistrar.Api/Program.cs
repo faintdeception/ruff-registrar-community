@@ -3,7 +3,9 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using StudentRegistrar.Data;
 using StudentRegistrar.Api.Services;
+using StudentRegistrar.Api.Services.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using AutoMapper;
@@ -19,8 +21,25 @@ var allowUntrustedKeycloakCertificates =
 // Add service defaults & Aspire components
 builder.AddServiceDefaults();
 
-// Add database
-builder.AddNpgsqlDbContext<StudentRegistrarDbContext>("studentregistrar");
+// Add tenant services for multi-tenancy support
+builder.Services.AddTenantServices();
+builder.Services.AddScoped<ITenantProvider, TenantContextProvider>();
+
+// Add tenant authorization to validate user's tenant membership
+// This prevents cross-tenant access even if Host header is spoofed
+builder.Services.AddTenantAuthorization();
+
+// Add database connection configuration via Aspire
+builder.Services.AddDbContext<StudentRegistrarDbContext>(options =>
+{
+    var connectionString = builder.Configuration.GetConnectionString("studentregistrar");
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        throw new InvalidOperationException("Connection string 'studentregistrar' is not configured.");
+    }
+
+    options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.EnableRetryOnFailure());
+});
 
 // Add enhanced logging for debugging
 builder.Services.AddLogging(config =>
@@ -33,6 +52,7 @@ builder.Services.AddLogging(config =>
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddMemoryCache();
 
 // Add AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
@@ -180,7 +200,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    // Set TenantMember as the default policy for all [Authorize] attributes
+    // This ensures tenant membership is validated for all authenticated requests
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .AddRequirements(new TenantMembershipRequirement())
+        .Build();
+});
 
 var app = builder.Build();
 
@@ -255,6 +283,11 @@ if (app.Environment.IsProduction())
 
 app.UseRouting();
 app.UseCors("AllowFrontend");
+
+// Add tenant resolution middleware
+// This must come before authentication to allow tenant-specific auth configuration
+app.UseTenantResolution();
+
 app.UseAuthentication();
 app.UseAuthorization();
 

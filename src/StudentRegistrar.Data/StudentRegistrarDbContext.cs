@@ -1,15 +1,73 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using StudentRegistrar.Models;
 
 namespace StudentRegistrar.Data;
 
+/// <summary>
+/// Interface for providing the current tenant ID to the DbContext.
+/// This allows the DbContext to be constructed without a direct dependency
+/// on the API layer's ITenantContext.
+/// </summary>
+public interface ITenantProvider
+{
+    /// <summary>
+    /// Gets the current tenant ID for query filtering.
+    /// Returns null if no tenant context is available (e.g., portal routes).
+    /// </summary>
+    Guid? CurrentTenantId { get; }
+    
+    /// <summary>
+    /// Whether tenant filtering should be applied.
+    /// False in self-hosted mode or when accessing tenant-agnostic data.
+    /// </summary>
+    bool ShouldApplyTenantFilter { get; }
+}
+
+/// <summary>
+/// Default tenant provider that applies no filtering.
+/// Used for migrations and self-hosted mode.
+/// </summary>
+public class DefaultTenantProvider : ITenantProvider
+{
+    public Guid? CurrentTenantId => null;
+    public bool ShouldApplyTenantFilter => false;
+}
+
 public class StudentRegistrarDbContext : DbContext
 {
-    public StudentRegistrarDbContext(DbContextOptions<StudentRegistrarDbContext> options) : base(options)
+    private readonly ITenantProvider _tenantProvider;
+    
+    /// <summary>
+    /// Constructor for EF Core migrations and design-time tools.
+    /// This simpler constructor is used by migration tools that don't have access to DI.
+    /// It delegates to the primary constructor with a DefaultTenantProvider.
+    /// WARNING: This constructor is public for EF Core tooling compatibility.
+    /// Do not use this constructor directly in application code - use DI instead
+    /// to ensure the proper ITenantProvider is injected.
+    /// </summary>
+    public StudentRegistrarDbContext(DbContextOptions<StudentRegistrarDbContext> options) 
+        : this(options, new DefaultTenantProvider())
     {
     }
+    
+    /// <summary>
+    /// Primary constructor for runtime use with dependency injection.
+    /// This constructor receives ITenantProvider from DI and is marked with
+    /// [ActivatorUtilitiesConstructor] to ensure DI uses this constructor.
+    /// </summary>
+    [ActivatorUtilitiesConstructor]
+    public StudentRegistrarDbContext(
+        DbContextOptions<StudentRegistrarDbContext> options,
+        ITenantProvider tenantProvider) : base(options)
+    {
+        _tenantProvider = tenantProvider;
+    }
 
-    // Current entities
+    // Tenant management (not filtered by tenant)
+    public DbSet<Tenant> Tenants { get; set; }
+    
+    // Current entities (filtered by tenant in SaaS mode)
     public DbSet<Student> Students { get; set; }
     public DbSet<Course> Courses { get; set; }
     public DbSet<Enrollment> Enrollments { get; set; }
@@ -28,12 +86,40 @@ public class StudentRegistrarDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // Configure Tenant (not filtered - this is the source of tenant data)
+        modelBuilder.Entity<Tenant>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Subdomain).IsRequired().HasMaxLength(63);
+            entity.Property(e => e.SubscriptionTier).IsRequired();
+            entity.Property(e => e.SubscriptionStatus).IsRequired();
+            entity.Property(e => e.StripeCustomerId).HasMaxLength(255);
+            entity.Property(e => e.StripeSubscriptionId).HasMaxLength(255);
+            entity.Property(e => e.LogoBase64).HasMaxLength(700000);
+            entity.Property(e => e.LogoMimeType).HasMaxLength(50);
+            entity.Property(e => e.ThemeConfigJson).HasColumnType("jsonb");
+            entity.Property(e => e.KeycloakRealm).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.AdminEmail).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.IsActive).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.UpdatedAt).IsRequired();
+
+            entity.HasIndex(e => e.Subdomain).IsUnique();
+            entity.HasIndex(e => e.KeycloakRealm).IsUnique();
+        });
+
+        // Apply global query filters for tenant isolation
+        // These filters are automatically applied to all queries in SaaS mode
+        ConfigureTenantFilters(modelBuilder);
+
         // Configure Current Entities
         
         // Configure AccountHolder
         modelBuilder.Entity<AccountHolder>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.TenantId).IsRequired();
             entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.EmailAddress).IsRequired().HasMaxLength(255);
@@ -47,14 +133,16 @@ public class StudentRegistrarDbContext : DbContext
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
 
-            entity.HasIndex(e => e.EmailAddress).IsUnique();
-            entity.HasIndex(e => e.KeycloakUserId).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.EmailAddress }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.KeycloakUserId }).IsUnique();
+            entity.HasIndex(e => e.TenantId);
         });
 
         // Configure Semester
         modelBuilder.Entity<Semester>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.TenantId).IsRequired();
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Code).HasMaxLength(50);
             entity.Property(e => e.StartDate).IsRequired();
@@ -65,7 +153,8 @@ public class StudentRegistrarDbContext : DbContext
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
 
-            entity.HasIndex(e => e.Code).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.Code }).IsUnique();
+            entity.HasIndex(e => e.TenantId);
         });
 
         // Configure Student
@@ -73,6 +162,7 @@ public class StudentRegistrarDbContext : DbContext
         {
             entity.ToTable("Students");
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.TenantId).IsRequired();
             entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Grade).HasMaxLength(20);
@@ -85,6 +175,8 @@ public class StudentRegistrarDbContext : DbContext
                 .WithMany(a => a.Students)
                 .HasForeignKey(e => e.AccountHolderId)
                 .OnDelete(DeleteBehavior.Cascade);
+                
+            entity.HasIndex(e => e.TenantId);
         });
 
         // Configure Course
@@ -92,6 +184,7 @@ public class StudentRegistrarDbContext : DbContext
         {
             entity.ToTable("Courses");
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.TenantId).IsRequired();
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Code).HasMaxLength(50);
             entity.Property(e => e.Description).HasMaxLength(1000);
@@ -112,12 +205,15 @@ public class StudentRegistrarDbContext : DbContext
                 .WithMany(r => r.Courses)
                 .HasForeignKey(e => e.RoomId)
                 .OnDelete(DeleteBehavior.SetNull);
+                
+            entity.HasIndex(e => e.TenantId);
         });
 
         // Configure Room
         modelBuilder.Entity<Room>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.TenantId).IsRequired();
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Capacity).IsRequired();
             entity.Property(e => e.Notes).HasMaxLength(500);
@@ -125,13 +221,16 @@ public class StudentRegistrarDbContext : DbContext
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
 
-            entity.HasIndex(e => e.Name).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.Name }).IsUnique();
+            entity.HasIndex(e => e.TenantId);
         });
 
         // Configure CourseInstructor
         modelBuilder.Entity<CourseInstructor>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.TenantId).IsRequired();
+            entity.Property(e => e.StripeAccountId).HasMaxLength(255);
             entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Email).HasMaxLength(255);
@@ -144,6 +243,8 @@ public class StudentRegistrarDbContext : DbContext
                 .WithMany(c => c.CourseInstructors)
                 .HasForeignKey(e => e.CourseId)
                 .OnDelete(DeleteBehavior.Cascade);
+                
+            entity.HasIndex(e => e.TenantId);
         });
 
         // Configure Enrollment
@@ -151,6 +252,7 @@ public class StudentRegistrarDbContext : DbContext
         {
             entity.ToTable("Enrollments");
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.TenantId).IsRequired();
             entity.Property(e => e.EnrollmentType).IsRequired();
             entity.Property(e => e.EnrollmentDate).IsRequired();
             entity.Property(e => e.FeeAmount).HasPrecision(10, 2);
@@ -177,12 +279,14 @@ public class StudentRegistrarDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(e => new { e.StudentId, e.CourseId, e.SemesterId }).IsUnique();
+            entity.HasIndex(e => e.TenantId);
         });
 
         // Configure Payment
         modelBuilder.Entity<Payment>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.TenantId).IsRequired();
             entity.Property(e => e.Amount).HasPrecision(10, 2);
             entity.Property(e => e.PaymentDate).IsRequired();
             entity.Property(e => e.PaymentMethod).IsRequired();
@@ -201,12 +305,15 @@ public class StudentRegistrarDbContext : DbContext
                 .WithMany(en => en.Payments)
                 .HasForeignKey(e => e.EnrollmentId)
                 .OnDelete(DeleteBehavior.SetNull);
+                
+            entity.HasIndex(e => e.TenantId);
         });
 
         // Configure GradeRecord
         modelBuilder.Entity<GradeRecord>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.TenantId).IsRequired();
             entity.Property(e => e.LetterGrade).HasMaxLength(10);
             entity.Property(e => e.NumericGrade).HasPrecision(5, 2);
             entity.Property(e => e.GradePoints).HasPrecision(3, 2);
@@ -224,12 +331,15 @@ public class StudentRegistrarDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(g => g.CourseId)
                 .OnDelete(DeleteBehavior.Cascade);
+                
+            entity.HasIndex(e => e.TenantId);
         });
 
         // Configure AcademicYear
         modelBuilder.Entity<AcademicYear>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.TenantId).IsRequired();
             entity.Property(e => e.Name).IsRequired().HasMaxLength(20);
             entity.Property(e => e.StartDate).IsRequired();
             entity.Property(e => e.EndDate).IsRequired();
@@ -237,13 +347,38 @@ public class StudentRegistrarDbContext : DbContext
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
 
-            entity.HasIndex(e => e.Name).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.Name }).IsUnique();
+            entity.HasIndex(e => e.TenantId);
+        });
+
+        // Configure Educator
+        modelBuilder.Entity<Educator>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TenantId).IsRequired();
+            entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Email).HasMaxLength(255);
+            entity.Property(e => e.Phone).HasMaxLength(20);
+            entity.Property(e => e.EducatorInfoJson).HasColumnType("jsonb");
+            entity.Property(e => e.IsActive).IsRequired();
+            entity.Property(e => e.IsPrimary).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.UpdatedAt).IsRequired();
+
+            entity.HasOne(e => e.Course)
+                .WithMany()
+                .HasForeignKey(e => e.CourseId)
+                .OnDelete(DeleteBehavior.SetNull);
+                
+            entity.HasIndex(e => e.TenantId);
         });
 
         // Configure User
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.TenantId).IsRequired();
             entity.Property(e => e.Email).IsRequired().HasMaxLength(320);
             entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
@@ -253,14 +388,16 @@ public class StudentRegistrarDbContext : DbContext
             entity.Property(e => e.UpdatedAt).IsRequired();
             entity.Property(e => e.IsActive).IsRequired().HasDefaultValue(true);
 
-            entity.HasIndex(e => e.Email).IsUnique();
-            entity.HasIndex(e => e.KeycloakId).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.Email }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.KeycloakId }).IsUnique();
+            entity.HasIndex(e => e.TenantId);
         });
 
         // Configure UserProfile
         modelBuilder.Entity<UserProfile>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.TenantId).IsRequired();
             entity.Property(e => e.PhoneNumber).HasMaxLength(20);
             entity.Property(e => e.Address).HasMaxLength(500);
             entity.Property(e => e.City).HasMaxLength(100);
@@ -274,7 +411,87 @@ public class StudentRegistrarDbContext : DbContext
                 .WithOne()
                 .HasForeignKey<UserProfile>(p => p.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+                
+            entity.HasIndex(e => e.TenantId);
         });
+    }
+    
+    /// <summary>
+    /// Configures global query filters for tenant isolation.
+    /// In SaaS mode, all queries are automatically filtered by TenantId.
+    /// </summary>
+    private void ConfigureTenantFilters(ModelBuilder modelBuilder)
+    {
+        // Only apply filters if tenant filtering is enabled
+        // The filter checks ShouldApplyTenantFilter at query time. When tenant filtering
+        // is enabled but CurrentTenantId is null, the guarded comparison below evaluates
+        // to false for all rows (no tenant context => no tenant-scoped data returned).
+        // This is intentional for SaaS mode when no tenant context is available.
+        modelBuilder.Entity<AccountHolder>()
+            .HasQueryFilter(e =>
+                !_tenantProvider.ShouldApplyTenantFilter ||
+                (_tenantProvider.CurrentTenantId.HasValue &&
+                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+        modelBuilder.Entity<Student>()
+            .HasQueryFilter(e =>
+                !_tenantProvider.ShouldApplyTenantFilter ||
+                (_tenantProvider.CurrentTenantId.HasValue &&
+                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+        modelBuilder.Entity<Course>()
+            .HasQueryFilter(e =>
+                !_tenantProvider.ShouldApplyTenantFilter ||
+                (_tenantProvider.CurrentTenantId.HasValue &&
+                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+        modelBuilder.Entity<Semester>()
+            .HasQueryFilter(e =>
+                !_tenantProvider.ShouldApplyTenantFilter ||
+                (_tenantProvider.CurrentTenantId.HasValue &&
+                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+        modelBuilder.Entity<Enrollment>()
+            .HasQueryFilter(e =>
+                !_tenantProvider.ShouldApplyTenantFilter ||
+                (_tenantProvider.CurrentTenantId.HasValue &&
+                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+        modelBuilder.Entity<Payment>()
+            .HasQueryFilter(e =>
+                !_tenantProvider.ShouldApplyTenantFilter ||
+                (_tenantProvider.CurrentTenantId.HasValue &&
+                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+        modelBuilder.Entity<CourseInstructor>()
+            .HasQueryFilter(e =>
+                !_tenantProvider.ShouldApplyTenantFilter ||
+                (_tenantProvider.CurrentTenantId.HasValue &&
+                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+        modelBuilder.Entity<Educator>()
+            .HasQueryFilter(e =>
+                !_tenantProvider.ShouldApplyTenantFilter ||
+                (_tenantProvider.CurrentTenantId.HasValue &&
+                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+        modelBuilder.Entity<Room>()
+            .HasQueryFilter(e =>
+                !_tenantProvider.ShouldApplyTenantFilter ||
+                (_tenantProvider.CurrentTenantId.HasValue &&
+                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+        modelBuilder.Entity<GradeRecord>()
+            .HasQueryFilter(e =>
+                !_tenantProvider.ShouldApplyTenantFilter ||
+                (_tenantProvider.CurrentTenantId.HasValue &&
+                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+        modelBuilder.Entity<AcademicYear>()
+            .HasQueryFilter(e =>
+                !_tenantProvider.ShouldApplyTenantFilter ||
+                (_tenantProvider.CurrentTenantId.HasValue &&
+                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+        modelBuilder.Entity<User>()
+            .HasQueryFilter(e =>
+                !_tenantProvider.ShouldApplyTenantFilter ||
+                (_tenantProvider.CurrentTenantId.HasValue &&
+                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+        modelBuilder.Entity<UserProfile>()
+            .HasQueryFilter(e =>
+                !_tenantProvider.ShouldApplyTenantFilter ||
+                (_tenantProvider.CurrentTenantId.HasValue &&
+                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
     }
 
     public override int SaveChanges()

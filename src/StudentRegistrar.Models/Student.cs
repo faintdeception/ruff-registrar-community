@@ -4,9 +4,15 @@ using System.Text.Json;
 
 namespace StudentRegistrar.Models;
 
-public class Student
+public class Student : ITenantEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    
+    /// <summary>
+    /// The tenant (organization) this student belongs to.
+    /// </summary>
+    [Required]
+    public Guid TenantId { get; set; }
     
     [Required]
     public Guid AccountHolderId { get; set; }

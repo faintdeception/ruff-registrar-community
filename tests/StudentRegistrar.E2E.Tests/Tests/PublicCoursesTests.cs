@@ -14,10 +14,9 @@ public class PublicCoursesTests : BaseTest
     public void Guest_Should_Access_Courses_Page_Without_Login()
     {
         // Arrange / Act - navigate directly to courses page
-    Driver.Navigate().GoToUrl(BaseUrl + "/courses");
-    WaitForPageLoad();
-    // Wait for either courses grid or empty state to appear
-    WaitUntil(d => d.PageSource.Contains("Courses") && d.Url.Contains("/courses"));
+        NavigateToUrl(BaseUrl + "/courses");
+        // Wait for either courses grid or empty state to appear
+        WaitUntil(d => d.PageSource.Contains("Courses") && d.Url.Contains("/courses"));
 
         // Assert - URL stays on /courses (not redirected to /login)
         Driver.Url.Should().Contain("/courses", "Courses page should be accessible publicly");
@@ -38,15 +37,14 @@ public class PublicCoursesTests : BaseTest
     public void Guest_Should_See_Courses_List_If_Data_Exists()
     {
         // Navigate
-    Driver.Navigate().GoToUrl(BaseUrl + "/courses");
-    WaitForPageLoad();
-    WaitUntil(d => d.Url.Contains("/courses"));
+        NavigateToUrl(BaseUrl + "/courses");
+        WaitUntil(d => d.Url.Contains("/courses"));
 
         // If there are courses rendered, they should display course card container structure
         var page = new CoursesPage(Driver);
         var courseCount = page.GetCourseCount();
 
-    courseCount.Should().BeGreaterThan(-1, "Page should render even with zero courses");
+        courseCount.Should().BeGreaterThan(-1, "Page should render even with zero courses");
 
         // Guest should NOT have create capability
         page.CanSeeCreateButton().Should().BeFalse("Guest should not see course creation button");

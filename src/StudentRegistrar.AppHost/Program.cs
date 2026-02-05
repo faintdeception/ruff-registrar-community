@@ -12,13 +12,23 @@ var keycloakConfig = builder.Configuration.GetSection("Keycloak");
 var keycloakRealm = keycloakConfig["Realm"] ?? "student-registrar";
 var keycloakClientId = keycloakConfig["ClientId"] ?? "student-registrar";
 var keycloakPublicClientId = keycloakConfig["PublicClientId"] ?? "student-registrar-spa";
-var keycloakClientSecret = builder.ExecutionContext.IsRunMode
-    ? builder.AddParameter("keycloak-client-secret", keycloakConfig["ClientSecret"]
-        ?? throw new InvalidOperationException("Keycloak:ClientSecret is required for local development."), secret: true)
-    : builder.AddParameter("keycloak-client-secret",
+IResourceBuilder<ParameterResource>? keycloakClientSecret = null;
+
+if (builder.ExecutionContext.IsRunMode)
+{
+    var clientSecretValue = keycloakConfig["ClientSecret"];
+    if (!string.IsNullOrWhiteSpace(clientSecretValue))
+    {
+        keycloakClientSecret = builder.AddParameter("keycloak-client-secret", clientSecretValue, secret: true);
+    }
+}
+else
+{
+    keycloakClientSecret = builder.AddParameter("keycloak-client-secret",
         builder.Configuration["Keycloak:ClientSecret"]
         ?? throw new InvalidOperationException("Keycloak:ClientSecret is required for publish/deploy."),
         secret: true);
+}
 
 var keycloakAdminPassword = builder.ExecutionContext.IsRunMode
     ? builder.AddParameter("keycloak-admin-password", "admin123", secret: true)
@@ -140,9 +150,13 @@ var apiService = builder.AddProject<StudentRegistrar_Api>("api")
     .WithEnvironment("Keycloak__Realm", keycloakRealm)
     .WithEnvironment("Keycloak__ClientId", keycloakClientId)
     .WithEnvironment("Database__RunMigrations", "true")
+    .WithEnvironment("DEPLOYMENT_MODE", "selfhosted") // Default to self-hosted; override for SaaS
     .WithEnvironment(context =>
     {
-        context.EnvironmentVariables["Keycloak__ClientSecret"] = keycloakClientSecret.Resource;
+        if (keycloakClientSecret is not null)
+        {
+            context.EnvironmentVariables["Keycloak__ClientSecret"] = keycloakClientSecret.Resource;
+        }
         context.EnvironmentVariables["Keycloak__Authority"] = builder.ExecutionContext.IsRunMode
             ? keycloak.GetEndpoint("http")
             : publicKeycloakUrl!.Resource;
