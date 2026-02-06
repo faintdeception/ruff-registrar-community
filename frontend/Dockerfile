@@ -25,7 +25,7 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+COPY core/frontend/docker-entrypoint.sh /app/docker-entrypoint.sh
 
 RUN chmod +x /app/docker-entrypoint.sh
 RUN chown -R nextjs:nodejs /app/public /app/.next
