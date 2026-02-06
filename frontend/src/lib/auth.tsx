@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import { getKeycloakConfig } from './runtime-env';
 
 interface User {
   id: string;
@@ -29,12 +30,7 @@ export const useAuth = () => {
   return context;
 };
 
-const runtimeEnv = typeof window !== 'undefined' ? (window as any).__ENV__ : undefined;
-
-const KEYCLOAK_URL = runtimeEnv?.NEXT_PUBLIC_KEYCLOAK_URL || process.env.NEXT_PUBLIC_KEYCLOAK_URL || 'http://localhost:8080';
-const KEYCLOAK_REALM = runtimeEnv?.NEXT_PUBLIC_KEYCLOAK_REALM || process.env.NEXT_PUBLIC_KEYCLOAK_REALM || 'student-registrar';
-const KEYCLOAK_CLIENT_ID = runtimeEnv?.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID || process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID || 'student-registrar-spa';
-const API_BASE_URL = runtimeEnv?.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const getKeycloak = () => getKeycloakConfig();
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -83,8 +79,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
 
+      const keycloakConfig = getKeycloak();
       const tokenResponse = await fetch(
-        `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`,
+        `${keycloakConfig.url}/realms/${keycloakConfig.realm}/protocol/openid-connect/token`,
         {
           method: 'POST',
           headers: {
@@ -92,7 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           },
           body: new URLSearchParams({
             grant_type: 'refresh_token',
-            client_id: KEYCLOAK_CLIENT_ID,
+            client_id: keycloakConfig.clientId,
             refresh_token: storedRefreshToken,
           }),
         }
@@ -152,8 +149,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (username: string, password: string) => {
     try {
+      const keycloakConfig = getKeycloak();
       const tokenResponse = await fetch(
-        `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`,
+        `${keycloakConfig.url}/realms/${keycloakConfig.realm}/protocol/openid-connect/token`,
         {
           method: 'POST',
           headers: {
@@ -161,7 +159,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           },
           body: new URLSearchParams({
             grant_type: 'password',
-            client_id: KEYCLOAK_CLIENT_ID,
+            client_id: keycloakConfig.clientId,
             username,
             password,
           }),
