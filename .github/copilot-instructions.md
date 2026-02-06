@@ -88,6 +88,14 @@ dotnet ef database update --project src/StudentRegistrar.Data --startup-project 
 
 ## Testing
 
+### Testing Philosophy
+
+- **Always add E2E tests** for new user-facing features and critical flows.
+- **Prefer integration tests** for API/DB behavior and tenant isolation rules.
+- **Maintain coverage**: new code should include tests; avoid lowering overall coverage.
+- **Regression safety**: if a bug is fixed, add a test that would have caught it.
+- **CI expectations**: all test suites (unit, integration, E2E, smoke) should pass before merge.
+
 ### Unit and Integration Tests
 
 ```bash
