@@ -173,7 +173,7 @@ jobs:
       - name: Run production smoke tests
         if: ${{ env.AZURE_CREDENTIALS != '' }}
         env:
-          SMOKE_WEB_URL: ${{ secrets.PUBLIC_WEB_URL }}
+          SMOKE_WEB_URL: ${{ secrets.SMOKE_WEB_URL }}
           SMOKE_API_URL: ${{ env.PublicApiUrl }}
           SMOKE_KEYCLOAK_URL: ${{ env.PublicKeycloakUrl }}
           SMOKE_REALM: student-registrar
