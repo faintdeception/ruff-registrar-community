@@ -74,6 +74,18 @@ public partial class Tenant
     public string? StripeSubscriptionId { get; set; }
 
     /// <summary>
+    /// Stripe SetupIntent ID used to verify payment method during signup.
+    /// </summary>
+    [MaxLength(255)]
+    public string? StripeSetupIntentId { get; set; }
+
+    /// <summary>
+    /// Default Stripe PaymentMethod ID for future billing.
+    /// </summary>
+    [MaxLength(255)]
+    public string? StripePaymentMethodId { get; set; }
+
+    /// <summary>
     /// Logo image data stored as base64 (Enterprise tier only).
     /// Limited to ~500KB to keep DB manageable.
     /// </summary>
