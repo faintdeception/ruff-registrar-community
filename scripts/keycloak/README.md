@@ -18,7 +18,7 @@ This directory contains scripts and assets to bootstrap a new Keycloak instance 
 
 ### Local development
 ```bash
-KEYCLOAK_ADMIN_PASSWORD=admin123 \
+KEYCLOAK_ADMIN_PASSWORD=admin123! \
   ./scripts/keycloak/add-spa-client.sh \
   --keycloak-url http://localhost:8080
 ```
