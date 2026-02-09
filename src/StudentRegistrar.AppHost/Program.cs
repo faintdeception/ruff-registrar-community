@@ -31,7 +31,7 @@ else
 }
 
 var keycloakAdminPassword = builder.ExecutionContext.IsRunMode
-    ? builder.AddParameter("keycloak-admin-password", "admin123", secret: true)
+    ? builder.AddParameter("keycloak-admin-password", "admin123!", secret: true)
     : builder.AddParameter("keycloak-admin-password",
         builder.Configuration["Keycloak:AdminPassword"]
         ?? throw new InvalidOperationException("Keycloak:AdminPassword is required for publish/deploy."),
