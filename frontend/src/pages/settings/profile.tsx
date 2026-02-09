@@ -34,12 +34,8 @@ export default function ProfileSettings() {
                 </h3>
                 <ul className="text-sm text-blue-700 text-left max-w-md mx-auto">
                   <li className="mb-1">• Update basic profile information</li>
-                  {(isAdmin || isEducator) && (
-                    <li className="mb-1">• Edit educational biography</li>
-                  )}
-                  {(isAdmin || isEducator) && (
-                    <li className="mb-1">• Configure accepted payment types</li>
-                  )}
+                  <li className="mb-1">• Edit educational biography</li>
+                  <li className="mb-1">• Configure accepted payment types</li>
                 </ul>
               </div>
             )}

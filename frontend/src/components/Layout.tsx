@@ -29,8 +29,6 @@ export default function Layout({ children }: LayoutProps) {
   }, []);
 
   const isAdmin = user?.roles.includes('Administrator');
-  // const isEducator = user?.roles.includes('Educator');
-  // const isMember = user?.roles.includes('Member');
 
   return (
     <div className="min-h-screen bg-gray-50">
