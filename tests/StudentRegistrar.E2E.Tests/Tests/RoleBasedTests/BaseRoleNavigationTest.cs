@@ -6,7 +6,7 @@ namespace StudentRegistrar.E2E.Tests.Tests.RoleBasedTests;
 
 /// <summary>
 /// Base class for role-based navigation tests.
-/// Provides common methods for testing navigation permissions.
+/// Provides common methods for testing navigation permissions and role-based login.
 /// </summary>
 public abstract class BaseRoleNavigationTest : BaseTest
 {
@@ -77,4 +77,71 @@ public abstract class BaseRoleNavigationTest : BaseTest
         var userRoles = NavigationPage.GetUserRoles();
         userRoles.Should().NotContain(unexpectedRole, description);
     }
+
+    #region Login Methods
+
+    /// <summary>
+    /// Login as an admin user
+    /// </summary>
+    protected void LoginAsAdmin()
+    {
+        NavigateToHome();
+        WaitForPageLoad();
+        WaitForUrlContains("/login");
+
+        var loginPage = new LoginPage(Driver);
+        var username = Configuration["TestCredentials:AdminUser:Username"] ?? "admin1";
+        var password = Configuration["TestCredentials:AdminUser:Password"] ?? "AdminPass123!";
+
+        loginPage.Login(username, password);
+        WaitForPageLoad();
+        WaitForUrlContains("/");
+
+        var homePage = new HomePage(Driver);
+        homePage.IsLoggedIn().Should().BeTrue("Admin login should succeed");
+    }
+
+    /// <summary>
+    /// Login as an educator user
+    /// </summary>
+    protected void LoginAsEducator()
+    {
+        NavigateToHome();
+        WaitForPageLoad();
+        WaitForUrlContains("/login");
+
+        var loginPage = new LoginPage(Driver);
+        var username = Configuration["TestCredentials:EducatorUser:Username"] ?? "educator1";
+        var password = Configuration["TestCredentials:EducatorUser:Password"] ?? "EducatorPass123!";
+
+        loginPage.Login(username, password);
+        WaitForPageLoad();
+        WaitForUrlContains("/");
+
+        var homePage = new HomePage(Driver);
+        homePage.IsLoggedIn().Should().BeTrue("Educator login should succeed");
+    }
+
+    /// <summary>
+    /// Login as a member user
+    /// </summary>
+    protected void LoginAsMember()
+    {
+        NavigateToHome();
+        WaitForPageLoad();
+        WaitForUrlContains("/login");
+
+        var loginPage = new LoginPage(Driver);
+        var username = Configuration["TestCredentials:MemberUser:Username"] ?? "member1";
+        var password = Configuration["TestCredentials:MemberUser:Password"] ?? "MemberPass123!";
+
+        loginPage.Login(username, password);
+        WaitForPageLoad();
+        WaitForUrlContains("/");
+
+        var homePage = new HomePage(Driver);
+        homePage.IsLoggedIn().Should().BeTrue("Member login should succeed");
+    }
+
+    #endregion
 }

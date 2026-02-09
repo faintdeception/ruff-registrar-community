@@ -199,17 +199,28 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         Driver.Navigate().GoToUrl($"{BaseUrl}/settings/manage-members");
         WaitForPageLoad();
 
-        // Assert - Should be redirected or see unauthorized
-        Driver.Url.Should().Match(url => 
-            url.Contains("/unauthorized") || url.Contains("/settings/manage-members"),
-            "Educator should be redirected or see unauthorized page");
-        
-        // If on manage members page, verify protection
-        if (Driver.Url.Contains("/settings/manage-members"))
+        // Assert - Should either be redirected to unauthorized OR stay on manage-members page but it should be protected
+        if (Driver.Url.Contains("/unauthorized"))
         {
-            // The page should be protected and redirect, but if not, it should at least not load sensitive data
-            Driver.PageSource.Should().NotContain("sensitive", 
-                "Page should be protected from unauthorized access");
+            // Best case: redirected to unauthorized page
+            Driver.Url.Should().Contain("/unauthorized", 
+                "Educator should be redirected to unauthorized page");
+        }
+        else
+        {
+            // Fallback: Page might load but should be protected
+            // Either show error message or empty/placeholder content, but NOT the actual Manage Members content
+            Driver.Url.Should().Contain("/settings/manage-members", 
+                "URL should still indicate manage-members page");
+            
+            var hasProtection = Driver.PageSource.Contains("unauthorized") || 
+                               Driver.PageSource.Contains("not authorized") ||
+                               Driver.PageSource.Contains("Access Denied") ||
+                               Driver.PageSource.Contains("403") ||
+                               Driver.PageSource.Contains("Permission denied");
+            
+            hasProtection.Should().BeTrue(
+                "Page should be protected and display an authorization error message");
         }
     }
 
@@ -223,10 +234,28 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         Driver.Navigate().GoToUrl($"{BaseUrl}/settings/system");
         WaitForPageLoad();
 
-        // Assert - Should be redirected or see unauthorized
-        Driver.Url.Should().Match(url => 
-            url.Contains("/unauthorized") || url.Contains("/settings/system"),
-            "Educator should be redirected or see unauthorized page");
+        // Assert - Should either be redirected to unauthorized OR stay on system page but it should be protected
+        if (Driver.Url.Contains("/unauthorized"))
+        {
+            // Best case: redirected to unauthorized page
+            Driver.Url.Should().Contain("/unauthorized", 
+                "Educator should be redirected to unauthorized page");
+        }
+        else
+        {
+            // Fallback: Page might load but should be protected
+            Driver.Url.Should().Contain("/settings/system", 
+                "URL should still indicate system settings page");
+            
+            var hasProtection = Driver.PageSource.Contains("unauthorized") || 
+                               Driver.PageSource.Contains("not authorized") ||
+                               Driver.PageSource.Contains("Access Denied") ||
+                               Driver.PageSource.Contains("403") ||
+                               Driver.PageSource.Contains("Permission denied");
+            
+            hasProtection.Should().BeTrue(
+                "Page should be protected and display an authorization error message");
+        }
     }
 
     #endregion
@@ -303,10 +332,28 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         Driver.Navigate().GoToUrl($"{BaseUrl}/settings/manage-members");
         WaitForPageLoad();
 
-        // Assert - Should be redirected to unauthorized
-        Driver.Url.Should().Match(url => 
-            url.Contains("/unauthorized") || url.Contains("/settings/manage-members"),
-            "Member should be redirected or see unauthorized page");
+        // Assert - Should either be redirected to unauthorized OR stay on manage-members page but it should be protected
+        if (Driver.Url.Contains("/unauthorized"))
+        {
+            // Best case: redirected to unauthorized page
+            Driver.Url.Should().Contain("/unauthorized", 
+                "Member should be redirected to unauthorized page");
+        }
+        else
+        {
+            // Fallback: Page might load but should be protected
+            Driver.Url.Should().Contain("/settings/manage-members", 
+                "URL should still indicate manage-members page");
+            
+            var hasProtection = Driver.PageSource.Contains("unauthorized") || 
+                               Driver.PageSource.Contains("not authorized") ||
+                               Driver.PageSource.Contains("Access Denied") ||
+                               Driver.PageSource.Contains("403") ||
+                               Driver.PageSource.Contains("Permission denied");
+            
+            hasProtection.Should().BeTrue(
+                "Page should be protected and display an authorization error message");
+        }
     }
 
     [Fact]
@@ -319,10 +366,28 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         Driver.Navigate().GoToUrl($"{BaseUrl}/settings/system");
         WaitForPageLoad();
 
-        // Assert - Should be redirected to unauthorized
-        Driver.Url.Should().Match(url => 
-            url.Contains("/unauthorized") || url.Contains("/settings/system"),
-            "Member should be redirected or see unauthorized page");
+        // Assert - Should either be redirected to unauthorized OR stay on system page but it should be protected
+        if (Driver.Url.Contains("/unauthorized"))
+        {
+            // Best case: redirected to unauthorized page
+            Driver.Url.Should().Contain("/unauthorized", 
+                "Member should be redirected to unauthorized page");
+        }
+        else
+        {
+            // Fallback: Page might load but should be protected
+            Driver.Url.Should().Contain("/settings/system", 
+                "URL should still indicate system settings page");
+            
+            var hasProtection = Driver.PageSource.Contains("unauthorized") || 
+                               Driver.PageSource.Contains("not authorized") ||
+                               Driver.PageSource.Contains("Access Denied") ||
+                               Driver.PageSource.Contains("403") ||
+                               Driver.PageSource.Contains("Permission denied");
+            
+            hasProtection.Should().BeTrue(
+                "Page should be protected and display an authorization error message");
+        }
     }
 
     #endregion
