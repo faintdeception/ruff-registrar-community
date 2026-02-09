@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/faintdeception/ruff-registrar-community/compare/v0.2.0...v0.3.0) (2026-02-09)
+
+
+### Features
+
+* add tenancy foundation ([#1](https://github.com/faintdeception/ruff-registrar-community/issues/1)) ([54f688a](https://github.com/faintdeception/ruff-registrar-community/commit/54f688ac6111fda2312c536ffcc7629ffdcaf930))
+* enhance Keycloak configuration with tenancy support ([622bf72](https://github.com/faintdeception/ruff-registrar-community/commit/622bf729f5cbce44aa05042388ae1e2d827f3952))
+
+
+### Bug Fixes
+
+* restore frontend Dockerfile context ([8bcdb88](https://github.com/faintdeception/ruff-registrar-community/commit/8bcdb881badb5086420469e6821ceafc6d5aa516))
+* update frontend Dockerfile entrypoint path ([b4876aa](https://github.com/faintdeception/ruff-registrar-community/commit/b4876aaa80262e7717230e835d237da51cdf5626))
+
 ## [0.2.0](https://github.com/faintdeception/ruff-registrar/compare/v0.1.0...v0.2.0) (2026-02-04)
 
 
