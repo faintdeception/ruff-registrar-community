@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
+import { useState, useRef, useEffect } from 'react';
 import {
   AcademicCapIcon,
   ArrowRightOnRectangleIcon,
-  UserCircleIcon
+  UserCircleIcon,
+  Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 
 interface LayoutProps {
@@ -12,6 +14,23 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const { user, logout } = useAuth();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setIsSettingsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const isAdmin = user?.roles.includes('Administrator');
+  const isEducator = user?.roles.includes('Educator');
+  const isMember = user?.roles.includes('Member');
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -108,6 +127,64 @@ export default function Layout({ children }: LayoutProps) {
                       </span>
                     )}
                   </div>
+
+                  {/* Settings Dropdown */}
+                  <div className="relative" ref={settingsRef}>
+                    <button
+                      data-testid="settings-button"
+                      onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                      className="flex items-center space-x-1 text-gray-600 hover:text-primary-600"
+                      aria-label="Settings"
+                    >
+                      <Cog6ToothIcon className="h-5 w-5" />
+                    </button>
+
+                    {isSettingsOpen && (
+                      <div
+                        data-testid="settings-dropdown"
+                        className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50"
+                      >
+                        <div className="py-1" role="menu">
+                          {/* Profile - available to all authenticated users */}
+                          <Link
+                            href="/settings/profile"
+                            data-testid="settings-profile"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            onClick={() => setIsSettingsOpen(false)}
+                          >
+                            Profile
+                          </Link>
+
+                          {/* Manage Members - Admin only */}
+                          {isAdmin && (
+                            <Link
+                              href="/settings/manage-members"
+                              data-testid="settings-manage-members"
+                              data-admin-only="true"
+                              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              onClick={() => setIsSettingsOpen(false)}
+                            >
+                              Manage Members
+                            </Link>
+                          )}
+
+                          {/* System Settings - Admin only */}
+                          {isAdmin && (
+                            <Link
+                              href="/settings/system"
+                              data-testid="settings-system"
+                              data-admin-only="true"
+                              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              onClick={() => setIsSettingsOpen(false)}
+                            >
+                              System Settings
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <button
                     id="logout-button"
                     data-testid="logout-button"
