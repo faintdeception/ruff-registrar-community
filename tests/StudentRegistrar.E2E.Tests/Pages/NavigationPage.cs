@@ -27,6 +27,8 @@ public class NavigationPage
     private IWebElement? UserName => TryFind(By.CssSelector("[data-testid='user-name']"));
     private IWebElement? UserRoles => TryFind(By.CssSelector("[data-testid='user-roles']"));
     private IWebElement? LogoutButton => TryFind(By.CssSelector("[data-testid='logout-button']"));
+    private IWebElement? SettingsButton => TryFind(By.CssSelector("[data-testid='settings-button']"));
+    private IWebElement? SettingsDropdown => TryFind(By.CssSelector("[data-testid='settings-dropdown']"));
 
     // Navigation methods
     public void ClickNavItem(string navItem)
@@ -60,6 +62,98 @@ public class NavigationPage
     public void Logout()
     {
         LogoutButton?.Click();
+    }
+
+    // Settings menu methods
+    public void ClickSettingsButton()
+    {
+        _wait.Until(d =>
+        {
+            var el = d.FindElement(By.CssSelector("[data-testid='settings-button']"));
+            return el.Displayed && el.Enabled;
+        });
+        
+        var settingsBtn = _driver.FindElement(By.CssSelector("[data-testid='settings-button']"));
+        try
+        {
+            settingsBtn.Click();
+        }
+        catch (ElementClickInterceptedException)
+        {
+            ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", settingsBtn);
+        }
+    }
+
+    public bool IsSettingsButtonVisible()
+    {
+        try
+        {
+            var settingsBtn = _driver.FindElement(By.CssSelector("[data-testid='settings-button']"));
+            return settingsBtn.Displayed;
+        }
+        catch (NoSuchElementException)
+        {
+            return false;
+        }
+    }
+
+    public bool IsSettingsDropdownVisible()
+    {
+        try
+        {
+            var dropdown = _driver.FindElement(By.CssSelector("[data-testid='settings-dropdown']"));
+            return dropdown.Displayed;
+        }
+        catch (NoSuchElementException)
+        {
+            return false;
+        }
+    }
+
+    public void ClickSettingsMenuItem(string menuItem)
+    {
+        var selector = By.CssSelector($"[data-testid='settings-{menuItem}']");
+        _wait.Until(d =>
+        {
+            var el = d.FindElement(selector);
+            return el.Displayed && el.Enabled;
+        });
+
+        var menuItemElement = _driver.FindElement(selector);
+        try
+        {
+            menuItemElement.Click();
+        }
+        catch (ElementClickInterceptedException)
+        {
+            ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", menuItemElement);
+        }
+    }
+
+    public bool IsSettingsMenuItemVisible(string menuItem)
+    {
+        try
+        {
+            var item = _driver.FindElement(By.CssSelector($"[data-testid='settings-{menuItem}']"));
+            return item.Displayed;
+        }
+        catch (NoSuchElementException)
+        {
+            return false;
+        }
+    }
+
+    public bool IsSettingsMenuItemPresent(string menuItem)
+    {
+        try
+        {
+            _driver.FindElement(By.CssSelector($"[data-testid='settings-{menuItem}']"));
+            return true;
+        }
+        catch (NoSuchElementException)
+        {
+            return false;
+        }
     }
 
     // Verification methods
