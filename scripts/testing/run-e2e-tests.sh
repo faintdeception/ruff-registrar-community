@@ -105,7 +105,7 @@ check_application() {
         return 0
     else
         print_error "Application is not running at http://localhost:3001"
-        echo "Please start the application with: docker-compose up frontend"
+        echo "Please start the application with: aspire run"
         return 1
     fi
 }
