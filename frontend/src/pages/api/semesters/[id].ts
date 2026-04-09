@@ -7,7 +7,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   
   // Get token from Authorization header
   const authHeader = req.headers.authorization;
-  var requestHeaders;
+  let requestHeaders;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     requestHeaders = {
         'Content-Type': 'application/json',
