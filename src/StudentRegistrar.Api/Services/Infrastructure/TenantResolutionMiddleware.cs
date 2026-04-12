@@ -79,7 +79,7 @@ public class TenantResolutionMiddleware
         //
         // Controllers using [Authorize] will automatically enforce tenant membership
         // via the "TenantMember" policy configured in TenantAuthorizationHandler.
-        var host = context.Request.Host.Host;
+        var host = GetEffectiveHost(context);
         var subdomain = ExtractSubdomain(host);
 
         if (string.IsNullOrEmpty(subdomain))
@@ -175,6 +175,17 @@ public class TenantResolutionMiddleware
         }
 
         return subdomain;
+    }
+
+    private static string GetEffectiveHost(HttpContext context)
+    {
+        var forwardedHost = context.Request.Headers["X-Forwarded-Host"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(forwardedHost))
+        {
+            return forwardedHost.Split(',')[0].Trim();
+        }
+
+        return context.Request.Host.Value ?? string.Empty;
     }
 
     private static bool IsValidSubdomain(string subdomain)

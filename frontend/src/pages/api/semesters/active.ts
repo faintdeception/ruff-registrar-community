@@ -3,6 +3,8 @@ import { getApiBaseUrl } from '@/lib/runtime-env';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const API_BASE_URL = getApiBaseUrl();
+  const forwardedHost = req.headers.host;
+  const forwardedProto = (req.headers['x-forwarded-proto'] as string | undefined) ?? 'http';
   
   // Get token from Authorization header
   const authHeader = req.headers.authorization;
@@ -15,7 +17,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   else {
     requestHeaders = {
         'Authorization': authHeader,
+        'X-Forwarded-Host': forwardedHost ?? '',
+        'X-Forwarded-Proto': forwardedProto,
         'Content-Type': 'application/json',
+    };
+  }
+
+  if ((!authHeader || !authHeader.startsWith('Bearer ')) && forwardedHost) {
+    requestHeaders = {
+      ...requestHeaders,
+      'X-Forwarded-Host': forwardedHost,
+      'X-Forwarded-Proto': forwardedProto,
     };
   }
 

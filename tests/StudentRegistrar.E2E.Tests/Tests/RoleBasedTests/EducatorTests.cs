@@ -64,6 +64,7 @@ public class EducatorTests : BaseTest
     }
 
     [Fact]
+    [Trait("Suite", "SaaSCompatibility")]
     public void Educator_Should_Access_Educator_Section()
     {
         // Arrange - Login as educator

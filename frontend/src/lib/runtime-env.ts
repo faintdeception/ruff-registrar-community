@@ -60,7 +60,7 @@ const getTenantRealmFromHost = (baseDomain: string): string | null => {
 
   const hostname = window.location.hostname.toLowerCase();
 
-  if (!hostname || hostname === 'localhost' || hostname.endsWith('.localhost')) {
+  if (!hostname || hostname === 'localhost') {
     return null;
   }
 
