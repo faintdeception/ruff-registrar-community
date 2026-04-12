@@ -10,6 +10,7 @@ namespace StudentRegistrar.E2E.Tests.Tests.RoleBasedTests;
 public class AdminTests : BaseTest
 {
     [Fact]
+    [Trait("Suite", "SaaSCompatibility")]
     public void Admin_Should_Login_Successfully()
     {
         // Arrange
@@ -163,14 +164,6 @@ public class AdminTests : BaseTest
             var errorMatches = errorPattern.Matches(pageSource);
             var errorText = errorMatches.Count > 0 ? string.Join("; ", errorMatches.Take(3).Select(m => m.Value.Trim())) : "No specific errors found";
             
-            // Log the current state for debugging
-            Console.WriteLine($"DEBUG: Current URL: {currentUrl}");
-            Console.WriteLine($"DEBUG: Page Title: {pageTitle}");
-            Console.WriteLine($"DEBUG: {debugInfo}");
-            Console.WriteLine($"DEBUG: Error text: {errorText}");
-            Console.WriteLine($"DEBUG: Form still visible: {pageSource.Contains("submit-create-member")}");
-            Console.WriteLine($"DEBUG: Success message div exists: {pageSource.Contains("data-testid=\"success-message\"")}");
-            
             throw new Exception($"No success or error message appeared after member creation. Current URL: {currentUrl}, Page Title: {pageTitle}, Debug: {debugInfo}, Errors: {errorText}");
         }
     }
@@ -192,15 +185,17 @@ public class AdminTests : BaseTest
     // }
 
     [Fact]
+    [Trait("Suite", "SaaSCompatibility")]
     public void Admin_Should_Access_Semester_Management()
     {
         // Arrange - Login as admin
         LoginAsAdmin();
 
         // Act - Navigate to semesters page
-        var semestersLink = Driver.FindElement(By.LinkText("Semesters"));
-        semestersLink.Click();
+        var navigationPage = new NavigationPage(Driver);
+        navigationPage.ClickSemesters();
         WaitForPageLoad();
+        WaitUntil(d => d.Url.Contains("/semesters") || d.PageSource.Contains("semester", StringComparison.OrdinalIgnoreCase));
 
         // Assert - Should be on semesters page
         Driver.Url.Should().Contain("/semesters", "Should navigate to semesters page");
@@ -448,7 +443,6 @@ public class AdminTests : BaseTest
         if (semestersPage.IsErrorDisplayed())
         {
             var errorMessage = semestersPage.GetErrorMessage();
-            Console.WriteLine($"Semester creation failed with error: {errorMessage}");
             
             // Cancel out of the modal and fail the test with a descriptive message
             semestersPage.CancelCreate();
@@ -999,6 +993,7 @@ public class AdminTests : BaseTest
     }
 
     [Fact]
+    [Trait("Suite", "SaaSCompatibility")]
     public void Admin_Should_Create_New_Room_Successfully()
     {
         // Arrange
@@ -1010,7 +1005,7 @@ public class AdminTests : BaseTest
 
         // Act - Create a new room
         var createButton = Driver.FindElement(By.Id("create-room-btn"));
-    createButton.Click();
+        ClickWithOverlayFallback(createButton);
     WaitForPageLoad();
     WaitUntil(d => d.FindElements(By.Id("room-name-input")).Any());
 
@@ -1030,7 +1025,7 @@ public class AdminTests : BaseTest
 
         // Submit the form
         var saveButton = Driver.FindElement(By.Id("save-room-btn"));
-    saveButton.Click();
+        ClickWithOverlayFallback(saveButton);
     WaitForPageLoad();
     WaitUntil(d => d.PageSource.Contains(uniqueName));
 
@@ -1170,7 +1165,7 @@ public class AdminTests : BaseTest
     private void CreateTestRoom(string name, string roomType, int capacity, string notes)
     {
         var createButton = Driver.FindElement(By.Id("create-room-btn"));
-    createButton.Click();
+        ClickWithOverlayFallback(createButton);
     WaitForPageLoad();
     WaitUntil(d => d.FindElements(By.Id("room-name-input")).Any());
 
@@ -1191,9 +1186,30 @@ public class AdminTests : BaseTest
         }
 
         var saveButton = Driver.FindElement(By.Id("save-room-btn"));
-    saveButton.Click();
+        ClickWithOverlayFallback(saveButton);
     WaitForPageLoad();
     WaitUntil(d => d.PageSource.Contains(name));
+    }
+
+    private void ClickWithOverlayFallback(IWebElement element)
+    {
+        try
+        {
+            element.Click();
+        }
+        catch (ElementClickInterceptedException)
+        {
+            try
+            {
+                WaitUntil(d => !d.FindElements(By.CssSelector("nextjs-portal")).Any(portal => portal.Displayed), 5, 200);
+            }
+            catch
+            {
+            }
+
+            ((IJavaScriptExecutor)Driver).ExecuteScript("arguments[0].scrollIntoView({block:'center'});", element);
+            ((IJavaScriptExecutor)Driver).ExecuteScript("arguments[0].click();", element);
+        }
     }
 
     #endregion

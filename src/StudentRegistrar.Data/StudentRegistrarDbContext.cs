@@ -432,80 +432,86 @@ public class StudentRegistrarDbContext : DbContext
         modelBuilder.Entity<AccountHolder>()
             .HasQueryFilter(e =>
                 !_tenantProvider.ShouldApplyTenantFilter ||
-                (_tenantProvider.CurrentTenantId.HasValue &&
-                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+                e.TenantId == _tenantProvider.CurrentTenantId);
         modelBuilder.Entity<Student>()
             .HasQueryFilter(e =>
                 !_tenantProvider.ShouldApplyTenantFilter ||
-                (_tenantProvider.CurrentTenantId.HasValue &&
-                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+                e.TenantId == _tenantProvider.CurrentTenantId);
         modelBuilder.Entity<Course>()
             .HasQueryFilter(e =>
                 !_tenantProvider.ShouldApplyTenantFilter ||
-                (_tenantProvider.CurrentTenantId.HasValue &&
-                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+                e.TenantId == _tenantProvider.CurrentTenantId);
         modelBuilder.Entity<Semester>()
             .HasQueryFilter(e =>
                 !_tenantProvider.ShouldApplyTenantFilter ||
-                (_tenantProvider.CurrentTenantId.HasValue &&
-                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+                e.TenantId == _tenantProvider.CurrentTenantId);
         modelBuilder.Entity<Enrollment>()
             .HasQueryFilter(e =>
                 !_tenantProvider.ShouldApplyTenantFilter ||
-                (_tenantProvider.CurrentTenantId.HasValue &&
-                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+                e.TenantId == _tenantProvider.CurrentTenantId);
         modelBuilder.Entity<Payment>()
             .HasQueryFilter(e =>
                 !_tenantProvider.ShouldApplyTenantFilter ||
-                (_tenantProvider.CurrentTenantId.HasValue &&
-                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+                e.TenantId == _tenantProvider.CurrentTenantId);
         modelBuilder.Entity<CourseInstructor>()
             .HasQueryFilter(e =>
                 !_tenantProvider.ShouldApplyTenantFilter ||
-                (_tenantProvider.CurrentTenantId.HasValue &&
-                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+                e.TenantId == _tenantProvider.CurrentTenantId);
         modelBuilder.Entity<Educator>()
             .HasQueryFilter(e =>
                 !_tenantProvider.ShouldApplyTenantFilter ||
-                (_tenantProvider.CurrentTenantId.HasValue &&
-                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+                e.TenantId == _tenantProvider.CurrentTenantId);
         modelBuilder.Entity<Room>()
             .HasQueryFilter(e =>
                 !_tenantProvider.ShouldApplyTenantFilter ||
-                (_tenantProvider.CurrentTenantId.HasValue &&
-                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+                e.TenantId == _tenantProvider.CurrentTenantId);
         modelBuilder.Entity<GradeRecord>()
             .HasQueryFilter(e =>
                 !_tenantProvider.ShouldApplyTenantFilter ||
-                (_tenantProvider.CurrentTenantId.HasValue &&
-                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+                e.TenantId == _tenantProvider.CurrentTenantId);
         modelBuilder.Entity<AcademicYear>()
             .HasQueryFilter(e =>
                 !_tenantProvider.ShouldApplyTenantFilter ||
-                (_tenantProvider.CurrentTenantId.HasValue &&
-                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+                e.TenantId == _tenantProvider.CurrentTenantId);
         modelBuilder.Entity<User>()
             .HasQueryFilter(e =>
                 !_tenantProvider.ShouldApplyTenantFilter ||
-                (_tenantProvider.CurrentTenantId.HasValue &&
-                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+                e.TenantId == _tenantProvider.CurrentTenantId);
         modelBuilder.Entity<UserProfile>()
             .HasQueryFilter(e =>
                 !_tenantProvider.ShouldApplyTenantFilter ||
-                (_tenantProvider.CurrentTenantId.HasValue &&
-                 e.TenantId == _tenantProvider.CurrentTenantId.Value));
+                e.TenantId == _tenantProvider.CurrentTenantId);
     }
 
     public override int SaveChanges()
     {
+        ApplyTenantIds();
         UpdateTimestamps();
         return base.SaveChanges();
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        ApplyTenantIds();
         UpdateTimestamps();
         return base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void ApplyTenantIds()
+    {
+        if (!_tenantProvider.CurrentTenantId.HasValue)
+        {
+            return;
+        }
+
+        var currentTenantId = _tenantProvider.CurrentTenantId.Value;
+        var entries = ChangeTracker.Entries<ITenantEntity>()
+            .Where(entry => entry.State == EntityState.Added && entry.Entity.TenantId == Guid.Empty);
+
+        foreach (var entry in entries)
+        {
+            entry.Entity.TenantId = currentTenantId;
+        }
     }
 
     private void UpdateTimestamps()

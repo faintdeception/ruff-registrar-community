@@ -50,6 +50,7 @@ public class LoginTests : BaseTest
     }
 
     [Fact]
+    [Trait("Suite", "SaaSCompatibility")]
     public void Should_Login_Successfully_With_Valid_Credentials()
     {
         // Arrange

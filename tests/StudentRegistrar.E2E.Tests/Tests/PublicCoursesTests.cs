@@ -11,6 +11,7 @@ namespace StudentRegistrar.E2E.Tests.Tests;
 public class PublicCoursesTests : BaseTest
 {
     [Fact]
+    [Trait("Suite", "SaaSCompatibility")]
     public void Guest_Should_Access_Courses_Page_Without_Login()
     {
         // Arrange / Act - navigate directly to courses page

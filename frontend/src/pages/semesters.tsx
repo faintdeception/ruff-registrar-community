@@ -36,6 +36,11 @@ interface CreateSemesterDto {
   isActive: boolean;
 }
 
+interface ApiErrorResponse {
+  message?: string;
+  debug?: string;
+}
+
 export default function SemestersPage() {
   const { user } = useAuth();
   const [semesters, setSemesters] = useState<Semester[]>([]);
@@ -53,39 +58,14 @@ export default function SemestersPage() {
     isActive: false
   });
   const [submitting, setSubmitting] = useState(false);
-  const [debugClaims, setDebugClaims] = useState<any>(null);
 
   const isAdmin = user?.roles.includes('Administrator');
 
   useEffect(() => {
     if (isAdmin) {
       fetchSemesters();
-      // Debug: fetch claims to see what's happening
-      debugFetchClaims();
     }
   }, [isAdmin]);
-
-  const debugFetchClaims = async () => {
-    try {
-      const token = localStorage.getItem('accessToken');
-      if (!token) return;
-
-      const response = await fetch('/api/debug/claims', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const claims = await response.json();
-        setDebugClaims(claims);
-        console.log('Debug Claims:', claims);
-      }
-    } catch (err) {
-      console.error('Error fetching debug claims:', err);
-    }
-  };
 
   const fetchSemesters = async () => {
     try {
@@ -212,7 +192,12 @@ export default function SemestersPage() {
       }
 
       if (!response.ok) {
-        throw new Error('Failed to save semester');
+        const errorPayload = await readApiError(response);
+        const details = [errorPayload.message, errorPayload.debug]
+          .filter((value): value is string => Boolean(value && value.trim()))
+          .join(' | ');
+
+        throw new Error(details || 'Failed to save semester');
       }
 
       await fetchSemesters();
@@ -602,4 +587,30 @@ export default function SemestersPage() {
       </main>
     </ProtectedRoute>
   );
+}
+
+async function readApiError(response: Response): Promise<ApiErrorResponse> {
+  const contentType = response.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    try {
+      return await response.json();
+    } catch {
+      return {
+        message: `Backend error: ${response.status} ${response.statusText}`
+      };
+    }
+  }
+
+  try {
+    const text = await response.text();
+    return {
+      message: `Backend error: ${response.status} ${response.statusText}`,
+      debug: text.slice(0, 200)
+    };
+  } catch {
+    return {
+      message: `Backend error: ${response.status} ${response.statusText}`
+    };
+  }
 }

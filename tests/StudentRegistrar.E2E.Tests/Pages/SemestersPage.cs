@@ -69,17 +69,10 @@ public class SemestersPage
         SemesterCodeInput.Clear();
         SemesterCodeInput.SendKeys(code);
         
-        StartDateInput.Clear();
-        StartDateInput.SendKeys(startDate.ToString("MM/dd/yyyy"));
-        
-        EndDateInput.Clear();
-        EndDateInput.SendKeys(endDate.ToString("MM/dd/yyyy"));
-
-        RegistrationStartDateInput.Clear();
-        RegistrationStartDateInput.SendKeys(regStartDate.ToString("MM/dd/yyyy"));
-
-        RegistrationEndDateInput.Clear();
-        RegistrationEndDateInput.SendKeys(regEndDate.ToString("MM/dd/yyyy"));
+        SetInputValue(StartDateInput, startDate.ToString("yyyy-MM-dd"));
+        SetInputValue(EndDateInput, endDate.ToString("yyyy-MM-dd"));
+        SetInputValue(RegistrationStartDateInput, regStartDate.ToString("yyyy-MM-dd"));
+        SetInputValue(RegistrationEndDateInput, regEndDate.ToString("yyyy-MM-dd"));
 
         if (isActive != IsActiveCheckbox.Selected)
         {
@@ -89,19 +82,12 @@ public class SemestersPage
 
     public void SaveSemester()
     {
-        SaveSemesterButton.Click();
-        
-        // Wait for error or modal close
-        // try {
-        //     _wait.Until(d => IsErrorDisplayed() || !SemesterModal.Displayed);
-        // } catch (WebDriverTimeoutException) {
-        //     // If neither error nor close, log and continue
-        //     Console.WriteLine("Timeout waiting for error or modal close after save");
-        // }
+        TryClickWithRetry(SaveSemesterButton);
+
         if (IsErrorDisplayed()) {
-            Console.WriteLine($"Error during save: {GetErrorMessage()}");
             return;
         }
+
         WaitForModalToClose();
     }
 
@@ -245,32 +231,21 @@ public class SemestersPage
 
     public void WaitForModalToClose()
     {
-        try
-        {
-            _wait.Until(d => {
-                try
-                {
-                    var modal = d.FindElement(By.Id("semester-modal"));
-                    return !modal.Displayed;
-                }
-                catch (NoSuchElementException)
-                {
-                    return true; // Modal is gone
-                }
-                catch (OpenQA.Selenium.StaleElementReferenceException)
-                {
-                    return true; // Modal element is stale, means it's been removed
-                }
-            });
-        }
-        catch (OpenQA.Selenium.WebDriverTimeoutException)
-        {
-            Console.WriteLine("Modal did not close within timeout period");
-            // Take a screenshot or log page source for debugging
-            Console.WriteLine($"Current URL: {_driver.Url}");
-            Console.WriteLine($"Page contains modal: {_driver.PageSource.Contains("semester-modal")}");
-            throw;
-        }
+        _wait.Until(d => {
+            try
+            {
+                var modal = d.FindElement(By.Id("semester-modal"));
+                return !modal.Displayed;
+            }
+            catch (NoSuchElementException)
+            {
+                return true;
+            }
+            catch (OpenQA.Selenium.StaleElementReferenceException)
+            {
+                return true;
+            }
+        });
     }
 
     // Helper methods
@@ -338,5 +313,19 @@ public class SemestersPage
             ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].scrollIntoView({block:'center'});", element);
             ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", element);
         }
+    }
+
+    private void SetInputValue(IWebElement element, string value)
+    {
+        ((IJavaScriptExecutor)_driver).ExecuteScript(
+                        @"const input = arguments[0];
+                            const nextValue = arguments[1];
+                            const descriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), 'value')
+                                || Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+                            descriptor.set.call(input, nextValue);
+                            input.dispatchEvent(new Event('input', { bubbles: true }));
+                            input.dispatchEvent(new Event('change', { bubbles: true }));",
+            element,
+            value);
     }
 }

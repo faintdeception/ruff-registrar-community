@@ -11,8 +11,11 @@ using System.Text;
 using AutoMapper;
 using StudentRegistrar.Api.DTOs;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
+using System.Collections.Concurrent;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
+var httpContextAccessor = new HttpContextAccessor();
 
 var allowUntrustedKeycloakCertificates =
     builder.Configuration.GetValue<bool?>("Keycloak:AllowUntrustedCertificates")
@@ -20,6 +23,7 @@ var allowUntrustedKeycloakCertificates =
 
 // Add service defaults & Aspire components
 builder.AddServiceDefaults();
+builder.Services.AddSingleton<IHttpContextAccessor>(httpContextAccessor);
 
 // Add tenant services for multi-tenancy support
 builder.Services.AddTenantServices();
@@ -105,8 +109,9 @@ builder.Services.AddCors(options =>
             ?? Array.Empty<string>();
         var defaultOrigins = new[] { "http://localhost:3000", "http://localhost:3001" };
         var allowedOrigins = configuredOrigins.Length > 0 ? configuredOrigins : defaultOrigins;
+        var baseDomain = builder.Configuration["Tenancy:BaseDomain"] ?? "ruffregistrar.com";
 
-        policy.WithOrigins(allowedOrigins)
+        policy.SetIsOriginAllowed(origin => IsAllowedCorsOrigin(origin, allowedOrigins, baseDomain))
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -120,18 +125,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         var realm = builder.Configuration["Keycloak:Realm"] ?? "student-registrar";
         var clientId = builder.Configuration["Keycloak:ClientId"] ?? "student-registrar";
         var publicClientId = builder.Configuration["Keycloak:PublicClientId"] ?? "student-registrar-spa";
-        var authority = builder.Configuration["Keycloak:Authority"];
-        if (string.IsNullOrWhiteSpace(authority))
+        var authorityBaseUrl = builder.Configuration["Keycloak:Authority"];
+        if (string.IsNullOrWhiteSpace(authorityBaseUrl))
         {
             var keycloakUrl = builder.Configuration.GetConnectionString("keycloak") ?? "http://localhost:8080";
-            authority = keycloakUrl;
+            authorityBaseUrl = keycloakUrl;
         }
 
-        authority = authority!.TrimEnd('/');
-        if (!authority.Contains("/realms/", StringComparison.OrdinalIgnoreCase))
-        {
-            authority = $"{authority}/realms/{realm}";
-        }
+        authorityBaseUrl = authorityBaseUrl!.TrimEnd('/');
+        var authority = BuildRealmAuthority(authorityBaseUrl, realm);
 
         options.Authority = authority;
         options.Audience = clientId;
@@ -152,7 +154,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudiences = new[] { clientId, publicClientId, "account" }, // Accept configured audiences
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ClockSkew = TimeSpan.Zero
+            ClockSkew = TimeSpan.Zero,
+            IssuerSigningKeyResolver = (_, _, keyId, _) =>
+            {
+                var expectedIssuer = ResolveExpectedIssuer(httpContextAccessor.HttpContext, authorityBaseUrl, realm);
+                return ResolveSigningKeys(expectedIssuer, keyId, allowUntrustedKeycloakCertificates);
+            },
+            IssuerValidator = (issuer, _, _) =>
+            {
+                var expectedIssuer = ResolveExpectedIssuer(httpContextAccessor.HttpContext, authorityBaseUrl, realm);
+
+                if (!string.Equals(NormalizeIssuer(issuer), NormalizeIssuer(expectedIssuer), StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new SecurityTokenInvalidIssuerException($"IDX10205: Issuer validation failed. Issuer: '{issuer}'. Expected: '{expectedIssuer}'.");
+                }
+
+                return issuer;
+            }
         };
         
         // Configure JWT token handling for Keycloak roles
@@ -295,3 +313,118 @@ app.MapControllers();
 app.MapDefaultEndpoints();
 
 await app.RunAsync();
+
+static string ResolveExpectedIssuer(HttpContext? httpContext, string authorityBaseUrl, string defaultRealm)
+{
+    var tenantContextAccessor = httpContext?.RequestServices.GetService<ITenantContextAccessor>();
+    var tenantRealm = tenantContextAccessor?.TenantContext?.Tenant?.KeycloakRealm;
+    var realm = string.IsNullOrWhiteSpace(tenantRealm) ? defaultRealm : tenantRealm;
+
+    return BuildRealmAuthority(authorityBaseUrl, realm);
+}
+
+static string BuildRealmAuthority(string authorityBaseUrl, string realm)
+{
+    var normalizedAuthority = authorityBaseUrl.TrimEnd('/');
+    var realmsSegment = "/realms/";
+    var realmIndex = normalizedAuthority.IndexOf(realmsSegment, StringComparison.OrdinalIgnoreCase);
+
+    if (realmIndex >= 0)
+    {
+        normalizedAuthority = normalizedAuthority[..realmIndex];
+    }
+
+    return $"{normalizedAuthority}{realmsSegment}{realm}";
+}
+
+static string NormalizeIssuer(string issuer)
+{
+    return issuer.TrimEnd('/');
+}
+
+static bool IsAllowedCorsOrigin(string origin, IReadOnlyCollection<string> allowedOrigins, string baseDomain)
+{
+    if (allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase))
+    {
+        return true;
+    }
+
+    if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+    {
+        return false;
+    }
+
+    if (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+        && !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+    {
+        return false;
+    }
+
+    var normalizedBaseDomain = baseDomain.Trim().ToLowerInvariant();
+    var host = uri.Host.ToLowerInvariant();
+
+    if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase))
+    {
+        return true;
+    }
+
+    if (string.IsNullOrWhiteSpace(normalizedBaseDomain))
+    {
+        return false;
+    }
+
+    if (string.Equals(host, normalizedBaseDomain, StringComparison.OrdinalIgnoreCase))
+    {
+        return true;
+    }
+
+    return host.EndsWith($".{normalizedBaseDomain}", StringComparison.OrdinalIgnoreCase);
+}
+
+static IReadOnlyCollection<SecurityKey> ResolveSigningKeys(string issuer, string? keyId, bool allowUntrustedCertificates)
+{
+    var normalizedIssuer = NormalizeIssuer(issuer);
+    var cachedKeys = SigningKeyCache.Keys.AddOrUpdate(
+        normalizedIssuer,
+        _ => FetchSigningKeys(normalizedIssuer, allowUntrustedCertificates),
+        (_, existing) => existing.ExpiresAt > DateTimeOffset.UtcNow
+            ? existing
+            : FetchSigningKeys(normalizedIssuer, allowUntrustedCertificates));
+
+    if (string.IsNullOrWhiteSpace(keyId))
+    {
+        return cachedKeys.Keys;
+    }
+
+    var matchingKeys = cachedKeys.Keys.Where(key => string.Equals(key.KeyId, keyId, StringComparison.Ordinal)).ToArray();
+    return matchingKeys.Length > 0 ? matchingKeys : cachedKeys.Keys;
+}
+
+static CachedSigningKeys FetchSigningKeys(string issuer, bool allowUntrustedCertificates)
+{
+    using var handler = new HttpClientHandler();
+    if (allowUntrustedCertificates)
+    {
+        handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+    }
+
+    using var client = new HttpClient(handler);
+    var jwksUrl = $"{NormalizeIssuer(issuer)}/protocol/openid-connect/certs";
+    var response = client.GetAsync(jwksUrl).GetAwaiter().GetResult();
+    response.EnsureSuccessStatusCode();
+
+    var jwksJson = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+    var jwks = new JsonWebKeySet(jwksJson);
+
+    return new CachedSigningKeys(
+        jwks.GetSigningKeys().ToArray(),
+        DateTimeOffset.UtcNow.AddMinutes(10));
+}
+
+file sealed record CachedSigningKeys(IReadOnlyCollection<SecurityKey> Keys, DateTimeOffset ExpiresAt);
+
+file static class SigningKeyCache
+{
+    internal static ConcurrentDictionary<string, CachedSigningKeys> Keys { get; } = new(StringComparer.OrdinalIgnoreCase);
+}
