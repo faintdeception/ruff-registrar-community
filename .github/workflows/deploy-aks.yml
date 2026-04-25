@@ -27,6 +27,7 @@ jobs:
       Postgres__Password: ${{ secrets.POSTGRES_PASSWORD }}
       PublicApiUrl: ${{ secrets.PUBLIC_API_URL }}
       PublicKeycloakUrl: ${{ secrets.PUBLIC_KEYCLOAK_URL }}
+      DataProtection__KeysDirectory: ${{ vars.DATA_PROTECTION_KEYS_DIRECTORY }}
 
     steps:
       - name: Checkout

@@ -23,13 +23,19 @@ This workflow is **not production-ready** yet. It does **not** deploy to a clust
 - `AKS_CLUSTER_NAME`: AKS cluster name
 - `ACR_LOGIN_SERVER`: e.g. `myregistry.azurecr.io`
 
+## Required GitHub variables
+
+- `DATA_PROTECTION_KEYS_DIRECTORY`: Mounted path inside the API container where ASP.NET Core Data Protection keys persist across pod restarts
+
 ## Required follow-up work
 
 - Define Kubernetes manifests in deploy/aks (or add a tool to convert the Aspire manifest to Kubernetes manifests).
 - Wire a `kubectl apply` step using those manifests.
 - Decide how secrets and config are injected at deploy time.
+- Add a persistent volume or equivalent storage for the API and mount it at the same path used by `DATA_PROTECTION_KEYS_DIRECTORY` before the first production rollout.
 
 ## Notes
 
 - Keycloak production hardening should run it in non-dev mode (`start`, not `start-dev`) and back it with a persistent Postgres DB.
 - The frontend uses a public SPA client for browser login; production hardening (PKCE/BFF, stricter CORS/redirects) is still recommended.
+- The API now fails fast outside Development if `DataProtection__KeysDirectory` is not configured. That prevents silent use of ephemeral keys that would make encrypted tenant settings unreadable after restart.

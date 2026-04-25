@@ -12,7 +12,7 @@ export const getRuntimeEnv = (): RuntimeEnv | undefined => {
     return undefined;
   }
 
-  return (window as any).__ENV__ as RuntimeEnv | undefined;
+  return (window as Window & { __ENV__?: RuntimeEnv }).__ENV__;
 };
 
 export const getApiBaseUrl = (): string => {

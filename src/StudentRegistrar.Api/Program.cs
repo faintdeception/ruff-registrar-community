@@ -5,8 +5,10 @@ using StudentRegistrar.Data;
 using StudentRegistrar.Api.Services;
 using StudentRegistrar.Api.Services.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
+using System.IO;
 using System.Text;
 using AutoMapper;
 using StudentRegistrar.Api.DTOs;
@@ -58,6 +60,23 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddMemoryCache();
 
+var dataProtectionBuilder = builder.Services
+    .AddDataProtection()
+    .SetApplicationName("StudentRegistrar.Api");
+
+var dataProtectionKeysDirectory = builder.Configuration["DataProtection:KeysDirectory"];
+if (!builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(dataProtectionKeysDirectory))
+{
+    throw new InvalidOperationException(
+        "DataProtection:KeysDirectory must be configured outside Development so encrypted tenant settings remain decryptable across restarts and redeployments.");
+}
+
+if (!string.IsNullOrWhiteSpace(dataProtectionKeysDirectory))
+{
+    Directory.CreateDirectory(dataProtectionKeysDirectory);
+    dataProtectionBuilder.PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysDirectory));
+}
+
 // Add AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
@@ -79,6 +98,7 @@ builder.Services.AddScoped<ICourseServiceV2, CourseServiceV2>();
 builder.Services.AddScoped<IAccountHolderService, AccountHolderService>();
 builder.Services.AddScoped<ISemesterService, SemesterService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IPaymentOptionsService, PaymentOptionsService>();
 builder.Services.AddScoped<ICourseInstructorService, CourseInstructorService>();
 builder.Services.AddScoped<IGradeService, GradeService>();
 builder.Services.AddScoped<IEducatorService, EducatorService>();
@@ -229,6 +249,16 @@ builder.Services.AddAuthorization(options =>
 });
 
 var app = builder.Build();
+
+if (string.IsNullOrWhiteSpace(dataProtectionKeysDirectory))
+{
+    app.Logger.LogWarning(
+        "DataProtection:KeysDirectory is not configured. Development will use the default local key ring; production must use a persistent mounted directory.");
+}
+else
+{
+    app.Logger.LogInformation("Data Protection keys are configured to persist at {KeysDirectory}.", dataProtectionKeysDirectory);
+}
 
 {
     var configuredOrigins = app.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()

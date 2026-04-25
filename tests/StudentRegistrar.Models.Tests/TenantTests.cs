@@ -151,6 +151,7 @@ public class TenantTests
         Assert.Equal(SubscriptionStatus.Active, tenant.SubscriptionStatus);
         Assert.True(tenant.IsActive);
         Assert.Equal("{}", tenant.ThemeConfigJson);
+        Assert.Equal("{}", tenant.PaymentOptionsJson);
     }
 
     [Fact]
@@ -170,5 +171,60 @@ public class TenantTests
         Assert.Equal(2, retrievedTheme.CustomFields.Count);
         Assert.Equal("value1", retrievedTheme.CustomFields["key1"]);
         Assert.Equal("value2", retrievedTheme.CustomFields["key2"]);
+    }
+
+    [Fact]
+    public void GetPaymentOptions_WithDefaultJson_ReturnsDefaultOptions()
+    {
+        var tenant = new Tenant
+        {
+            PaymentOptionsJson = "{}"
+        };
+
+        var paymentOptions = tenant.GetPaymentOptions();
+
+        Assert.NotNull(paymentOptions);
+        Assert.NotNull(paymentOptions.Stripe);
+        Assert.False(paymentOptions.Stripe.Enabled);
+        Assert.Null(paymentOptions.Stripe.AccountToken);
+    }
+
+    [Fact]
+    public void SetPaymentOptions_PersistsStripeSettings_AndUpdatesTimestamp()
+    {
+        var tenant = new Tenant();
+        var originalUpdatedAt = tenant.UpdatedAt;
+        System.Threading.Thread.Sleep(10);
+
+        tenant.SetPaymentOptions(new TenantPaymentOptions
+        {
+            Stripe = new StripeTenantPaymentOptions
+            {
+                Enabled = true,
+                AccountToken = "acct_test_1234"
+            }
+        });
+
+        var paymentOptions = tenant.GetPaymentOptions();
+
+        Assert.True(paymentOptions.Stripe.Enabled);
+        Assert.Equal("acct_test_1234", paymentOptions.Stripe.AccountToken);
+        Assert.True(tenant.UpdatedAt > originalUpdatedAt);
+    }
+
+    [Fact]
+    public void GetPaymentOptions_WithInvalidJson_ReturnsDefaultOptions()
+    {
+        var tenant = new Tenant
+        {
+            PaymentOptionsJson = "{ invalid json"
+        };
+
+        var paymentOptions = tenant.GetPaymentOptions();
+
+        Assert.NotNull(paymentOptions);
+        Assert.NotNull(paymentOptions.Stripe);
+        Assert.False(paymentOptions.Stripe.Enabled);
+        Assert.Null(paymentOptions.Stripe.AccountToken);
     }
 }

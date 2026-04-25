@@ -217,6 +217,7 @@ dotnet ef database update --project src/StudentRegistrar.Data --startup-project 
 - `ConnectionStrings__DefaultConnection`: PostgreSQL connection string
 - `Keycloak__Authority`: Keycloak authority URL
 - `Keycloak__Realm`: Keycloak realm name
+- `DataProtection__KeysDirectory`: Persistent directory for ASP.NET Core Data Protection keys. Required outside development when encrypted tenant settings are enabled.
 
 #### Frontend Configuration
 - `NEXT_PUBLIC_API_URL`: API base URL
@@ -263,6 +264,7 @@ For production deployment:
 - Use Azure Key Vault or equivalent secret management service
 - Configure environment-specific settings
 - Follow security best practices for container orchestration
+- Persist ASP.NET Core Data Protection keys on a mounted volume and set `DataProtection__KeysDirectory` to that mount path before first production startup
 
 ### Important Security Notes
 
@@ -274,6 +276,7 @@ For production deployment:
 - Review and update dependencies regularly for security patches
 - Use environment variables or secure secret management in production
 - Implement proper logging and monitoring for security events
+- Keep the Data Protection key ring on persistent storage; losing it will make existing encrypted tenant settings unreadable
 
 ### Security Checklist for Production
 
@@ -289,6 +292,7 @@ Before deploying to production, ensure:
 - [ ] Regular security updates are applied
 - [ ] Backup and recovery procedures are in place
 - [ ] Monitoring and alerting are configured
+- [ ] `DataProtection__KeysDirectory` points to a persistent mounted volume shared by API restarts in the same environment
 
 ## Production Deployment
 

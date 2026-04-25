@@ -68,6 +68,14 @@ var publicKeycloakUrl = builder.ExecutionContext.IsRunMode
     ? null
     : builder.AddParameter("public-keycloak-url", publicKeycloakUrlValue);
 
+var dataProtectionKeysDirectoryValue = builder.Configuration["DataProtection:KeysDirectory"];
+
+if (isPublishOrDeploy && string.IsNullOrWhiteSpace(dataProtectionKeysDirectoryValue))
+{
+    throw new InvalidOperationException(
+        "DataProtection:KeysDirectory is required for publish/deploy. Point it at a persistent mounted directory so encrypted tenant settings remain decryptable across restarts.");
+}
+
 var keycloakEndpointPort = (deployToAca && isPublishOrDeploy) ? 80 : 8080;
 
 static string? DeriveFrontendOrigin(string? publicApiUrlValue)
@@ -180,6 +188,11 @@ var apiService = builder.AddProject<StudentRegistrar_Api>("api")
             context.EnvironmentVariables["Cors__AllowedOrigins__0"] = frontendOrigin;
         }
     });
+
+if (!string.IsNullOrWhiteSpace(dataProtectionKeysDirectoryValue))
+{
+    apiService.WithEnvironment("DataProtection__KeysDirectory", dataProtectionKeysDirectoryValue);
+}
 
 IResourceBuilder<ContainerResource>? frontendContainer = null;
 

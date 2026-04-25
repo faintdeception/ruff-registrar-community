@@ -120,9 +120,49 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         
         Driver.PageSource.Should().Contain("System Settings", 
             "Page should contain System Settings title");
-        
-        Driver.PageSource.Should().Contain("Coming Soon", 
-            "Page should show Coming Soon message");
+
+        Driver.PageSource.Should().Contain("Payment Options",
+            "Page should contain the payment options section");
+
+        Driver.PageSource.Should().Contain("Enable Stripe Payments",
+            "Page should contain the Stripe payment toggle");
+    }
+
+    [Fact]
+    public void Admin_Should_Be_Able_To_Enable_Stripe_Payments_In_System_Settings()
+    {
+        // Arrange - Login as admin
+        LoginAsAdmin();
+
+        // Act - Navigate to system settings
+        var navigationPage = new NavigationPage(Driver);
+        navigationPage.ClickSettingsButton();
+        WaitForPageLoad();
+        navigationPage.ClickSettingsMenuItem("system");
+        WaitForPageLoad();
+
+        var toggle = Driver.FindElement(By.CssSelector("[data-testid='enable-stripe-payments-toggle']"));
+        if (!toggle.Selected)
+        {
+            toggle.Click();
+        }
+
+        WaitForPageLoad();
+
+        var tokenInput = Driver.FindElement(By.CssSelector("[data-testid='stripe-token-input']"));
+        tokenInput.Clear();
+        tokenInput.SendKeys("acct_e2e_test_4242");
+
+        var saveButton = Driver.FindElement(By.CssSelector("[data-testid='payment-options-save-button']"));
+        saveButton.Click();
+        WaitForPageLoad();
+
+        // Assert
+        Driver.FindElement(By.CssSelector("[data-testid='payment-options-success']")).Text
+            .Should().Contain("Payment options updated");
+
+        Driver.FindElement(By.CssSelector("[data-testid='stripe-token-stored-indicator']")).Text
+            .Should().Contain("4242");
     }
 
     #endregion

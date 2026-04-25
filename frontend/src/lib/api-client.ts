@@ -138,7 +138,7 @@ class ApiClient {
     return response;
   }
   
-  async post(url: string, data?: any, options?: Omit<ApiClientOptions, 'method' | 'body'>) {
+  async post(url: string, data?: unknown, options?: Omit<ApiClientOptions, 'method' | 'body'>) {
     const response = await this.request(url, {
       ...options,
       method: 'POST',
@@ -147,7 +147,7 @@ class ApiClient {
     return response;
   }
   
-  async put(url: string, data?: any, options?: Omit<ApiClientOptions, 'method' | 'body'>) {
+  async put(url: string, data?: unknown, options?: Omit<ApiClientOptions, 'method' | 'body'>) {
     const response = await this.request(url, {
       ...options,
       method: 'PUT',

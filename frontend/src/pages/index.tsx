@@ -3,13 +3,12 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import api from '@/lib/api';
+import apiClient from '@/lib/api-client';
 import { 
-  AcademicCapIcon, 
   UserGroupIcon, 
   BookOpenIcon, 
   ClipboardDocumentListIcon,
   ChartBarIcon,
-  ArrowRightOnRectangleIcon,
   UserCircleIcon
 } from '@heroicons/react/24/outline';
 
@@ -24,6 +23,10 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  type RoomSummary = {
+    id: string;
+  };
+
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -35,14 +38,20 @@ export default function Home() {
           api.get('/students'),
           api.get('/courses'),
           api.get('/educators'),
-          api.get('/rooms')
+          apiClient.get('/api/rooms').then(async (response) => {
+            if (!response.ok) {
+              throw new Error('Failed to fetch rooms');
+            }
+
+            return response.json() as Promise<RoomSummary[]>;
+          })
         ]);
 
         // Extract counts from successful responses
         const totalStudents = studentsResponse.status === 'fulfilled' ? studentsResponse.value.data.length : 0;
         const totalCourses = coursesResponse.status === 'fulfilled' ? coursesResponse.value.data.length : 0;
         const totalEducators = educatorsResponse.status === 'fulfilled' ? educatorsResponse.value.data.length : 0;
-        const totalRooms = roomsResponse.status === 'fulfilled' ? roomsResponse.value.data.length : 0;
+        const totalRooms = roomsResponse.status === 'fulfilled' ? roomsResponse.value.length : 0;
 
         setStats({
           totalStudents,
@@ -154,7 +163,7 @@ export default function Home() {
                 <ChartBarIcon className="h-8 w-8 text-primary-600" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Rooms</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-2xl font-bold text-gray-900" data-testid="dashboard-room-count">
                     {loading ? (
                       <span className="animate-pulse bg-gray-200 rounded w-8 h-8 inline-block"></span>
                     ) : (

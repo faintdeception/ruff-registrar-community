@@ -23,6 +23,7 @@ This workflow is **not production-ready** yet. It assumes the AppHost’s ACA pu
 - `POSTGRES_PASSWORD`
 - `PUBLIC_API_URL`
 - `PUBLIC_KEYCLOAK_URL`
+- `DATA_PROTECTION_KEYS_DIRECTORY`: Mounted path inside the API container where ASP.NET Core Data Protection keys persist across restarts
 
 ## Required deploy parameters (publish/deploy)
 
@@ -34,6 +35,7 @@ These are required when running `aspire deploy` in ACA mode:
 - `keycloak-hostname` (e.g., `https://keycloak.<env>.<region>.azurecontainerapps.io`)
 - `public-api-url` (e.g., `https://api.<env>.<region>.azurecontainerapps.io`)
 - `public-keycloak-url` (e.g., `https://keycloak.<env>.<region>.azurecontainerapps.io`)
+- `DataProtection:KeysDirectory` (e.g., `/mnt/data-protection-keys`) backed by a persistent mounted volume
 
 Provide these via Aspire deploy parameters or environment-based parameter injection supported by your CLI version.
 
@@ -51,6 +53,7 @@ Override these defaults by changing the parameter defaults in the AppHost, or (i
 
 - Ensure the AppHost’s ACA publish/deploy wiring builds the frontend as a container and exposes the correct public endpoints.
 - Verify required secrets and parameters are set for deploy (Keycloak admin password, client secret, Postgres password, hostnames).
+- Mount persistent storage for the API container and set `DataProtection__KeysDirectory` to that mount path before the first production deployment.
 - Decide on resource group naming and lifecycle (dev vs. prod).
 - Configure the public SPA client in Keycloak with ACA redirect URI and web origin (see scripts/keycloak/README.md).
 
@@ -59,3 +62,4 @@ Override these defaults by changing the parameter defaults in the AppHost, or (i
 - This is intended for side-by-side evaluation with AKS.
 - Keycloak is made externally reachable in ACA mode so the browser frontend can reach it.
 - The frontend uses a public SPA client for browser login; production hardening (PKCE/BFF, stricter CORS/redirects) is still recommended.
+- The API now fails fast outside Development if `DataProtection__KeysDirectory` is missing. That is intentional; starting with ephemeral keys would risk permanent loss of access to encrypted tenant settings after a restart.

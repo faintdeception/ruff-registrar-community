@@ -101,6 +101,7 @@ public class StudentRegistrarDbContext : DbContext
             entity.Property(e => e.LogoBase64).HasMaxLength(700000);
             entity.Property(e => e.LogoMimeType).HasMaxLength(50);
             entity.Property(e => e.ThemeConfigJson).HasColumnType("jsonb");
+            entity.Property(e => e.PaymentOptionsJson).HasColumnType("jsonb");
             entity.Property(e => e.KeycloakRealm).IsRequired().HasMaxLength(100);
             entity.Property(e => e.AdminEmail).IsRequired().HasMaxLength(255);
             entity.Property(e => e.IsActive).IsRequired();

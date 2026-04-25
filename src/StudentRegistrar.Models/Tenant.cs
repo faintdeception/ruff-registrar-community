@@ -105,6 +105,13 @@ public partial class Tenant
     public string ThemeConfigJson { get; set; } = "{}";
 
     /// <summary>
+    /// Payment provider configuration as JSON.
+    /// Hosted tenants can enable Stripe on paid tiers.
+    /// </summary>
+    [Column(TypeName = "jsonb")]
+    public string PaymentOptionsJson { get; set; } = "{}";
+
+    /// <summary>
     /// Keycloak realm name for this tenant.
     /// Typically matches subdomain (e.g., "sunrise-org").
     /// </summary>
@@ -149,6 +156,42 @@ public partial class Tenant
         ThemeConfigJson = JsonSerializer.Serialize(theme);
         UpdatedAt = DateTime.UtcNow;
     }
+
+    public TenantPaymentOptions GetPaymentOptions()
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<TenantPaymentOptions>(PaymentOptionsJson) ?? new TenantPaymentOptions();
+        }
+        catch (JsonException ex)
+        {
+            Console.Error.WriteLine($"Failed to deserialize TenantPaymentOptions from PaymentOptionsJson for tenant {Id}: {ex.Message}");
+            return new TenantPaymentOptions();
+        }
+    }
+
+    public void SetPaymentOptions(TenantPaymentOptions paymentOptions)
+    {
+        PaymentOptionsJson = JsonSerializer.Serialize(paymentOptions);
+        UpdatedAt = DateTime.UtcNow;
+    }
+}
+
+/// <summary>
+/// Tenant-scoped payment provider configuration.
+/// </summary>
+public partial class TenantPaymentOptions
+{
+    public StripeTenantPaymentOptions Stripe { get; set; } = new();
+}
+
+/// <summary>
+/// Stripe-specific tenant payment settings.
+/// </summary>
+public partial class StripeTenantPaymentOptions
+{
+    public bool Enabled { get; set; }
+    public string? AccountToken { get; set; }
 }
 
 /// <summary>

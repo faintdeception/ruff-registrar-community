@@ -979,6 +979,40 @@ public class AdminTests : BaseTest
     }
 
     [Fact]
+    [Trait("Suite", "SaaSCompatibility")]
+    public void Admin_Should_Show_Dashboard_Rooms_On_Rooms_Page()
+    {
+        LoginAsAdmin();
+
+        WaitUntil(d =>
+        {
+            var text = d.FindElement(By.CssSelector("[data-testid='dashboard-room-count']")).Text;
+            return int.TryParse(text, out _);
+        }, 15);
+
+        var dashboardRoomCountText = Driver.FindElement(By.CssSelector("[data-testid='dashboard-room-count']")).Text;
+        int.TryParse(dashboardRoomCountText, out var dashboardRoomCount).Should().BeTrue("dashboard room count should be numeric");
+
+        Driver.FindElement(By.CssSelector("[data-nav-item='rooms']")).Click();
+        WaitForPageLoad();
+        WaitForUrlContains("/rooms");
+        WaitUntil(d => d.FindElements(By.CssSelector("[data-testid='no-rooms-state'], [data-testid^='room-']")).Any(), 15);
+
+        if (dashboardRoomCount == 0)
+        {
+            Driver.FindElements(By.CssSelector("[data-testid='no-rooms-state']")).Should().ContainSingle(
+                "the rooms page should be empty when the dashboard reports zero rooms");
+            return;
+        }
+
+        Driver.FindElements(By.CssSelector("[data-testid='no-rooms-state']")).Should().BeEmpty(
+            "the rooms page should not be empty when the dashboard reports rooms");
+        Driver.FindElements(By.CssSelector("[data-testid^='room-']")).Count.Should().Be(
+            dashboardRoomCount,
+            "the rooms page should show the same number of rooms as the dashboard card");
+    }
+
+    [Fact]
     public void Admin_Should_See_Create_Room_Button()
     {
         // Arrange
