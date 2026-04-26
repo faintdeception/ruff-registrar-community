@@ -22,6 +22,11 @@ public sealed class EducatorsPage
 
     public void CreateEducator(string firstName, string lastName, string email, string phone, string department, string bio)
     {
+        InviteEducator(firstName, lastName, email, phone, department, bio);
+    }
+
+    public EducatorInviteCredentials InviteEducator(string firstName, string lastName, string email, string phone, string department, string bio)
+    {
         Click(By.Id("add-educator-btn"));
         _wait.Until(d => d.FindElements(By.Id("educator-first-name-input")).Any());
 
@@ -35,6 +40,10 @@ public sealed class EducatorsPage
 
         var fullName = $"{firstName} {lastName}";
         _wait.Until(d => IsEducatorVisible(fullName));
+
+        var username = _wait.Until(d => d.FindElement(By.CssSelector("[data-testid='educator-invite-username']"))).Text;
+        var password = _wait.Until(d => d.FindElement(By.CssSelector("[data-testid='educator-invite-password']"))).Text;
+        return new EducatorInviteCredentials(username, password);
     }
 
     public bool IsEducatorVisible(string fullName)
@@ -69,4 +78,6 @@ public sealed class EducatorsPage
             ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", element);
         }
     }
+
+public sealed record EducatorInviteCredentials(string Username, string TemporaryPassword);
 }

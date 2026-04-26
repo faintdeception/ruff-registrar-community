@@ -3,22 +3,22 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import apiClient from '@/lib/api-client';
-import { EducatorDto, CreateEducatorDto } from '@/types';
+import { EducatorDto, InviteEducatorDto, InviteEducatorResponse, UserCredentials } from '@/types';
 
 const EducatorsPage = () => {
   const { user } = useAuth();
   const [educators, setEducators] = useState<EducatorDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [inviteCredentials, setInviteCredentials] = useState<UserCredentials | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const router = useRouter();
 
-  const [newEducator, setNewEducator] = useState<CreateEducatorDto>({
+  const [newEducator, setNewEducator] = useState<InviteEducatorDto>({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
-    isActive: true,
     educatorInfo: {
       bio: '',
       qualifications: [],
@@ -68,18 +68,19 @@ const EducatorsPage = () => {
         return;
       }
 
-      const response = await apiClient.post('/api/Educators', newEducator);
+      setInviteCredentials(null);
+      const response = await apiClient.post('/api/Educators/invite', newEducator);
 
       if (response.ok) {
-        const created = await response.json();
-        setEducators([...educators, created]);
+        const invitation = await response.json() as InviteEducatorResponse;
+        setEducators([...educators, invitation.educator]);
+        setInviteCredentials(invitation.credentials || null);
         setShowAddForm(false);
         setNewEducator({
           firstName: '',
           lastName: '',
           email: '',
           phone: '',
-          isActive: true,
           educatorInfo: {
             bio: '',
             qualifications: [],
@@ -89,11 +90,11 @@ const EducatorsPage = () => {
           }
         });
       } else {
-        setError('Failed to create educator');
+        setError('Failed to invite educator');
       }
     } catch (err) {
-      setError('Error creating educator');
-      console.error('Error creating educator:', err);
+      setError('Error inviting educator');
+      console.error('Error inviting educator:', err);
     }
   };
 
@@ -155,10 +156,21 @@ const EducatorsPage = () => {
           </div>
         )}
 
+        {inviteCredentials && (
+          <div className="bg-green-50 border border-green-200 text-green-900 px-4 py-3 rounded mb-4" data-testid="educator-invite-credentials">
+            <div className="font-semibold">Educator invited successfully</div>
+            <div>Username: <span data-testid="educator-invite-username">{inviteCredentials.username}</span></div>
+            <div>Temporary password: <span data-testid="educator-invite-password">{inviteCredentials.temporaryPassword}</span></div>
+            {inviteCredentials.mustChangePassword && (
+              <div className="text-sm text-green-700">The educator must change this password on first login.</div>
+            )}
+          </div>
+        )}
+
         {/* Add Educator Form */}
         {showAddForm && (
           <div className="mb-8 p-6 bg-gray-50 rounded-lg">
-            <h2 className="text-xl font-semibold mb-4">Add New Educator</h2>
+            <h2 className="text-xl font-semibold mb-4">Invite New Educator</h2>
             <form onSubmit={handleAddEducator} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -193,7 +205,7 @@ const EducatorsPage = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
+                    Email *
                   </label>
                   <input
                     id="educator-email-input"
@@ -201,6 +213,7 @@ const EducatorsPage = () => {
                     type="email"
                     value={newEducator.email}
                     onChange={(e) => setNewEducator({...newEducator, email: e.target.value})}
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -239,18 +252,6 @@ const EducatorsPage = () => {
                   />
                 </div>
 
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="isActive"
-                    checked={newEducator.isActive}
-                    onChange={(e) => setNewEducator({...newEducator, isActive: e.target.checked})}
-                    className="mr-2"
-                  />
-                  <label htmlFor="isActive" className="text-sm font-medium text-gray-700">
-                    Active Educator
-                  </label>
-                </div>
               </div>
 
               <div>
@@ -289,7 +290,7 @@ const EducatorsPage = () => {
                   data-testid="save-educator-btn"
                   className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
                 >
-                  Create Educator
+                  Invite Educator
                 </button>
               </div>
             </form>
@@ -370,7 +371,7 @@ const EducatorsPage = () => {
           </ul>
           {educators.length === 0 && (
             <div className="px-4 py-8 text-center text-gray-500">
-              No educators found. {isAdmin && 'Click "Add Educator" to create one.'}
+              No educators found. {isAdmin && 'Click "Add Educator" to invite one.'}
             </div>
           )}
         </div>

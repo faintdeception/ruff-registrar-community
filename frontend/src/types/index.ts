@@ -76,6 +76,8 @@ export interface CreateEnrollmentDto {
 export interface EducatorDto {
   id: string;
   courseId?: string;
+  accountHolderId?: string;
+  keycloakUserId?: string;
   firstName: string;
   lastName: string;
   fullName: string;
@@ -92,6 +94,7 @@ export interface EducatorDto {
 
 export interface CreateEducatorDto {
   courseId?: string;
+  accountHolderId?: string;
   firstName: string;
   lastName: string;
   email?: string;
@@ -99,6 +102,27 @@ export interface CreateEducatorDto {
   isPrimary?: boolean;
   isActive?: boolean;
   educatorInfo?: EducatorInfo;
+}
+
+export interface InviteEducatorDto {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  accountHolderId?: string;
+  educatorInfo?: EducatorInfo;
+}
+
+export interface UserCredentials {
+  username: string;
+  temporaryPassword: string;
+  mustChangePassword: boolean;
+}
+
+export interface InviteEducatorResponse {
+  educator: EducatorDto;
+  credentials?: UserCredentials;
+  message: string;
 }
 
 export interface UpdateEducatorDto {

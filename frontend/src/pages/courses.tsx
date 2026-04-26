@@ -102,6 +102,7 @@ export default function CoursesPage() {
   const [isCreating, setIsCreating] = useState(false);
 
   const isAdmin = !!user?.roles.includes('Administrator');
+  const canCreateCourses = isAdmin || !!user?.roles.includes('Educator');
 
   useEffect(() => {
     fetchSemesters();
@@ -718,7 +719,7 @@ export default function CoursesPage() {
       }));
     };
 
-  if (!isAdmin || !showCreateModal) return null;
+  if (!canCreateCourses || !showCreateModal) return null;
 
     return (
       <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -743,6 +744,7 @@ export default function CoursesPage() {
                 <input
                   type="text"
                   id="name"
+                  data-testid="course-name-input"
                   name="name"
                   required
                   value={formData.name}
@@ -759,6 +761,7 @@ export default function CoursesPage() {
                 <input
                   type="text"
                   id="code"
+                  data-testid="course-code-input"
                   name="code"
                   value={formData.code}
                   onChange={handleChange}
@@ -773,6 +776,7 @@ export default function CoursesPage() {
                 </label>
                 <select
                   id="ageGroup"
+                  data-testid="course-age-group-select"
                   name="ageGroup"
                   required
                   value={formData.ageGroup}
@@ -794,6 +798,7 @@ export default function CoursesPage() {
                 <input
                   type="number"
                   id="maxCapacity"
+                  data-testid="course-max-capacity-input"
                   name="maxCapacity"
                   min="1"
                   value={formData.maxCapacity}
@@ -808,6 +813,7 @@ export default function CoursesPage() {
                 </label>
                 <select
                   id="roomId"
+                  data-testid="course-room-select"
                   name="roomId"
                   value={formData.roomId}
                   onChange={handleChange}
@@ -841,6 +847,7 @@ export default function CoursesPage() {
                 <input
                   type="number"
                   id="fee"
+                  data-testid="course-fee-input"
                   name="fee"
                   min="0"
                   step="0.01"
@@ -857,6 +864,7 @@ export default function CoursesPage() {
                 <input
                   type="text"
                   id="periodCode"
+                  data-testid="course-period-code-input"
                   name="periodCode"
                   value={formData.periodCode}
                   onChange={handleChange}
@@ -872,6 +880,7 @@ export default function CoursesPage() {
                 <input
                   type="time"
                   id="startTime"
+                  data-testid="course-start-time-input"
                   name="startTime"
                   value={formData.startTime}
                   onChange={handleChange}
@@ -886,6 +895,7 @@ export default function CoursesPage() {
                 <input
                   type="time"
                   id="endTime"
+                  data-testid="course-end-time-input"
                   name="endTime"
                   value={formData.endTime}
                   onChange={handleChange}
@@ -900,6 +910,7 @@ export default function CoursesPage() {
               </label>
               <textarea
                 id="description"
+                data-testid="course-description-input"
                 name="description"
                 rows={3}
                 value={formData.description}
@@ -919,6 +930,7 @@ export default function CoursesPage() {
               </button>
               <button
                 type="submit"
+                data-testid="save-course-btn"
                 disabled={isCreating}
                 className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -954,13 +966,16 @@ export default function CoursesPage() {
               <BookOpenIcon className="h-8 w-8 text-primary-600" />
               <h1 className="ml-3 text-2xl font-bold text-gray-900">Courses</h1>
             </div>
-            {isAdmin && (
+            {canCreateCourses && (
               <div className="flex space-x-3">
-                <Link href="/semesters" className="btn btn-secondary">
-                  <CalendarIcon className="h-5 w-5" />
-                  Manage Semesters
-                </Link>
+                {isAdmin && (
+                  <Link href="/semesters" className="btn btn-secondary">
+                    <CalendarIcon className="h-5 w-5" />
+                    Manage Semesters
+                  </Link>
+                )}
                   <button 
+                    data-testid="add-course-btn"
                     onClick={() => setShowCreateModal(true)}
                     disabled={!selectedSemester}
                     className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1050,8 +1065,9 @@ export default function CoursesPage() {
               <p className="text-gray-600 mb-6">
                 There are no courses scheduled for the selected semester.
               </p>
-              {isAdmin && (
+              {canCreateCourses && (
                 <button 
+                  data-testid="add-first-course-btn"
                   onClick={() => setShowCreateModal(true)}
                   disabled={!selectedSemester}
                   className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1064,7 +1080,7 @@ export default function CoursesPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {courses.map((course) => (
-                <div key={course.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                <div key={course.id} data-testid={`course-${course.name.replace(/\s+/g, '-').toLowerCase()}`} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
                   <div className="p-6">
                     {/* Course Header */}
                     <div className="mb-4">
@@ -1114,7 +1130,7 @@ export default function CoursesPage() {
                       {course.fee > 0 && (
                         <div className="flex items-center text-sm text-gray-600">
                           <CurrencyDollarIcon className="h-4 w-4 mr-2 flex-shrink-0" />
-                          <span>{formatCurrency(course.fee)}</span>
+                          <span data-testid={`course-fee-${course.name.replace(/\s+/g, '-').toLowerCase()}`}>{formatCurrency(course.fee)}</span>
                         </div>
                       )}
                     </div>

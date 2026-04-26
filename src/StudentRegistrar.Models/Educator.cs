@@ -29,6 +29,11 @@ public class Educator : ITenantEntity
     [Phone]
     [MaxLength(20)]
     public string? Phone { get; set; }
+
+    public Guid? AccountHolderId { get; set; }
+
+    [MaxLength(255)]
+    public string? KeycloakUserId { get; set; }
     
     // Professional status and information
     public bool IsActive { get; set; } = true;
@@ -48,6 +53,7 @@ public class Educator : ITenantEntity
     
     // Navigation Properties
     public virtual Course? Course { get; set; }
+    public virtual AccountHolder? AccountHolder { get; set; }
     
     // Computed Properties
     [NotMapped]

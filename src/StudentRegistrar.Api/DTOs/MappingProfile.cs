@@ -198,6 +198,8 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.Course, opt => opt.Ignore())
+            .ForMember(dest => dest.AccountHolder, opt => opt.Ignore())
+            .ForMember(dest => dest.KeycloakUserId, opt => opt.Ignore())
             .AfterMap((src, dest) => {
                 if (src.EducatorInfo != null)
                 {
@@ -217,6 +219,8 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.Course, opt => opt.Ignore())
+            .ForMember(dest => dest.AccountHolder, opt => opt.Ignore())
+            .ForMember(dest => dest.KeycloakUserId, opt => opt.Ignore())
             .AfterMap((src, dest) => {
                 if (src.EducatorInfo != null)
                 {

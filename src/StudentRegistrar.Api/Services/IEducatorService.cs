@@ -10,6 +10,7 @@ public interface IEducatorService
     Task<IEnumerable<EducatorDto>> GetEducatorsByCourseIdAsync(Guid courseId);
     Task<IEnumerable<EducatorDto>> GetUnassignedEducatorsAsync();
     Task<EducatorDto> CreateEducatorAsync(CreateEducatorDto createDto);
+    Task<InviteEducatorResponse> InviteEducatorAsync(InviteEducatorDto inviteDto);
     Task<EducatorDto?> UpdateEducatorAsync(Guid id, UpdateEducatorDto updateDto);
     Task<bool> DeleteEducatorAsync(Guid id);
     Task<bool> DeactivateEducatorAsync(Guid id);

@@ -1,4 +1,5 @@
 using StudentRegistrar.Api.DTOs;
+using StudentRegistrar.Api.Services.Infrastructure;
 using StudentRegistrar.Models;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -11,6 +12,7 @@ public class KeycloakService : IKeycloakService
     private readonly IConfiguration _configuration;
     private readonly ILogger<KeycloakService> _logger;
     private readonly IPasswordService _passwordService;
+    private readonly ITenantContextAccessor? _tenantContextAccessor;
     private readonly string _keycloakBaseUrl;
     private readonly string _realm;
     private readonly string _clientId;
@@ -23,12 +25,14 @@ public class KeycloakService : IKeycloakService
         HttpClient httpClient,
         IConfiguration configuration,
         ILogger<KeycloakService> logger,
-        IPasswordService passwordService)
+        IPasswordService passwordService,
+        ITenantContextAccessor? tenantContextAccessor = null)
     {
         _httpClient = httpClient;
         _configuration = configuration;
         _logger = logger;
         _passwordService = passwordService;
+        _tenantContextAccessor = tenantContextAccessor;
         
         // Load Keycloak configuration
         _keycloakBaseUrl = _configuration["Keycloak:BaseUrl"] ?? "http://localhost:8080";
@@ -58,6 +62,17 @@ public class KeycloakService : IKeycloakService
             _logger.LogDebug("Generated temporary password with strength: {Strength}", passwordStrength);
             
             // Create user representation for Keycloak
+            var requiredActions = new List<string>();
+            if (request.RequirePasswordChange)
+            {
+                requiredActions.Add("UPDATE_PASSWORD");
+            }
+
+            if (request.RequireEmailVerification)
+            {
+                requiredActions.Add("VERIFY_EMAIL");
+            }
+
             var keycloakUser = new
             {
                 username = request.Email,
@@ -65,21 +80,22 @@ public class KeycloakService : IKeycloakService
                 firstName = request.FirstName,
                 lastName = request.LastName,
                 enabled = true,
-                emailVerified = false,
+                emailVerified = !request.RequireEmailVerification,
                 credentials = new[]
                 {
                     new
                     {
                         type = "password",
                         value = temporaryPassword,
-                        temporary = true
+                        temporary = request.RequirePasswordChange
                     }
                 },
-                requiredActions = new[] { "UPDATE_PASSWORD", "VERIFY_EMAIL" }
+                requiredActions = requiredActions.ToArray()
             };
             
             // Make the API call to create user
-            using var createRequest = new HttpRequestMessage(HttpMethod.Post, $"{_keycloakBaseUrl}/admin/realms/{_realm}/users");
+            var realm = GetCurrentRealm();
+            using var createRequest = new HttpRequestMessage(HttpMethod.Post, $"{_keycloakBaseUrl}/admin/realms/{realm}/users");
             createRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", adminToken);
             createRequest.Content = new StringContent(
                 System.Text.Json.JsonSerializer.Serialize(keycloakUser),
@@ -106,7 +122,7 @@ public class KeycloakService : IKeycloakService
                     UserId = userId,
                     Username = request.Email,
                     TemporaryPassword = temporaryPassword,
-                    IsTemporary = true
+                    IsTemporary = request.RequirePasswordChange
                 };
             }
             else if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
@@ -136,16 +152,11 @@ public class KeycloakService : IKeycloakService
             var adminToken = await GetAdminAccessTokenAsync();
             
             // Map UserRole to Keycloak role name
-            var keycloakRoleName = role switch
-            {
-                UserRole.Administrator => "admin",
-                UserRole.Educator => "educator",
-                UserRole.Member => "student",
-                _ => throw new ArgumentException($"Unsupported role: {role}")
-            };
+            var keycloakRoleName = role.ToString();
             
             // Get the role representation
-            using var getRoleRequest = new HttpRequestMessage(HttpMethod.Get, $"{_keycloakBaseUrl}/admin/realms/{_realm}/roles/{keycloakRoleName}");
+            var realm = GetCurrentRealm();
+            using var getRoleRequest = new HttpRequestMessage(HttpMethod.Get, $"{_keycloakBaseUrl}/admin/realms/{realm}/roles/{keycloakRoleName}");
             getRoleRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", adminToken);
             
             var getRoleResponse = await _httpClient.SendAsync(getRoleRequest);
@@ -158,7 +169,7 @@ public class KeycloakService : IKeycloakService
             var roleRepresentation = System.Text.Json.JsonSerializer.Deserialize<object>(roleJson);
             
             // Assign role to user
-            using var assignRoleRequest = new HttpRequestMessage(HttpMethod.Post, $"{_keycloakBaseUrl}/admin/realms/{_realm}/users/{keycloakId}/role-mappings/realm");
+            using var assignRoleRequest = new HttpRequestMessage(HttpMethod.Post, $"{_keycloakBaseUrl}/admin/realms/{realm}/users/{keycloakId}/role-mappings/realm");
             assignRoleRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", adminToken);
             assignRoleRequest.Content = new StringContent(
                 $"[{roleJson}]",
@@ -195,7 +206,8 @@ public class KeycloakService : IKeycloakService
             // Update user to set enabled = false
             var userUpdate = new { enabled = false };
             
-            using var updateRequest = new HttpRequestMessage(HttpMethod.Put, $"{_keycloakBaseUrl}/admin/realms/{_realm}/users/{keycloakId}");
+            var realm = GetCurrentRealm();
+            using var updateRequest = new HttpRequestMessage(HttpMethod.Put, $"{_keycloakBaseUrl}/admin/realms/{realm}/users/{keycloakId}");
             updateRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", adminToken);
             updateRequest.Content = new StringContent(
                 System.Text.Json.JsonSerializer.Serialize(userUpdate),
@@ -220,6 +232,38 @@ public class KeycloakService : IKeycloakService
         }
     }
 
+    public async Task<string?> GetUserIdByEmailAsync(string email)
+    {
+        try
+        {
+            var adminToken = await GetAdminAccessTokenAsync();
+
+            var realm = GetCurrentRealm();
+            using var searchRequest = new HttpRequestMessage(HttpMethod.Get, $"{_keycloakBaseUrl}/admin/realms/{realm}/users?email={Uri.EscapeDataString(email)}&exact=true");
+            searchRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+            var response = await _httpClient.SendAsync(searchRequest);
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                throw new InvalidOperationException($"Failed to search for user. Status: {response.StatusCode}, Error: {errorContent}");
+            }
+
+            var responseContent = await response.Content.ReadAsStringAsync();
+            using var jsonDoc = JsonDocument.Parse(responseContent);
+            var user = jsonDoc.RootElement.EnumerateArray().FirstOrDefault();
+
+            return user.ValueKind == JsonValueKind.Object && user.TryGetProperty("id", out var idElement)
+                ? idElement.GetString()
+                : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get user ID for email: {Email}", email);
+            throw;
+        }
+    }
+
     public async Task<bool> UserExistsAsync(string email)
     {
         try
@@ -230,7 +274,8 @@ public class KeycloakService : IKeycloakService
             var adminToken = await GetAdminAccessTokenAsync();
             
             // Search for user by email
-            using var searchRequest = new HttpRequestMessage(HttpMethod.Get, $"{_keycloakBaseUrl}/admin/realms/{_realm}/users?email={Uri.EscapeDataString(email)}&exact=true");
+            var realm = GetCurrentRealm();
+            using var searchRequest = new HttpRequestMessage(HttpMethod.Get, $"{_keycloakBaseUrl}/admin/realms/{realm}/users?email={Uri.EscapeDataString(email)}&exact=true");
             searchRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", adminToken);
             
             var response = await _httpClient.SendAsync(searchRequest);
@@ -311,7 +356,8 @@ public class KeycloakService : IKeycloakService
                 { "client_secret", _clientSecret }
             };
             
-            using var request = new HttpRequestMessage(HttpMethod.Post, $"{_keycloakBaseUrl}/realms/{_realm}/protocol/openid-connect/token");
+            var realm = GetCurrentRealm();
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"{_keycloakBaseUrl}/realms/{realm}/protocol/openid-connect/token");
             request.Content = new FormUrlEncodedContent(tokenRequest);
             
             var response = await _httpClient.SendAsync(request);
@@ -340,5 +386,11 @@ public class KeycloakService : IKeycloakService
             _logger.LogError(ex, "Failed to obtain admin access token from Keycloak");
             throw;
         }
+    }
+
+    private string GetCurrentRealm()
+    {
+        var tenantRealm = _tenantContextAccessor?.TenantContext?.Tenant?.KeycloakRealm;
+        return string.IsNullOrWhiteSpace(tenantRealm) ? _realm : tenantRealm;
     }
 }

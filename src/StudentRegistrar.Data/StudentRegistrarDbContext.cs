@@ -362,6 +362,7 @@ public class StudentRegistrarDbContext : DbContext
             entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Email).HasMaxLength(255);
             entity.Property(e => e.Phone).HasMaxLength(20);
+            entity.Property(e => e.KeycloakUserId).HasMaxLength(255);
             entity.Property(e => e.EducatorInfoJson).HasColumnType("jsonb");
             entity.Property(e => e.IsActive).IsRequired();
             entity.Property(e => e.IsPrimary).IsRequired();
@@ -372,8 +373,15 @@ public class StudentRegistrarDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.CourseId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.AccountHolder)
+                .WithMany()
+                .HasForeignKey(e => e.AccountHolderId)
+                .OnDelete(DeleteBehavior.SetNull);
                 
             entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.Email });
+            entity.HasIndex(e => new { e.TenantId, e.KeycloakUserId });
         });
 
         // Configure User

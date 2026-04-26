@@ -8,13 +8,19 @@ namespace StudentRegistrar.Api.Services;
 public class EducatorService : IEducatorService
 {
     private readonly IEducatorRepository _educatorRepository;
+    private readonly IAccountHolderRepository _accountHolderRepository;
+    private readonly IKeycloakService _keycloakService;
     private readonly IMapper _mapper;
 
     public EducatorService(
         IEducatorRepository educatorRepository,
+        IAccountHolderRepository accountHolderRepository,
+        IKeycloakService keycloakService,
         IMapper mapper)
     {
         _educatorRepository = educatorRepository;
+        _accountHolderRepository = accountHolderRepository;
+        _keycloakService = keycloakService;
         _mapper = mapper;
     }
 
@@ -48,6 +54,86 @@ public class EducatorService : IEducatorService
         educator.IsActive = true; // Set as active by default
         var createdEducator = await _educatorRepository.CreateAsync(educator);
         return _mapper.Map<EducatorDto>(createdEducator);
+    }
+
+    public async Task<InviteEducatorResponse> InviteEducatorAsync(InviteEducatorDto inviteDto)
+    {
+        CreateUserResponse? createdUser = null;
+        string? keycloakUserId;
+        Guid? accountHolderId = inviteDto.AccountHolderId;
+
+        if (inviteDto.AccountHolderId.HasValue)
+        {
+            var accountHolder = await _accountHolderRepository.GetByIdAsync(inviteDto.AccountHolderId.Value)
+                ?? throw new InvalidOperationException("Account holder was not found.");
+
+            keycloakUserId = !string.IsNullOrWhiteSpace(accountHolder.KeycloakUserId)
+                ? accountHolder.KeycloakUserId
+                : await _keycloakService.GetUserIdByEmailAsync(accountHolder.EmailAddress);
+
+            if (string.IsNullOrWhiteSpace(keycloakUserId))
+            {
+                throw new InvalidOperationException("Account holder does not have a Keycloak user.");
+            }
+        }
+        else
+        {
+            createdUser = await _keycloakService.CreateUserAsync(new CreateUserRequest
+            {
+                Email = inviteDto.Email,
+                FirstName = inviteDto.FirstName,
+                LastName = inviteDto.LastName,
+                Role = UserRole.Educator,
+                Password = string.Empty,
+                RequirePasswordChange = false,
+                RequireEmailVerification = false
+            });
+
+            keycloakUserId = createdUser.UserId;
+        }
+
+        await _keycloakService.UpdateUserRoleAsync(keycloakUserId, UserRole.Educator);
+
+        var educator = new Educator
+        {
+            FirstName = inviteDto.FirstName,
+            LastName = inviteDto.LastName,
+            Email = inviteDto.Email,
+            Phone = inviteDto.Phone,
+            AccountHolderId = accountHolderId,
+            KeycloakUserId = keycloakUserId,
+            IsActive = true
+        };
+
+        if (inviteDto.EducatorInfo != null)
+        {
+            educator.SetEducatorInfo(new StudentRegistrar.Models.EducatorInfo
+            {
+                Bio = inviteDto.EducatorInfo.Bio,
+                Qualifications = inviteDto.EducatorInfo.Qualifications,
+                Specializations = inviteDto.EducatorInfo.Specializations,
+                Department = inviteDto.EducatorInfo.Department,
+                CustomFields = inviteDto.EducatorInfo.CustomFields
+            });
+        }
+
+        var createdEducator = await _educatorRepository.CreateAsync(educator);
+
+        return new InviteEducatorResponse
+        {
+            Educator = _mapper.Map<EducatorDto>(createdEducator),
+            Credentials = createdUser != null
+                ? new UserCredentials
+                {
+                    Username = createdUser.Username,
+                    TemporaryPassword = createdUser.TemporaryPassword ?? string.Empty,
+                    MustChangePassword = createdUser.IsTemporary
+                }
+                : null,
+            Message = createdUser != null
+                ? "Educator invited successfully."
+                : "Educator authorized successfully."
+        };
     }
 
     public async Task<EducatorDto?> UpdateEducatorAsync(Guid id, UpdateEducatorDto updateDto)

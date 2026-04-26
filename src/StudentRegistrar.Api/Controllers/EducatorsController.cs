@@ -22,6 +22,27 @@ public class EducatorsController : ControllerBase
         _logger = logger;
     }
 
+    [HttpPost("invite")]
+    public async Task<ActionResult<InviteEducatorResponse>> InviteEducator(InviteEducatorDto inviteDto)
+    {
+        try
+        {
+            var userRole = GetUserRole();
+            if (userRole != "Administrator")
+            {
+                return Forbid("Only administrators can invite educators");
+            }
+
+            var invitation = await _educatorService.InviteEducatorAsync(inviteDto);
+            return CreatedAtAction(nameof(GetEducator), new { id = invitation.Educator.Id }, invitation);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error inviting educator");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
     [HttpGet]
     public async Task<ActionResult<IEnumerable<EducatorDto>>> GetEducators()
     {
@@ -236,7 +257,7 @@ public class EducatorsController : ControllerBase
                     if (rolesObject != null)
                     {
                         var roles = System.Text.Json.JsonSerializer.Deserialize<string[]>(rolesObject.ToString()!);
-                        return roles?.FirstOrDefault(r => r == "Administrator" || r == "Member" || r == "Instructor") ?? "";
+                        return roles?.FirstOrDefault(r => r == "Administrator" || r == "Member" || r == "Educator" || r == "Instructor") ?? "";
                     }
                 }
             }

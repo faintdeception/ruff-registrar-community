@@ -284,6 +284,9 @@ namespace StudentRegistrar.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("AccountHolderId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("CourseId")
                         .HasColumnType("uuid");
 
@@ -309,6 +312,10 @@ namespace StudentRegistrar.Data.Migrations
                     b.Property<bool>("IsPrimary")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("KeycloakUserId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -326,9 +333,15 @@ namespace StudentRegistrar.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AccountHolderId");
+
                     b.HasIndex("CourseId");
 
                     b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "Email");
+
+                    b.HasIndex("TenantId", "KeycloakUserId");
 
                     b.ToTable("Educators");
                 });
@@ -888,10 +901,17 @@ namespace StudentRegistrar.Data.Migrations
 
             modelBuilder.Entity("StudentRegistrar.Models.Educator", b =>
                 {
+                    b.HasOne("StudentRegistrar.Models.AccountHolder", "AccountHolder")
+                        .WithMany()
+                        .HasForeignKey("AccountHolderId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("StudentRegistrar.Models.Course", "Course")
                         .WithMany()
                         .HasForeignKey("CourseId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("AccountHolder");
 
                     b.Navigation("Course");
                 });

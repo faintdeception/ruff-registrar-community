@@ -40,6 +40,12 @@ public class CoursesPage
         WaitForPageLoad();
     }
 
+    public void NavigateToCourses(string baseUrl)
+    {
+        _driver.Navigate().GoToUrl($"{baseUrl.TrimEnd('/')}/courses");
+        WaitForPageLoad();
+    }
+
     public void WaitForPageLoad()
     {
         _wait.Until(driver => driver.Url.Contains("/courses"));
@@ -113,6 +119,14 @@ public class CoursesPage
         WaitForModalToOpen();
     }
 
+    public void CreateCourse(string name, string code, string ageGroup, int maxCapacity, decimal fee, string periodCode, string description)
+    {
+        ClickCreateCourse();
+        FillCourseForm(name, code, ageGroup, maxCapacity, fee: fee, periodCode: periodCode, description: description);
+        SaveCourse();
+        _wait.Until(d => IsCourseVisible(name));
+    }
+
     public void WaitForModalToOpen()
     {
         _wait.Until(driver =>
@@ -120,6 +134,18 @@ public class CoursesPage
             var modals = driver.FindElements(By.CssSelector(".fixed.inset-0"));
             return modals.Any(m => m.Displayed);
         });
+    }
+
+    public bool IsCourseFeeVisible(string courseName, string expectedFee)
+    {
+        var slug = ToSlug(courseName);
+        return _driver.FindElements(By.CssSelector($"[data-testid='course-fee-{slug}']"))
+            .Any(e => e.Displayed && e.Text.Contains(expectedFee, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string ToSlug(string value)
+    {
+        return string.Join("-", value.Split(' ', StringSplitOptions.RemoveEmptyEntries)).ToLowerInvariant();
     }
 
     public void WaitForModalToClose()

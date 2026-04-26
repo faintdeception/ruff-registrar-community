@@ -201,7 +201,7 @@ public class KeycloakServiceTests
         };
 
         // Mock get role request
-        var roleResponse = JsonSerializer.Serialize(new { id = "role-123", name = "educator" });
+        var roleResponse = JsonSerializer.Serialize(new { id = "role-123", name = "Educator" });
         var getRoleHttpResponse = new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(roleResponse)
@@ -231,9 +231,9 @@ public class KeycloakServiceTests
     }
 
     [Theory]
-    [InlineData(UserRole.Administrator, "admin")]
-    [InlineData(UserRole.Educator, "educator")]
-    [InlineData(UserRole.Member, "student")]
+    [InlineData(UserRole.Administrator, "Administrator")]
+    [InlineData(UserRole.Educator, "Educator")]
+    [InlineData(UserRole.Member, "Member")]
     public async Task UpdateUserRoleAsync_DifferentRoles_MapsCorrectly(UserRole role, string expectedKeycloakRole)
     {
         // Arrange
@@ -315,7 +315,7 @@ public class KeycloakServiceTests
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _keycloakService.UpdateUserRoleAsync(keycloakId, role));
         
-        Assert.Contains("Role 'educator' not found in Keycloak realm", exception.Message);
+        Assert.Contains("Role 'Educator' not found in Keycloak realm", exception.Message);
     }
 
     [Fact]
