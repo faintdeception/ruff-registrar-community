@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/auth';
-import { getApiBaseUrl } from '@/lib/runtime-env';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import apiClient from '@/lib/api-client';
 import { EducatorDto, CreateEducatorDto } from '@/types';
 
 const EducatorsPage = () => {
   const { user } = useAuth();
-  const apiBaseUrl = getApiBaseUrl();
   const [educators, setEducators] = useState<EducatorDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,12 +42,7 @@ const EducatorsPage = () => {
         return;
       }
 
-      const response = await fetch(`${apiBaseUrl}/api/Educators`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await apiClient.get('/api/Educators');
       
       if (response.ok) {
         const data = await response.json();
@@ -74,14 +68,7 @@ const EducatorsPage = () => {
         return;
       }
 
-      const response = await fetch(`${apiBaseUrl}/api/Educators`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newEducator)
-      });
+      const response = await apiClient.post('/api/Educators', newEducator);
 
       if (response.ok) {
         const created = await response.json();
@@ -121,13 +108,7 @@ const EducatorsPage = () => {
       }
 
       const endpoint = currentStatus ? 'deactivate' : 'activate';
-      const response = await fetch(`${apiBaseUrl}/api/Educators/${id}/${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await apiClient.post(`/api/Educators/${id}/${endpoint}`);
 
       if (response.ok) {
         // Refresh the educators list
@@ -158,6 +139,8 @@ const EducatorsPage = () => {
           <h1 className="text-3xl font-bold text-gray-900">Educators</h1>
           {isAdmin && (
             <button
+              id="add-educator-btn"
+              data-testid="add-educator-btn"
               onClick={() => setShowAddForm(true)}
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
             >
@@ -183,6 +166,8 @@ const EducatorsPage = () => {
                     First Name *
                   </label>
                   <input
+                    id="educator-first-name-input"
+                    data-testid="educator-first-name-input"
                     type="text"
                     value={newEducator.firstName}
                     onChange={(e) => setNewEducator({...newEducator, firstName: e.target.value})}
@@ -196,6 +181,8 @@ const EducatorsPage = () => {
                     Last Name *
                   </label>
                   <input
+                    id="educator-last-name-input"
+                    data-testid="educator-last-name-input"
                     type="text"
                     value={newEducator.lastName}
                     onChange={(e) => setNewEducator({...newEducator, lastName: e.target.value})}
@@ -209,6 +196,8 @@ const EducatorsPage = () => {
                     Email
                   </label>
                   <input
+                    id="educator-email-input"
+                    data-testid="educator-email-input"
                     type="email"
                     value={newEducator.email}
                     onChange={(e) => setNewEducator({...newEducator, email: e.target.value})}
@@ -221,6 +210,8 @@ const EducatorsPage = () => {
                     Phone
                   </label>
                   <input
+                    id="educator-phone-input"
+                    data-testid="educator-phone-input"
                     type="tel"
                     value={newEducator.phone}
                     onChange={(e) => setNewEducator({...newEducator, phone: e.target.value})}
@@ -233,6 +224,8 @@ const EducatorsPage = () => {
                     Department
                   </label>
                   <input
+                    id="educator-department-input"
+                    data-testid="educator-department-input"
                     type="text"
                     value={newEducator.educatorInfo?.department || ''}
                     onChange={(e) => setNewEducator({
@@ -265,6 +258,8 @@ const EducatorsPage = () => {
                   Bio
                 </label>
                 <textarea
+                  id="educator-bio-input"
+                  data-testid="educator-bio-input"
                   value={newEducator.educatorInfo?.bio || ''}
                   onChange={(e) => setNewEducator({
                     ...newEducator, 
@@ -281,6 +276,8 @@ const EducatorsPage = () => {
               <div className="flex justify-end space-x-2">
                 <button
                   type="button"
+                  id="cancel-educator-btn"
+                  data-testid="cancel-educator-btn"
                   onClick={() => setShowAddForm(false)}
                   className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
                 >
@@ -288,6 +285,8 @@ const EducatorsPage = () => {
                 </button>
                 <button
                   type="submit"
+                  id="save-educator-btn"
+                  data-testid="save-educator-btn"
                   className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
                 >
                   Create Educator
@@ -301,7 +300,7 @@ const EducatorsPage = () => {
         <div className="bg-white shadow overflow-hidden sm:rounded-md">
           <ul className="divide-y divide-gray-200">
             {educators.map((educator) => (
-              <li key={educator.id}>
+              <li key={educator.id} data-testid={`educator-${educator.fullName.replace(/\s+/g, '-').toLowerCase()}`}>
                 <div className="px-4 py-4 sm:px-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">

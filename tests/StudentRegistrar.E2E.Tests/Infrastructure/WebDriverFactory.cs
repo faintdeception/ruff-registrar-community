@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
@@ -64,8 +66,10 @@ public class WebDriverFactory : IDisposable
         // Set page load strategy for better reliability
         options.PageLoadStrategy = PageLoadStrategy.Normal;
 
-        // Let Selenium Manager resolve a compatible driver for the installed Chrome.
-        _driver = new ChromeDriver(options);
+        var service = CreateChromeDriverService();
+        _driver = service is null
+            ? new ChromeDriver(options)
+            : new ChromeDriver(service, options);
 
         // Configure timeouts
         var implicitWait = int.Parse(_configuration["SeleniumSettings:ImplicitWaitSeconds"] ?? "10");
@@ -110,6 +114,101 @@ public class WebDriverFactory : IDisposable
         {
             // Best-effort: if we can't adjust permissions, Selenium will surface a useful error.
         }
+    }
+
+    private static ChromeDriverService? CreateChromeDriverService()
+    {
+        var driverPath = ResolveChromeDriverPath();
+        if (string.IsNullOrWhiteSpace(driverPath))
+        {
+            return null;
+        }
+
+        var driverDirectory = Path.GetDirectoryName(driverPath);
+        var driverFileName = Path.GetFileName(driverPath);
+        if (string.IsNullOrWhiteSpace(driverDirectory) || string.IsNullOrWhiteSpace(driverFileName))
+        {
+            return null;
+        }
+
+        var service = ChromeDriverService.CreateDefaultService(driverDirectory, driverFileName);
+        service.HideCommandPromptWindow = true;
+        return service;
+    }
+
+    private static string? ResolveChromeDriverPath()
+    {
+        var managerPath = GetSeleniumManagerPath();
+        if (string.IsNullOrWhiteSpace(managerPath) || !File.Exists(managerPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var process = Process.Start(new ProcessStartInfo
+            {
+                FileName = managerPath,
+                Arguments = "--browser chrome --skip-driver-in-path --output json",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+
+            if (process is null)
+            {
+                return null;
+            }
+
+            var output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit(TimeSpan.FromSeconds(60));
+            if (process.ExitCode != 0 || string.IsNullOrWhiteSpace(output))
+            {
+                return null;
+            }
+
+            using var doc = JsonDocument.Parse(output);
+            if (!doc.RootElement.TryGetProperty("result", out var result)
+                || !result.TryGetProperty("driver_path", out var driverPathElement))
+            {
+                return null;
+            }
+
+            var driverPath = driverPathElement.GetString();
+            return !string.IsNullOrWhiteSpace(driverPath) && File.Exists(driverPath)
+                ? driverPath
+                : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string? GetSeleniumManagerPath()
+    {
+        var executableName = OperatingSystem.IsWindows() ? "selenium-manager.exe" : "selenium-manager";
+        string runtime;
+
+        if (OperatingSystem.IsWindows())
+        {
+            runtime = "win";
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            runtime = "linux";
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            runtime = "osx";
+        }
+        else
+        {
+            return null;
+        }
+
+        return Path.Combine(AppContext.BaseDirectory, "runtimes", runtime, "native", executableName);
     }
 
     public void Dispose()

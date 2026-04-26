@@ -1,4 +1,4 @@
-import { getKeycloakConfig } from './runtime-env';
+import { getApiBaseUrl, getKeycloakConfig } from './runtime-env';
 
 interface ApiClientOptions extends RequestInit {
   headers?: Record<string, string>;
@@ -8,6 +8,7 @@ class ApiClient {
   private refreshPromise: Promise<string | null> | null = null;
   
   async request(url: string, options: ApiClientOptions = {}): Promise<Response> {
+    const requestUrl = resolveApiUrl(url);
     let token = localStorage.getItem('accessToken');
     
     // Check if token is expired
@@ -24,13 +25,17 @@ class ApiClient {
       'Content-Type': 'application/json',
       ...(options.headers || {}),
     };
+
+    if (typeof window !== 'undefined' && shouldForwardTenantHost(requestUrl)) {
+      headers['X-Forwarded-Host'] = window.location.host;
+    }
     
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
     
     try {
-      const response = await fetch(url, {
+      const response = await fetch(requestUrl, {
         ...options,
         headers,
       });
@@ -41,7 +46,7 @@ class ApiClient {
         if (newToken) {
           // Retry the request with the new token
           headers['Authorization'] = `Bearer ${newToken}`;
-          return fetch(url, {
+          return fetch(requestUrl, {
             ...options,
             headers,
           });
@@ -165,3 +170,23 @@ class ApiClient {
 // Export a singleton instance
 export const apiClient = new ApiClient();
 export default apiClient;
+
+const resolveApiUrl = (url: string): string => {
+  if (url.startsWith('/api/')) {
+    return `${getApiBaseUrl().replace(/\/$/, '')}${url}`;
+  }
+
+  return url;
+};
+
+const shouldForwardTenantHost = (url: string): boolean => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    return url.startsWith('/api/') || new URL(url, window.location.origin).origin !== window.location.origin;
+  } catch {
+    return false;
+  }
+};

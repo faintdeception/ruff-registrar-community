@@ -159,23 +159,9 @@ export default function RoomsPage() {
 
       let response;
       if (editingRoom) {
-        response = await fetch(`/api/rooms/${editingRoom.id}`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
-        });
+        response = await apiClient.put(`/api/rooms/${editingRoom.id}`, formData);
       } else {
-        response = await fetch('/api/rooms', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
-        });
+        response = await apiClient.post('/api/rooms', formData);
       }
 
       if (!response.ok) {
@@ -204,13 +190,7 @@ export default function RoomsPage() {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch(`/api/rooms/${roomId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await apiClient.delete(`/api/rooms/${roomId}`);
 
       if (!response.ok) {
         const errorText = await response.text();

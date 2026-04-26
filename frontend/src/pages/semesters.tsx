@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import apiClient from '@/lib/api-client';
 import {
   CalendarIcon,
   PlusIcon,
@@ -76,12 +77,7 @@ export default function SemestersPage() {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch('/api/semesters', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await apiClient.get('/api/semesters');
 
       if (!response.ok) {
         throw new Error('Failed to fetch semesters');
@@ -172,23 +168,9 @@ export default function SemestersPage() {
 
       let response;
       if (editingSemester) {
-        response = await fetch(`/api/semesters/${editingSemester.id}`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(submitData),
-        });
+        response = await apiClient.put(`/api/semesters/${editingSemester.id}`, submitData);
       } else {
-        response = await fetch('/api/semesters', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(submitData),
-        });
+        response = await apiClient.post('/api/semesters', submitData);
       }
 
       if (!response.ok) {
@@ -221,13 +203,7 @@ export default function SemestersPage() {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch(`/api/semesters/${semesterId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await apiClient.delete(`/api/semesters/${semesterId}`);
 
       if (!response.ok) {
         throw new Error('Failed to delete semester');
