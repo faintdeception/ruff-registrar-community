@@ -11,6 +11,7 @@ public class CourseServiceV2 : ICourseServiceV2
     private readonly ICourseInstructorRepository _courseInstructorRepository;
     private readonly IAccountHolderRepository _accountHolderRepository;
     private readonly IRoomRepository _roomRepository;
+    private readonly IKeycloakService _keycloakService;
     private readonly IMapper _mapper;
 
     public CourseServiceV2(
@@ -18,12 +19,14 @@ public class CourseServiceV2 : ICourseServiceV2
         ICourseInstructorRepository courseInstructorRepository,
         IAccountHolderRepository accountHolderRepository,
         IRoomRepository roomRepository,
+        IKeycloakService keycloakService,
         IMapper mapper)
     {
         _courseRepository = courseRepository;
         _courseInstructorRepository = courseInstructorRepository;
         _accountHolderRepository = accountHolderRepository;
         _roomRepository = roomRepository;
+        _keycloakService = keycloakService;
         _mapper = mapper;
     }
 
@@ -88,6 +91,17 @@ public class CourseServiceV2 : ICourseServiceV2
                 instructor.FirstName = accountHolder.FirstName;
                 instructor.LastName = accountHolder.LastName;
                 instructor.Email = accountHolder.EmailAddress;
+
+                var keycloakUserId = !string.IsNullOrWhiteSpace(accountHolder.KeycloakUserId)
+                    ? accountHolder.KeycloakUserId
+                    : await _keycloakService.GetUserIdByEmailAsync(accountHolder.EmailAddress);
+
+                if (string.IsNullOrWhiteSpace(keycloakUserId))
+                {
+                    throw new InvalidOperationException("Account holder does not have a Keycloak user.");
+                }
+
+                await _keycloakService.UpdateUserRoleAsync(keycloakUserId, UserRole.Educator);
             }
         }
 

@@ -86,14 +86,16 @@ public class EducatorServiceTests
             FirstName = "Parent",
             LastName = "Teacher",
             EmailAddress = "parent.teacher@example.com",
+            MobilePhone = "555-0111",
             KeycloakUserId = keycloakUserId
         };
 
         var request = new InviteEducatorDto
         {
-            FirstName = accountHolder.FirstName,
-            LastName = accountHolder.LastName,
-            Email = accountHolder.EmailAddress,
+            FirstName = "Spoofed",
+            LastName = "Name",
+            Email = "spoofed@example.com",
+            Phone = "555-9999",
             AccountHolderId = accountHolderId
         };
 
@@ -110,9 +112,19 @@ public class EducatorServiceTests
         result.Credentials.Should().BeNull();
         result.Educator.AccountHolderId.Should().Be(accountHolderId);
         result.Educator.KeycloakUserId.Should().Be(keycloakUserId);
+        result.Educator.FirstName.Should().Be(accountHolder.FirstName);
+        result.Educator.LastName.Should().Be(accountHolder.LastName);
+        result.Educator.Email.Should().Be(accountHolder.EmailAddress);
+        result.Educator.Phone.Should().Be(accountHolder.MobilePhone);
         result.Message.Should().Contain("authorized");
 
         _keycloakService.Verify(s => s.CreateUserAsync(It.IsAny<CreateUserRequest>()), Times.Never);
         _keycloakService.Verify(s => s.UpdateUserRoleAsync(keycloakUserId, UserRole.Educator), Times.Once);
+        _educatorRepository.Verify(r => r.CreateAsync(It.Is<Educator>(e =>
+            e.AccountHolderId == accountHolderId &&
+            e.FirstName == accountHolder.FirstName &&
+            e.LastName == accountHolder.LastName &&
+            e.Email == accountHolder.EmailAddress &&
+            e.Phone == accountHolder.MobilePhone)), Times.Once);
     }
 }

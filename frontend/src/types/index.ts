@@ -89,7 +89,13 @@ export interface EducatorDto {
   updatedAt: string;
   educatorInfo: EducatorInfo;
   isAssignedToCourse: boolean;
-  course?: any; // Course details if assigned
+  course?: EducatorCourseSummary; // Course details if assigned
+}
+
+export interface EducatorCourseSummary {
+  id?: string;
+  name?: string;
+  code?: string;
 }
 
 export interface CreateEducatorDto {
@@ -123,6 +129,15 @@ export interface InviteEducatorResponse {
   educator: EducatorDto;
   credentials?: UserCredentials;
   message: string;
+}
+
+export interface AccountHolderDto {
+  id: string;
+  firstName: string;
+  lastName: string;
+  emailAddress: string;
+  homePhone?: string;
+  mobilePhone?: string;
 }
 
 export interface UpdateEducatorDto {

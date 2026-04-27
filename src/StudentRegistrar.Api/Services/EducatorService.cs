@@ -61,11 +61,20 @@ public class EducatorService : IEducatorService
         CreateUserResponse? createdUser = null;
         string? keycloakUserId;
         Guid? accountHolderId = inviteDto.AccountHolderId;
+        string firstName = inviteDto.FirstName;
+        string lastName = inviteDto.LastName;
+        string email = inviteDto.Email;
+        string? phone = inviteDto.Phone;
 
         if (inviteDto.AccountHolderId.HasValue)
         {
             var accountHolder = await _accountHolderRepository.GetByIdAsync(inviteDto.AccountHolderId.Value)
                 ?? throw new InvalidOperationException("Account holder was not found.");
+
+            firstName = accountHolder.FirstName;
+            lastName = accountHolder.LastName;
+            email = accountHolder.EmailAddress;
+            phone = accountHolder.MobilePhone ?? accountHolder.HomePhone ?? inviteDto.Phone;
 
             keycloakUserId = !string.IsNullOrWhiteSpace(accountHolder.KeycloakUserId)
                 ? accountHolder.KeycloakUserId
@@ -80,9 +89,9 @@ public class EducatorService : IEducatorService
         {
             createdUser = await _keycloakService.CreateUserAsync(new CreateUserRequest
             {
-                Email = inviteDto.Email,
-                FirstName = inviteDto.FirstName,
-                LastName = inviteDto.LastName,
+                Email = email,
+                FirstName = firstName,
+                LastName = lastName,
                 Role = UserRole.Educator,
                 Password = string.Empty,
                 RequirePasswordChange = false,
@@ -96,10 +105,10 @@ public class EducatorService : IEducatorService
 
         var educator = new Educator
         {
-            FirstName = inviteDto.FirstName,
-            LastName = inviteDto.LastName,
-            Email = inviteDto.Email,
-            Phone = inviteDto.Phone,
+            FirstName = firstName,
+            LastName = lastName,
+            Email = email,
+            Phone = phone,
             AccountHolderId = accountHolderId,
             KeycloakUserId = keycloakUserId,
             IsActive = true
