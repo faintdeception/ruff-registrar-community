@@ -365,14 +365,8 @@ public class StudentRegistrarDbContext : DbContext
             entity.Property(e => e.KeycloakUserId).HasMaxLength(255);
             entity.Property(e => e.EducatorInfoJson).HasColumnType("jsonb");
             entity.Property(e => e.IsActive).IsRequired();
-            entity.Property(e => e.IsPrimary).IsRequired();
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
-
-            entity.HasOne(e => e.Course)
-                .WithMany()
-                .HasForeignKey(e => e.CourseId)
-                .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasOne(e => e.AccountHolder)
                 .WithMany()

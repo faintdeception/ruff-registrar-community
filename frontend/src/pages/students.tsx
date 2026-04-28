@@ -7,7 +7,6 @@ import {
   UserGroupIcon,
   PlusIcon,
   AcademicCapIcon,
-  XMarkIcon,
   XCircleIcon,
   CalendarIcon,
   BookOpenIcon
@@ -27,7 +26,7 @@ interface Student {
     parentNotes?: string;
   };
   notes?: string;
-  enrollments: any[];
+  enrollments: unknown[];
   accountHolderName: string;
 }
 

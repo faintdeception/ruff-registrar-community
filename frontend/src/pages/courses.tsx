@@ -85,6 +85,16 @@ interface AccountHolder {
   emailAddress: string;
 }
 
+interface CreateCourseInstructorPayload {
+  courseId: string;
+  accountHolderId: string | null;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  isPrimary: boolean;
+}
+
 export default function CoursesPage() {
   const { user } = useAuth();
   const [semesters, setSemesters] = useState<Semester[]>([]);
@@ -146,7 +156,7 @@ export default function CoursesPage() {
             setSelectedSemester(semestersData[0].id);
           }
         }
-      } catch (err) {
+      } catch {
         // No active semester found, use the first one if available
         if (semestersData.length > 0) {
           setSelectedSemester(semestersData[0].id);
@@ -218,11 +228,6 @@ export default function CoursesPage() {
     }
   }, []);
 
-  // Function to refresh rooms when needed (e.g., after room changes)
-  const refreshRooms = useCallback(() => {
-    fetchAvailableRooms();
-  }, [fetchAvailableRooms]);
-
   const openEditModal = useCallback(async (course: Course) => {
     if (!isAdmin) return; // guard for non-admin users
     setEditingCourse(course);
@@ -286,8 +291,6 @@ export default function CoursesPage() {
         throw new Error(errorData.message || 'Failed to create course');
       }
 
-      const newCourse = await response.json();
-      
       // Refresh the courses list
       await fetchCoursesBySemester(selectedSemester);
       
@@ -347,7 +350,7 @@ export default function CoursesPage() {
       try {
         setAddingInstructor(true);
 
-        const instructorData: any = {
+        const instructorData: CreateCourseInstructorPayload = {
           courseId: editingCourse.id,
           accountHolderId: newInstructor.accountHolderId || null,
           firstName: newInstructor.firstName,

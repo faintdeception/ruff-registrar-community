@@ -200,38 +200,6 @@ public class EducatorsController : ControllerBase
         }
     }
 
-    [HttpGet("course/{courseId}")]
-    public async Task<ActionResult<IEnumerable<EducatorDto>>> GetEducatorsByCourse(Guid courseId)
-    {
-        try
-        {
-            // Allow all authenticated users to view educators by course
-            var educators = await _educatorService.GetEducatorsByCourseIdAsync(courseId);
-            return Ok(educators);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving educators for course {CourseId}", courseId);
-            return StatusCode(500, "Internal server error");
-        }
-    }
-
-    [HttpGet("unassigned")]
-    public async Task<ActionResult<IEnumerable<EducatorDto>>> GetUnassignedEducators()
-    {
-        try
-        {
-            // Allow all authenticated users to view unassigned educators
-            var educators = await _educatorService.GetUnassignedEducatorsAsync();
-            return Ok(educators);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving unassigned educators");
-            return StatusCode(500, "Internal server error");
-        }
-    }
-
     private string GetUserRole()
     {
         var authHeader = Request.Headers["Authorization"].FirstOrDefault();

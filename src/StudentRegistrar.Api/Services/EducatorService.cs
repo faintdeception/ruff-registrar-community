@@ -36,18 +36,6 @@ public class EducatorService : IEducatorService
         return educator == null ? null : _mapper.Map<EducatorDto>(educator);
     }
 
-    public async Task<IEnumerable<EducatorDto>> GetEducatorsByCourseIdAsync(Guid courseId)
-    {
-        var educators = await _educatorRepository.GetByCourseIdAsync(courseId);
-        return _mapper.Map<IEnumerable<EducatorDto>>(educators);
-    }
-
-    public async Task<IEnumerable<EducatorDto>> GetUnassignedEducatorsAsync()
-    {
-        var educators = await _educatorRepository.GetUnassignedAsync();
-        return _mapper.Map<IEnumerable<EducatorDto>>(educators);
-    }
-
     public async Task<EducatorDto> CreateEducatorAsync(CreateEducatorDto createDto)
     {
         var educator = _mapper.Map<Educator>(createDto);
@@ -76,9 +64,11 @@ public class EducatorService : IEducatorService
             email = accountHolder.EmailAddress;
             phone = accountHolder.MobilePhone ?? accountHolder.HomePhone ?? inviteDto.Phone;
 
-            keycloakUserId = !string.IsNullOrWhiteSpace(accountHolder.KeycloakUserId)
-                ? accountHolder.KeycloakUserId
-                : await _keycloakService.GetUserIdByEmailAsync(accountHolder.EmailAddress);
+            keycloakUserId = await _keycloakService.GetUserIdByEmailAsync(accountHolder.EmailAddress);
+            if (string.IsNullOrWhiteSpace(keycloakUserId) && !string.IsNullOrWhiteSpace(accountHolder.KeycloakUserId))
+            {
+                keycloakUserId = accountHolder.KeycloakUserId;
+            }
 
             if (string.IsNullOrWhiteSpace(keycloakUserId))
             {

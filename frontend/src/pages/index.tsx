@@ -4,12 +4,10 @@ import { useAuth } from '@/lib/auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import api from '@/lib/api';
 import { 
-  AcademicCapIcon, 
   UserGroupIcon, 
   BookOpenIcon, 
   ClipboardDocumentListIcon,
   ChartBarIcon,
-  ArrowRightOnRectangleIcon,
   UserCircleIcon
 } from '@heroicons/react/24/outline';
 

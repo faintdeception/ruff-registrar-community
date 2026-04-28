@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { getAppVersion } from '@/lib/runtime-env';
-import { useRouter } from 'next/router';
 import { AcademicCapIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 export default function Login() {
@@ -13,7 +12,6 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   
   const { login } = useAuth();
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

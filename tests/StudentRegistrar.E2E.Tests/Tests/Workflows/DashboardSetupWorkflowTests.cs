@@ -122,6 +122,62 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
         coursesPage.IsCourseFeeVisible(courseName, "$125.50").Should().BeTrue("the invited educator should be able to set a course price");
     }
 
+    [Fact]
+    [Trait("Suite", "SaaSCompatibility")]
+    public void Existing_Admin_Should_Authorize_Parent_As_Educator_Who_Can_Create_Priced_Course()
+    {
+        LoginAsAdmin();
+
+        var suffix = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+        var semesterName = $"Parent Educator Semester {suffix}";
+        var semesterCode = $"PE{suffix[^6..]}";
+        var courseName = $"Parent Educator Course {suffix}";
+
+        var semestersPage = new SemestersPage(Driver);
+        semestersPage.NavigateToSemesters();
+        semestersPage.ClickCreateSemester();
+        semestersPage.FillSemesterForm(
+            name: semesterName,
+            code: semesterCode,
+            startDate: new DateTime(2028, 8, 20),
+            endDate: new DateTime(2028, 12, 15),
+            regStartDate: new DateTime(2028, 6, 15),
+            regEndDate: new DateTime(2028, 8, 10),
+            isActive: true);
+        semestersPage.SaveSemester();
+        WaitUntil(_ => semestersPage.IsSemesterVisible(semesterName), 15, 300, $"Semester '{semesterName}' was not visible after creation.");
+
+        var educatorsPage = new EducatorsPage(Driver);
+        educatorsPage.NavigateToEducators(BaseUrl);
+        educatorsPage.AuthorizeExistingMemberAsEducator(
+            "Mark Member (mark.member@example.com)",
+            "Mark Member",
+            "Parent Educators",
+            "Existing parent authorized as an educator.");
+
+        educatorsPage.GetInviteMessage().Should().Contain("authorized");
+        educatorsPage.HasTemporaryCredentials().Should().BeFalse("existing parents should keep their current credentials");
+        educatorsPage.IsEducatorVisible("Mark Member").Should().BeTrue("the selected parent should appear in the educators list");
+
+        Logout();
+        LoginAsMember("parent should keep the same member credentials after educator authorization");
+
+        var coursesPage = new CoursesPage(Driver);
+        coursesPage.NavigateToCourses(BaseUrl);
+        coursesPage.SelectSemester(semesterName);
+        coursesPage.CreateCourse(
+            courseName,
+            $"PEC{suffix[^4..]}",
+            "All Ages",
+            10,
+            95.25m,
+            "TR 09:00",
+            "Priced course created by an existing parent educator.");
+
+        coursesPage.IsCourseVisible(courseName).Should().BeTrue("the authorized parent should be able to create a course");
+        coursesPage.IsCourseFeeVisible(courseName, "$95.25").Should().BeTrue("the authorized parent should be able to set a course price");
+    }
+
     private void LoginAsAdmin()
     {
         NavigateToUrl($"{BaseUrl.TrimEnd('/')}/login");
@@ -132,6 +188,18 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
         var password = Configuration["TestCredentials:AdminUser:Password"] ?? "AdminPass123!";
 
         Login(username, password, "admin login should succeed before dashboard setup");
+    }
+
+    private void LoginAsMember(string because)
+    {
+        NavigateToUrl($"{BaseUrl.TrimEnd('/')}/login");
+        WaitForPageLoad();
+        WaitForUrlContains("/login");
+
+        var username = Configuration["TestCredentials:MemberUser:Username"] ?? "member1";
+        var password = Configuration["TestCredentials:MemberUser:Password"] ?? "MemberPass123!";
+
+        Login(username, password, because);
     }
 
     private void Login(string username, string password, string because)

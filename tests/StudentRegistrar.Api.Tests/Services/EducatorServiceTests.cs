@@ -103,6 +103,10 @@ public class EducatorServiceTests
             .Setup(r => r.GetByIdAsync(accountHolderId))
             .ReturnsAsync(accountHolder);
 
+        _keycloakService
+            .Setup(s => s.GetUserIdByEmailAsync(accountHolder.EmailAddress))
+            .ReturnsAsync(keycloakUserId);
+
         _educatorRepository
             .Setup(r => r.CreateAsync(It.IsAny<Educator>()))
             .ReturnsAsync((Educator educator) => educator);

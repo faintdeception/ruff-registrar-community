@@ -58,6 +58,10 @@ public class CourseServiceV2Tests
             .Setup(r => r.GetByIdAsync(accountHolderId))
             .ReturnsAsync(accountHolder);
 
+        _keycloakService
+            .Setup(s => s.GetUserIdByEmailAsync(accountHolder.EmailAddress))
+            .ReturnsAsync(keycloakUserId);
+
         _courseInstructorRepository
             .Setup(r => r.CreateAsync(It.IsAny<CourseInstructor>()))
             .ReturnsAsync((CourseInstructor instructor) => instructor);

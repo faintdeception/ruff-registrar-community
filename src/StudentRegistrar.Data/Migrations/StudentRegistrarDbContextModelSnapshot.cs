@@ -287,9 +287,6 @@ namespace StudentRegistrar.Data.Migrations
                     b.Property<Guid?>("AccountHolderId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("CourseId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -307,9 +304,6 @@ namespace StudentRegistrar.Data.Migrations
                         .HasColumnType("character varying(100)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsPrimary")
                         .HasColumnType("boolean");
 
                     b.Property<string>("KeycloakUserId")
@@ -334,8 +328,6 @@ namespace StudentRegistrar.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AccountHolderId");
-
-                    b.HasIndex("CourseId");
 
                     b.HasIndex("TenantId");
 
@@ -906,14 +898,7 @@ namespace StudentRegistrar.Data.Migrations
                         .HasForeignKey("AccountHolderId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("StudentRegistrar.Models.Course", "Course")
-                        .WithMany()
-                        .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("AccountHolder");
-
-                    b.Navigation("Course");
                 });
 
             modelBuilder.Entity("StudentRegistrar.Models.Enrollment", b =>

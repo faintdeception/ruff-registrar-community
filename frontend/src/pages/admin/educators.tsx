@@ -1,22 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { EducatorDto, CreateEducatorDto, EducatorInfo } from '@/types';
+import { EducatorDto, EducatorInfo } from '@/types';
 import { getApiBaseUrl } from '@/lib/runtime-env';
 
 interface CreateEducatorFormData {
-  courseId: string;
   firstName: string;
   lastName: string;
   email?: string;
   phone?: string;
-  isPrimary: boolean;
   isActive: boolean;
   educatorInfo?: EducatorInfo;
 }
 
 const AdminEducatorsPage = () => {
   const [instructors, setInstructors] = useState<EducatorDto[]>([]);
-  const [courses, setCourses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -25,12 +22,10 @@ const AdminEducatorsPage = () => {
   const apiBaseUrl = getApiBaseUrl();
 
   const [newInstructor, setNewInstructor] = useState<CreateEducatorFormData>({
-    courseId: '',
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
-    isPrimary: false,
     isActive: true,
     educatorInfo: {
       bio: '',
@@ -52,7 +47,6 @@ const AdminEducatorsPage = () => {
     
     // Load initial data
     loadInstructors(storedToken);
-    loadCourses(storedToken);
   }, []);
 
   const loadInstructors = async (authToken: string) => {
@@ -78,24 +72,6 @@ const AdminEducatorsPage = () => {
     }
   };
 
-  const loadCourses = async (authToken: string) => {
-    try {
-      const response = await fetch(`${apiBaseUrl}/api/Courses`, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setCourses(data);
-      }
-    } catch (err) {
-      console.error('Error loading courses:', err);
-    }
-  };
-
   const handleAddInstructor = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
@@ -103,12 +79,10 @@ const AdminEducatorsPage = () => {
     try {
       // Create payload that matches CreateEducatorDto
       const payload = {
-        courseId: newInstructor.courseId || null,
         firstName: newInstructor.firstName,
         lastName: newInstructor.lastName,
         email: newInstructor.email || null,
         phone: newInstructor.phone || null,
-        isPrimary: newInstructor.isPrimary,
         isActive: newInstructor.isActive,
         educatorInfo: {
           bio: newInstructor.educatorInfo?.bio || '',
@@ -133,12 +107,10 @@ const AdminEducatorsPage = () => {
         setInstructors([...instructors, created]);
         setShowAddForm(false);
         setNewInstructor({
-          courseId: '',
           firstName: '',
           lastName: '',
           email: '',
           phone: '',
-          isPrimary: false,
           isActive: true,
           educatorInfo: {
             bio: '',
@@ -190,7 +162,7 @@ const AdminEducatorsPage = () => {
           Educator Management
         </h1>
         <p className="text-gray-600">
-          Manage course instructors and their assignments
+          Manage educator profiles and authorization
         </p>
       </div>
 
@@ -214,24 +186,6 @@ const AdminEducatorsPage = () => {
           <h2 className="text-xl font-semibold mb-4">Add New Educator</h2>
           <form onSubmit={handleAddInstructor} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Course (Optional)
-                </label>
-                <select
-                  value={newInstructor.courseId}
-                  onChange={(e) => setNewInstructor({...newInstructor, courseId: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">No Course Assignment</option>
-                  {courses.map(course => (
-                    <option key={course.id} value={course.id}>
-                      {course.code} - {course.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   First Name
@@ -282,18 +236,6 @@ const AdminEducatorsPage = () => {
                 />
               </div>
 
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="isPrimary"
-                  checked={newInstructor.isPrimary}
-                  onChange={(e) => setNewInstructor({...newInstructor, isPrimary: e.target.checked})}
-                  className="mr-2"
-                />
-                <label htmlFor="isPrimary" className="text-sm font-medium text-gray-700">
-                  Primary Instructor
-                </label>
-              </div>
             </div>
 
             <div>
@@ -346,13 +288,10 @@ const AdminEducatorsPage = () => {
                   Name
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Course
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Contact
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
+                  Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -362,7 +301,7 @@ const AdminEducatorsPage = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {instructors.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
                     No educators found. Add one to get started.
                   </td>
                 </tr>
@@ -383,14 +322,6 @@ const AdminEducatorsPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {instructor.course?.name || 'Unassigned'}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {instructor.course?.code || 'No Course'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
                         {instructor.email}
                       </div>
                       <div className="text-sm text-gray-500">
@@ -399,11 +330,11 @@ const AdminEducatorsPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        instructor.isPrimary
-                          ? 'bg-blue-100 text-blue-800'
+                        instructor.isActive
+                          ? 'bg-green-100 text-green-800'
                           : 'bg-gray-100 text-gray-800'
                       }`}>
-                        {instructor.isPrimary ? 'Primary' : 'Assistant'}
+                        {instructor.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -422,19 +353,6 @@ const AdminEducatorsPage = () => {
         </div>
       </div>
 
-      <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <h3 className="text-lg font-semibold text-blue-900 mb-2">
-          Admin Features Completed
-        </h3>
-        <ul className="text-blue-800 space-y-1">
-          <li>✅ CourseInstructor Controller with admin-only authorization</li>
-          <li>✅ Full CRUD operations for course instructors</li>
-          <li>✅ Role-based access control</li>
-          <li>✅ Comprehensive instructor information with JSON storage</li>
-          <li>✅ Primary instructor designation</li>
-          <li>✅ Integration with existing course system</li>
-        </ul>
-      </div>
     </div>
   );
 };

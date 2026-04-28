@@ -135,53 +135,6 @@ public class EducatorsControllerTests
         objectResult!.StatusCode.Should().Be(500);
     }
 
-    [Fact]
-    public async Task GetEducatorsByCourse_Should_ReturnOkWithEducators()
-    {
-        // Arrange
-        var courseId = Guid.NewGuid();
-        var expectedEducators = new List<EducatorDto>
-        {
-            new() { Id = Guid.NewGuid(), FirstName = "John", LastName = "Teacher", CourseId = courseId }
-        };
-
-        _mockEducatorService
-            .Setup(s => s.GetEducatorsByCourseIdAsync(courseId))
-            .Returns(Task.FromResult<IEnumerable<EducatorDto>>(expectedEducators));
-
-        // Act
-        var result = await _controller.GetEducatorsByCourse(courseId);
-
-        // Assert
-        var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(expectedEducators);
-    }
-
-    [Fact]
-    public async Task GetUnassignedEducators_Should_ReturnOkWithEducators()
-    {
-        // Arrange
-        var expectedEducators = new List<EducatorDto>
-        {
-            new() { Id = Guid.NewGuid(), FirstName = "John", LastName = "Teacher", CourseId = null }
-        };
-
-        _mockEducatorService
-            .Setup(s => s.GetUnassignedEducatorsAsync())
-            .Returns(Task.FromResult<IEnumerable<EducatorDto>>(expectedEducators));
-
-        // Act
-        var result = await _controller.GetUnassignedEducators();
-
-        // Assert
-        var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(expectedEducators);
-    }
-
     // Note: Admin-only operations (Create, Update, Delete, Activate, Deactivate) 
     // return 500 errors due to JWT token parsing complexity in the controller.
     // These would typically be tested with integration tests or mocked authentication.

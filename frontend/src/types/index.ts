@@ -75,7 +75,6 @@ export interface CreateEnrollmentDto {
 // Independent Educator types (not tied to courses)
 export interface EducatorDto {
   id: string;
-  courseId?: string;
   accountHolderId?: string;
   keycloakUserId?: string;
   firstName: string;
@@ -83,29 +82,18 @@ export interface EducatorDto {
   fullName: string;
   email?: string;
   phone?: string;
-  isPrimary: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
   educatorInfo: EducatorInfo;
-  isAssignedToCourse: boolean;
-  course?: EducatorCourseSummary; // Course details if assigned
-}
-
-export interface EducatorCourseSummary {
-  id?: string;
-  name?: string;
-  code?: string;
 }
 
 export interface CreateEducatorDto {
-  courseId?: string;
   accountHolderId?: string;
   firstName: string;
   lastName: string;
   email?: string;
   phone?: string;
-  isPrimary?: boolean;
   isActive?: boolean;
   educatorInfo?: EducatorInfo;
 }

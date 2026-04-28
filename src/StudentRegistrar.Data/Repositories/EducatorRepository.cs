@@ -14,40 +14,17 @@ public class EducatorRepository : IEducatorRepository
 
     public async Task<IEnumerable<Educator>> GetAllAsync()
     {
-        return await _context.Educators
-            .Include(e => e.Course)
-            .ToListAsync();
+        return await _context.Educators.ToListAsync();
     }
 
     public async Task<Educator?> GetByIdAsync(Guid id)
     {
-        return await _context.Educators
-            .Include(e => e.Course)
-            .FirstOrDefaultAsync(e => e.Id == id);
-    }
-
-    public async Task<IEnumerable<Educator>> GetByCourseIdAsync(Guid courseId)
-    {
-        return await _context.Educators
-            .Include(e => e.Course)
-            .Where(e => e.CourseId == courseId)
-            .ToListAsync();
-    }
-
-    public async Task<IEnumerable<Educator>> GetUnassignedAsync()
-    {
-        return await _context.Educators
-            .Include(e => e.Course)
-            .Where(e => e.CourseId == null && e.IsActive)
-            .ToListAsync();
+        return await _context.Educators.FirstOrDefaultAsync(e => e.Id == id);
     }
 
     public async Task<IEnumerable<Educator>> GetActiveAsync()
     {
-        return await _context.Educators
-            .Include(e => e.Course)
-            .Where(e => e.IsActive)
-            .ToListAsync();
+        return await _context.Educators.Where(e => e.IsActive).ToListAsync();
     }
 
     public async Task<Educator> CreateAsync(Educator educator)

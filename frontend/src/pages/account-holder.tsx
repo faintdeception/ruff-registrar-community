@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
 import { useAuth } from '../lib/auth';
 import ProtectedRoute from '../components/ProtectedRoute';
 import apiClient from '../lib/api-client';
@@ -94,7 +93,6 @@ interface CreateStudentForm {
 
 const AccountHolderPage: React.FC = () => {
   const { user } = useAuth();
-  const router = useRouter();
   const [accountHolder, setAccountHolder] = useState<AccountHolder | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -139,7 +137,7 @@ const AccountHolderPage: React.FC = () => {
       setSuccessMessage(null);
       setAddingStudent(true);
 
-      const response = await apiClient.post('/api/account-holders/me/students', {
+      await apiClient.post('/api/account-holders/me/students', {
         firstName: newStudent.firstName,
         lastName: newStudent.lastName,
         grade: newStudent.grade || null,
@@ -649,7 +647,7 @@ const AccountHolderPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="px-4 py-5 sm:px-6 text-center text-gray-500">
-                  No students added yet. Click "Add Student" to get started.
+                  No students added yet. Click &quot;Add Student&quot; to get started.
                 </div>
               )}
             </div>

@@ -46,6 +46,34 @@ public sealed class EducatorsPage
         return new EducatorInviteCredentials(username, password);
     }
 
+    public void AuthorizeExistingMemberAsEducator(string memberOptionText, string fullName, string department, string bio)
+    {
+        Click(By.Id("add-educator-btn"));
+        var memberSelect = _wait.Until(d => d.FindElement(By.Id("educator-account-holder-select")));
+        var select = new SelectElement(memberSelect);
+        var option = select.Options.FirstOrDefault(o => o.Text.Contains(memberOptionText, StringComparison.OrdinalIgnoreCase))
+            ?? throw new NoSuchElementException($"Could not find member option containing '{memberOptionText}'. Available: {string.Join(", ", select.Options.Select(o => o.Text))}");
+
+        option.Click();
+        SetText(By.Id("educator-department-input"), department);
+        SetText(By.Id("educator-bio-input"), bio);
+        Click(By.Id("save-educator-btn"));
+
+        _wait.Until(d => IsEducatorVisible(fullName));
+        _wait.Until(d => GetInviteMessage().Contains("authorized", StringComparison.OrdinalIgnoreCase));
+    }
+
+    public string GetInviteMessage()
+    {
+        return _wait.Until(d => d.FindElement(By.CssSelector("[data-testid='educator-invite-message']"))).Text;
+    }
+
+    public bool HasTemporaryCredentials()
+    {
+        return _driver.FindElements(By.CssSelector("[data-testid='educator-invite-username'], [data-testid='educator-invite-password']"))
+            .Any(e => e.Displayed);
+    }
+
     public bool IsEducatorVisible(string fullName)
     {
         return _driver.PageSource.Contains(fullName, StringComparison.OrdinalIgnoreCase);
@@ -53,7 +81,10 @@ public sealed class EducatorsPage
 
     private void WaitForPageLoad()
     {
-        _wait.Until(driver => ((IJavaScriptExecutor)driver).ExecuteScript("return document.readyState").Equals("complete"));
+        _wait.Until(driver => string.Equals(
+            ((IJavaScriptExecutor)driver).ExecuteScript("return document.readyState")?.ToString(),
+            "complete",
+            StringComparison.OrdinalIgnoreCase));
         _wait.Until(d => d.FindElements(By.Id("add-educator-btn")).Any()
             || d.PageSource.Contains("Educators", StringComparison.OrdinalIgnoreCase));
     }

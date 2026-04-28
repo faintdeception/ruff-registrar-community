@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../lib/auth';
 import ProtectedRoute from '../components/ProtectedRoute';
 import apiClient from '../lib/api-client';
-import { PlusIcon, XMarkIcon, UserIcon, PhoneIcon, EnvelopeIcon, MapPinIcon, ClipboardDocumentIcon, EyeIcon, EyeSlashIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, XMarkIcon, UserIcon, PhoneIcon, EnvelopeIcon, MapPinIcon, ClipboardDocumentIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 interface Member {
   id: string;
@@ -31,8 +31,8 @@ interface Member {
   memberSince: string;
   lastLogin?: string;
   lastEdit: string;
-  students: any[];
-  payments: any[];
+  students: unknown[];
+  payments: unknown[];
 }
 
 interface UserCredentials {
@@ -215,7 +215,7 @@ const MembersPage: React.FC = () => {
       await navigator.clipboard.writeText(text);
       setSuccessMessage(`${type} copied to clipboard!`);
       setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (err) {
+    } catch {
       setError(`Failed to copy ${type.toLowerCase()} to clipboard`);
       setTimeout(() => setError(null), 3000);
     }

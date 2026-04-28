@@ -1,5 +1,9 @@
-import axios from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { getApiBaseUrl, getKeycloakConfig } from './runtime-env';
+
+interface RetryableAxiosRequestConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean;
+}
 
 const API_BASE_URL = getApiBaseUrl();
 
@@ -14,10 +18,10 @@ export const api = axios.create({
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (value: string) => void;
-  reject: (error: any) => void;
+  reject: (error: unknown) => void;
 }> = [];
 
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach(({ resolve, reject }) => {
     if (error) {
       reject(error);
@@ -46,10 +50,10 @@ api.interceptors.request.use(
 // Add response interceptor to handle auth errors and token refresh
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
+  async (error: AxiosError) => {
+    const originalRequest = error.config as RetryableAxiosRequestConfig | undefined;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       if (isRefreshing) {
         // If we're already refreshing, queue this request
         return new Promise((resolve, reject) => {

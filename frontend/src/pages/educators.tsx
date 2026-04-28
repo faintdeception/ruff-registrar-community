@@ -388,7 +388,6 @@ const EducatorsPage = () => {
                           {educator.educatorInfo?.department && (
                             <div>Department: {educator.educatorInfo.department}</div>
                           )}
-                          <div>Course Status: {educator.isAssignedToCourse ? `Assigned to ${educator.course?.name || 'Course'}` : 'Unassigned'}</div>
                         </div>
                       </div>
                     </div>

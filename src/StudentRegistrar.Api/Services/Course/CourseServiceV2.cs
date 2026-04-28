@@ -92,9 +92,11 @@ public class CourseServiceV2 : ICourseServiceV2
                 instructor.LastName = accountHolder.LastName;
                 instructor.Email = accountHolder.EmailAddress;
 
-                var keycloakUserId = !string.IsNullOrWhiteSpace(accountHolder.KeycloakUserId)
-                    ? accountHolder.KeycloakUserId
-                    : await _keycloakService.GetUserIdByEmailAsync(accountHolder.EmailAddress);
+                var keycloakUserId = await _keycloakService.GetUserIdByEmailAsync(accountHolder.EmailAddress);
+                if (string.IsNullOrWhiteSpace(keycloakUserId) && !string.IsNullOrWhiteSpace(accountHolder.KeycloakUserId))
+                {
+                    keycloakUserId = accountHolder.KeycloakUserId;
+                }
 
                 if (string.IsNullOrWhiteSpace(keycloakUserId))
                 {
