@@ -93,6 +93,41 @@ public class EducatorService : IEducatorService
 
         await _keycloakService.UpdateUserRoleAsync(keycloakUserId, UserRole.Educator);
 
+        if (accountHolderId.HasValue)
+        {
+            var existingEducator = await _educatorRepository.GetByAccountHolderIdAsync(accountHolderId.Value);
+            if (existingEducator != null)
+            {
+                existingEducator.FirstName = firstName;
+                existingEducator.LastName = lastName;
+                existingEducator.Email = email;
+                existingEducator.Phone = phone;
+                existingEducator.KeycloakUserId = keycloakUserId;
+                existingEducator.IsActive = true;
+                existingEducator.UpdatedAt = DateTime.UtcNow;
+
+                if (inviteDto.EducatorInfo != null)
+                {
+                    existingEducator.SetEducatorInfo(new StudentRegistrar.Models.EducatorInfo
+                    {
+                        Bio = inviteDto.EducatorInfo.Bio,
+                        Qualifications = inviteDto.EducatorInfo.Qualifications,
+                        Specializations = inviteDto.EducatorInfo.Specializations,
+                        Department = inviteDto.EducatorInfo.Department,
+                        CustomFields = inviteDto.EducatorInfo.CustomFields
+                    });
+                }
+
+                var updatedEducator = await _educatorRepository.UpdateAsync(existingEducator);
+                return new InviteEducatorResponse
+                {
+                    Educator = _mapper.Map<EducatorDto>(updatedEducator),
+                    Credentials = null,
+                    Message = "Educator authorized successfully."
+                };
+            }
+        }
+
         var educator = new Educator
         {
             FirstName = firstName,

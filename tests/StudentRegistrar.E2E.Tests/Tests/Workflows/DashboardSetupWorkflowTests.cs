@@ -149,18 +149,20 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
 
         var educatorsPage = new EducatorsPage(Driver);
         educatorsPage.NavigateToEducators(BaseUrl);
+        var parentOptionText = Configuration["TestCredentials:ParentEducatorUser:OptionText"] ?? "Sarah Johnson (sarah.johnson@example.com)";
+        var parentFullName = Configuration["TestCredentials:ParentEducatorUser:FullName"] ?? "Sarah Johnson";
         educatorsPage.AuthorizeExistingMemberAsEducator(
-            "Mark Member (mark.member@example.com)",
-            "Mark Member",
+            parentOptionText,
+            parentFullName,
             "Parent Educators",
             "Existing parent authorized as an educator.");
 
         educatorsPage.GetInviteMessage().Should().Contain("authorized");
         educatorsPage.HasTemporaryCredentials().Should().BeFalse("existing parents should keep their current credentials");
-        educatorsPage.IsEducatorVisible("Mark Member").Should().BeTrue("the selected parent should appear in the educators list");
+        educatorsPage.IsEducatorVisible(parentFullName).Should().BeTrue("the selected parent should appear in the educators list");
 
         Logout();
-        LoginAsMember("parent should keep the same member credentials after educator authorization");
+        LoginAsParentEducator("parent should keep the same member credentials after educator authorization");
 
         var coursesPage = new CoursesPage(Driver);
         coursesPage.NavigateToCourses(BaseUrl);
@@ -198,6 +200,18 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
 
         var username = Configuration["TestCredentials:MemberUser:Username"] ?? "member1";
         var password = Configuration["TestCredentials:MemberUser:Password"] ?? "MemberPass123!";
+
+        Login(username, password, because);
+    }
+
+    private void LoginAsParentEducator(string because)
+    {
+        NavigateToUrl($"{BaseUrl.TrimEnd('/')}/login");
+        WaitForPageLoad();
+        WaitForUrlContains("/login");
+
+        var username = Configuration["TestCredentials:ParentEducatorUser:Username"] ?? "parenteducator1";
+        var password = Configuration["TestCredentials:ParentEducatorUser:Password"] ?? "ParentEducatorPass123!";
 
         Login(username, password, because);
     }

@@ -76,7 +76,8 @@ public sealed class EducatorsPage
 
     public bool IsEducatorVisible(string fullName)
     {
-        return _driver.PageSource.Contains(fullName, StringComparison.OrdinalIgnoreCase);
+        return _driver.FindElements(By.CssSelector("[data-testid^='educator-']"))
+            .Any(e => e.Text.Contains(fullName, StringComparison.OrdinalIgnoreCase));
     }
 
     private void WaitForPageLoad()

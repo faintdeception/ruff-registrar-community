@@ -12,6 +12,7 @@ public sealed class RoomsPage
     {
         _driver = driver;
         _wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+        _wait.IgnoreExceptionTypes(typeof(NoSuchElementException), typeof(StaleElementReferenceException));
     }
 
     public void NavigateToRooms(string baseUrl)

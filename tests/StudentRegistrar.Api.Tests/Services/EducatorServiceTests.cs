@@ -131,4 +131,68 @@ public class EducatorServiceTests
             e.Email == accountHolder.EmailAddress &&
             e.Phone == accountHolder.MobilePhone)), Times.Once);
     }
+
+    [Fact]
+    public async Task InviteEducatorAsync_Should_Update_Existing_Educator_For_AccountHolder()
+    {
+        var accountHolderId = Guid.NewGuid();
+        var keycloakUserId = "keycloak-parent-1";
+        var accountHolder = new AccountHolder
+        {
+            Id = accountHolderId,
+            FirstName = "Parent",
+            LastName = "Teacher",
+            EmailAddress = "parent.teacher@example.com",
+            MobilePhone = "555-0111",
+            KeycloakUserId = keycloakUserId
+        };
+        var existingEducator = new Educator
+        {
+            Id = Guid.NewGuid(),
+            AccountHolderId = accountHolderId,
+            FirstName = accountHolder.FirstName,
+            LastName = accountHolder.LastName,
+            Email = accountHolder.EmailAddress,
+            IsActive = false
+        };
+
+        var request = new InviteEducatorDto
+        {
+            AccountHolderId = accountHolderId,
+            EducatorInfo = new StudentRegistrar.Api.DTOs.EducatorInfo
+            {
+                Department = "Science",
+                Bio = "Returning educator"
+            }
+        };
+
+        _accountHolderRepository
+            .Setup(r => r.GetByIdAsync(accountHolderId))
+            .ReturnsAsync(accountHolder);
+
+        _keycloakService
+            .Setup(s => s.GetUserIdByEmailAsync(accountHolder.EmailAddress))
+            .ReturnsAsync(keycloakUserId);
+
+        _educatorRepository
+            .Setup(r => r.GetByAccountHolderIdAsync(accountHolderId))
+            .ReturnsAsync(existingEducator);
+
+        _educatorRepository
+            .Setup(r => r.UpdateAsync(existingEducator))
+            .ReturnsAsync(existingEducator);
+
+        var result = await _service.InviteEducatorAsync(request);
+
+        result.Credentials.Should().BeNull();
+        result.Message.Should().Contain("authorized");
+        result.Educator.Id.Should().Be(existingEducator.Id);
+        result.Educator.IsActive.Should().BeTrue();
+        result.Educator.KeycloakUserId.Should().Be(keycloakUserId);
+        result.Educator.EducatorInfo.Department.Should().Be("Science");
+
+        _keycloakService.Verify(s => s.UpdateUserRoleAsync(keycloakUserId, UserRole.Educator), Times.Once);
+        _educatorRepository.Verify(r => r.CreateAsync(It.IsAny<Educator>()), Times.Never);
+        _educatorRepository.Verify(r => r.UpdateAsync(existingEducator), Times.Once);
+    }
 }

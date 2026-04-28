@@ -8,6 +8,7 @@ This directory contains all scripts related to testing the Student Registrar app
 scripts/testing/
 ├── run-e2e-tests.sh       # 🎯 Main E2E testing script (recommended)
 ├── setup-test-users.sh    # 👥 Creates test users in Keycloak
+├── setup-test-users.ps1   # 👥 Windows/PowerShell test user setup
 ├── test-e2e-only.sh       # 🔧 Simple E2E test runner
 ├── seed-database.sh       # 🌱 Seeds database with test data
 └── Dockerfile             # 🐳 Docker container for E2E tests
@@ -46,6 +47,9 @@ scripts/testing/
 ```bash
 # Create test users without running tests
 ./scripts/testing/run-e2e-tests.sh --setup-users --no-tests
+
+# Windows/PowerShell: create or reset test users directly
+./scripts/testing/setup-test-users.ps1 -KeycloakUrl http://localhost:8080 -AdminPassword 'admin123!'
 ```
 
 ## 📋 Prerequisites
@@ -58,20 +62,23 @@ scripts/testing/
    - If using Aspire: Keycloak starts with the AppHost
    - If using Docker Compose: `docker-compose up keycloak`
 
-3. **Database Seeded** (optional for realistic scenarios)
+3. **Database Seeded or Synced** (optional for realistic scenarios)
    ```bash
    ./scripts/testing/seed-database.sh
    ```
+   On Windows, `setup-test-users.ps1` also syncs the required E2E `Users` and `AccountHolders` rows with live Keycloak IDs when a local PostgreSQL container is available.
 
 ## 🧪 Test Users
 
-The following test users are created by `setup-test-users.sh`:
+The following test users are created by `setup-test-users.sh` and `setup-test-users.ps1`:
 
-| Username   | Password         | Role        | Purpose                      |
-|------------|------------------|-------------|------------------------------|
-| scoopadmin | changethis123!       | Admin       | Full system access (existing) |
-| educator1  | EducatorPass123! | Educator    | Teaching + family management |
-| member1    | MemberPass123!   | Member      | Family management only       |
+| Username        | Password                 | Role     | Purpose                                      |
+|-----------------|--------------------------|----------|----------------------------------------------|
+| scoopadmin      | changethis123!           | Admin    | Full system access (existing)                |
+| admin1          | AdminPass123!            | Admin    | E2E administrator workflows                   |
+| educator1       | EducatorPass123!         | Educator | Teaching + family management                 |
+| member1         | MemberPass123!           | Member   | Stable member-only baseline                  |
+| parenteducator1 | ParentEducatorPass123!   | Member   | Promoted during parent-as-educator workflow  |
 
 ## 📊 Test Organization
 
@@ -113,7 +120,7 @@ Tests are organized by user roles to reflect real-world usage:
 ### `setup-test-users.sh`
 **Purpose**: Creates required test users in Keycloak
 **Features**:
-- ✅ Creates educator1 and member1 users
+- ✅ Creates admin1, educator1, member1, and parenteducator1 users
 - ✅ Assigns proper roles
 - ✅ Checks for existing users
 - ✅ Validates Keycloak connectivity
@@ -121,6 +128,23 @@ Tests are organized by user roles to reflect real-world usage:
 ```bash
 ./scripts/testing/setup-test-users.sh
 ```
+
+### `setup-test-users.ps1`
+**Purpose**: Windows-native Keycloak test user setup
+**Features**:
+- Creates the same test users as the Bash script
+- Resets baseline roles so `member1` remains member-only between E2E reruns
+- Assigns the realm default role so SPA tokens include the API-accepted audience
+- Syncs local `Users` and `AccountHolders` rows with live Keycloak IDs when a PostgreSQL container is available
+- Supports local Aspire or deployed Keycloak URLs
+
+```powershell
+./scripts/testing/setup-test-users.ps1 -AdminPassword 'admin123!'
+./scripts/testing/setup-test-users.ps1 -KeycloakUrl http://localhost:8080 -RealmName student-registrar
+```
+
+When `-KeycloakUrl` is omitted, the PowerShell script tries `http://localhost:8080` first and then falls back to the mapped Aspire Keycloak Docker port when available.
+When `-DbContainer` is omitted, it auto-detects the mapped Aspire PostgreSQL container. Use `-SkipDatabaseSync` to update only Keycloak.
 
 ### `test-e2e-only.sh`
 **Purpose**: Simple E2E test runner (assumes app is running)

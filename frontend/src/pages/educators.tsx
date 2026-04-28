@@ -118,11 +118,19 @@ const EducatorsPage = () => {
 
       setInviteCredentials(null);
       setInviteMessage(null);
+      setError(null);
       const response = await apiClient.post('/api/Educators/invite', newEducator);
 
       if (response.ok) {
         const invitation = await response.json() as InviteEducatorResponse;
-        setEducators([...educators, invitation.educator]);
+        setEducators((currentEducators) => {
+          const existingIndex = currentEducators.findIndex((educator) => educator.id === invitation.educator.id);
+          if (existingIndex < 0) {
+            return [...currentEducators, invitation.educator];
+          }
+
+          return currentEducators.map((educator, index) => index === existingIndex ? invitation.educator : educator);
+        });
         setInviteCredentials(invitation.credentials || null);
         setInviteMessage(invitation.message || 'Educator authorized successfully.');
         setShowAddForm(false);
