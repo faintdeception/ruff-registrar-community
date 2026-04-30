@@ -133,6 +133,75 @@ public class EducatorServiceTests
     }
 
     [Fact]
+    public async Task InviteEducatorAsync_Should_Create_Keycloak_User_For_AccountHolder_Without_Login()
+    {
+        var accountHolderId = Guid.NewGuid();
+        var keycloakUserId = "keycloak-new-parent-educator";
+        var accountHolder = new AccountHolder
+        {
+            Id = accountHolderId,
+            FirstName = "Parent",
+            LastName = "WithoutLogin",
+            EmailAddress = "parent.without.login@example.com",
+            HomePhone = "555-0112",
+            KeycloakUserId = string.Empty
+        };
+
+        var request = new InviteEducatorDto
+        {
+            AccountHolderId = accountHolderId
+        };
+
+        _accountHolderRepository
+            .Setup(r => r.GetByIdAsync(accountHolderId))
+            .ReturnsAsync(accountHolder);
+
+        _keycloakService
+            .Setup(s => s.GetUserIdByEmailAsync(accountHolder.EmailAddress))
+            .ReturnsAsync((string?)null);
+
+        _keycloakService
+            .Setup(s => s.CreateUserAsync(It.Is<CreateUserRequest>(r =>
+                r.Email == accountHolder.EmailAddress &&
+                r.FirstName == accountHolder.FirstName &&
+                r.LastName == accountHolder.LastName &&
+                r.Role == UserRole.Educator)))
+            .ReturnsAsync(new CreateUserResponse
+            {
+                UserId = keycloakUserId,
+                Username = accountHolder.EmailAddress,
+                TemporaryPassword = "TempPass123!",
+                IsTemporary = false
+            });
+
+        _accountHolderRepository
+            .Setup(r => r.UpdateAsync(accountHolder))
+            .ReturnsAsync(accountHolder);
+
+        _educatorRepository
+            .Setup(r => r.CreateAsync(It.IsAny<Educator>()))
+            .ReturnsAsync((Educator educator) => educator);
+
+        var result = await _service.InviteEducatorAsync(request);
+
+        result.Credentials.Should().NotBeNull();
+        result.Credentials!.Username.Should().Be(accountHolder.EmailAddress);
+        result.Credentials.TemporaryPassword.Should().Be("TempPass123!");
+        result.Educator.AccountHolderId.Should().Be(accountHolderId);
+        result.Educator.KeycloakUserId.Should().Be(keycloakUserId);
+        accountHolder.KeycloakUserId.Should().Be(keycloakUserId);
+
+        _accountHolderRepository.Verify(r => r.UpdateAsync(It.Is<AccountHolder>(a =>
+            a.Id == accountHolderId &&
+            a.KeycloakUserId == keycloakUserId)), Times.Once);
+        _keycloakService.Verify(s => s.UpdateUserRoleAsync(keycloakUserId, UserRole.Educator), Times.Once);
+        _educatorRepository.Verify(r => r.CreateAsync(It.Is<Educator>(e =>
+            e.AccountHolderId == accountHolderId &&
+            e.KeycloakUserId == keycloakUserId &&
+            e.Email == accountHolder.EmailAddress)), Times.Once);
+    }
+
+    [Fact]
     public async Task InviteEducatorAsync_Should_Update_Existing_Educator_For_AccountHolder()
     {
         var accountHolderId = Guid.NewGuid();

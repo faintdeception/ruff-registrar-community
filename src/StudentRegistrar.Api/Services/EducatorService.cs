@@ -72,7 +72,20 @@ public class EducatorService : IEducatorService
 
             if (string.IsNullOrWhiteSpace(keycloakUserId))
             {
-                throw new InvalidOperationException("Account holder does not have a Keycloak user.");
+                createdUser = await _keycloakService.CreateUserAsync(new CreateUserRequest
+                {
+                    Email = email,
+                    FirstName = firstName,
+                    LastName = lastName,
+                    Role = UserRole.Educator,
+                    Password = string.Empty,
+                    RequirePasswordChange = false,
+                    RequireEmailVerification = false
+                });
+
+                keycloakUserId = createdUser.UserId;
+                accountHolder.KeycloakUserId = keycloakUserId;
+                await _accountHolderRepository.UpdateAsync(accountHolder);
             }
         }
         else
