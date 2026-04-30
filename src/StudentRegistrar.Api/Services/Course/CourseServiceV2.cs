@@ -10,6 +10,7 @@ public class CourseServiceV2 : ICourseServiceV2
     private readonly ICourseRepository _courseRepository;
     private readonly ICourseInstructorRepository _courseInstructorRepository;
     private readonly IAccountHolderRepository _accountHolderRepository;
+    private readonly IEducatorRepository _educatorRepository;
     private readonly IRoomRepository _roomRepository;
     private readonly IKeycloakService _keycloakService;
     private readonly IMapper _mapper;
@@ -18,6 +19,7 @@ public class CourseServiceV2 : ICourseServiceV2
         ICourseRepository courseRepository, 
         ICourseInstructorRepository courseInstructorRepository,
         IAccountHolderRepository accountHolderRepository,
+        IEducatorRepository educatorRepository,
         IRoomRepository roomRepository,
         IKeycloakService keycloakService,
         IMapper mapper)
@@ -25,6 +27,7 @@ public class CourseServiceV2 : ICourseServiceV2
         _courseRepository = courseRepository;
         _courseInstructorRepository = courseInstructorRepository;
         _accountHolderRepository = accountHolderRepository;
+        _educatorRepository = educatorRepository;
         _roomRepository = roomRepository;
         _keycloakService = keycloakService;
         _mapper = mapper;
@@ -104,11 +107,41 @@ public class CourseServiceV2 : ICourseServiceV2
                 }
 
                 await _keycloakService.UpdateUserRoleAsync(keycloakUserId, UserRole.Educator);
+                await UpsertEducatorForAccountHolderAsync(accountHolder, keycloakUserId);
             }
         }
 
         var createdInstructor = await _courseInstructorRepository.CreateAsync(instructor);
         return _mapper.Map<CourseInstructorDto>(createdInstructor);
+    }
+
+    private async Task UpsertEducatorForAccountHolderAsync(AccountHolder accountHolder, string keycloakUserId)
+    {
+        var existingEducator = await _educatorRepository.GetByAccountHolderIdAsync(accountHolder.Id);
+        if (existingEducator != null)
+        {
+            existingEducator.FirstName = accountHolder.FirstName;
+            existingEducator.LastName = accountHolder.LastName;
+            existingEducator.Email = accountHolder.EmailAddress;
+            existingEducator.Phone = accountHolder.MobilePhone ?? accountHolder.HomePhone;
+            existingEducator.KeycloakUserId = keycloakUserId;
+            existingEducator.IsActive = true;
+            existingEducator.UpdatedAt = DateTime.UtcNow;
+
+            await _educatorRepository.UpdateAsync(existingEducator);
+            return;
+        }
+
+        await _educatorRepository.CreateAsync(new Educator
+        {
+            AccountHolderId = accountHolder.Id,
+            FirstName = accountHolder.FirstName,
+            LastName = accountHolder.LastName,
+            Email = accountHolder.EmailAddress,
+            Phone = accountHolder.MobilePhone ?? accountHolder.HomePhone,
+            KeycloakUserId = keycloakUserId,
+            IsActive = true
+        });
     }
 
     public async Task<CourseInstructorDto?> UpdateInstructorAsync(Guid instructorId, UpdateCourseInstructorDto updateDto)
