@@ -527,11 +527,15 @@ public class StudentRegistrarDbContext : DbContext
 
         foreach (var entry in entries)
         {
-            if (entry.State == EntityState.Added)
+            if (entry.State == EntityState.Added && entry.Metadata.FindProperty("CreatedAt") != null)
             {
                 entry.Property("CreatedAt").CurrentValue = DateTime.UtcNow;
             }
-            entry.Property("UpdatedAt").CurrentValue = DateTime.UtcNow;
+
+            if (entry.Metadata.FindProperty("UpdatedAt") != null)
+            {
+                entry.Property("UpdatedAt").CurrentValue = DateTime.UtcNow;
+            }
         }
     }
 }

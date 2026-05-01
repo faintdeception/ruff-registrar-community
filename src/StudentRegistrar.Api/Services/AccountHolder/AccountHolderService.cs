@@ -33,6 +33,23 @@ public class AccountHolderService : IAccountHolderService
         return accountHolder != null ? _mapper.Map<AccountHolderDto>(accountHolder) : null;
     }
 
+    public async Task<AccountHolderDto?> LinkAccountHolderToUserAsync(string email, string keycloakUserId)
+    {
+        var accountHolder = await _accountHolderRepository.GetByEmailAsync(email);
+        if (accountHolder == null)
+        {
+            return null;
+        }
+
+        if (accountHolder.KeycloakUserId != keycloakUserId)
+        {
+            accountHolder.KeycloakUserId = keycloakUserId;
+            accountHolder = await _accountHolderRepository.UpdateAsync(accountHolder);
+        }
+
+        return _mapper.Map<AccountHolderDto>(accountHolder);
+    }
+
     public async Task<AccountHolderDto?> GetAccountHolderByIdAsync(Guid id)
     {
         var accountHolder = await _accountHolderRepository.GetByIdAsync(id);

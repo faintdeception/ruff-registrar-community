@@ -180,6 +180,67 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
         coursesPage.IsCourseFeeVisible(courseName, "$95.25").Should().BeTrue("the authorized parent should be able to set a course price");
     }
 
+    [Fact]
+    [Trait("Suite", "SaaSCompatibility")]
+    public void Existing_Member_Should_Add_Child_And_Sign_Up_For_Paid_Course()
+    {
+        LoginAsAdmin();
+
+        var suffix = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+        var semesterName = $"Parent Signup Semester {suffix}";
+        var semesterCode = $"PS{suffix[^6..]}";
+        var courseName = $"Parent Signup Course {suffix}";
+        var studentFirstName = "Signup";
+        var studentLastName = $"Child{suffix[^6..]}";
+        var studentFullName = $"{studentFirstName} {studentLastName}";
+
+        var semestersPage = new SemestersPage(Driver);
+        semestersPage.NavigateToSemesters();
+        semestersPage.ClickCreateSemester();
+        semestersPage.FillSemesterForm(
+            name: semesterName,
+            code: semesterCode,
+            startDate: new DateTime(2029, 1, 10),
+            endDate: new DateTime(2029, 5, 20),
+            regStartDate: new DateTime(2028, 11, 15),
+            regEndDate: new DateTime(2029, 1, 5),
+            isActive: true);
+        semestersPage.SaveSemester();
+        WaitUntil(_ => semestersPage.IsSemesterVisible(semesterName), 15, 300, $"Semester '{semesterName}' was not visible after creation.");
+
+        var coursesPage = new CoursesPage(Driver);
+        coursesPage.NavigateToCourses(BaseUrl);
+        coursesPage.SelectSemester(semesterName);
+        coursesPage.CreateCourse(
+            courseName,
+            $"PSC{suffix[^4..]}",
+            "All Ages",
+            12,
+            88.75m,
+            "MW 13:00",
+            "Paid course used to verify parent signup and payment recording.");
+        coursesPage.IsCourseFeeVisible(courseName, "$88.75").Should().BeTrue("the course price should be visible before member signup");
+
+        Logout();
+        LoginAsMember("member should be able to sign in before adding a child and signing up for a course");
+
+        var accountPage = new AccountHolderPage(Driver);
+        accountPage.NavigateToAccount(BaseUrl);
+        accountPage.AddStudent(studentFirstName, studentLastName, "4");
+        accountPage.IsStudentVisible(studentFirstName, studentLastName).Should().BeTrue("the new child should appear on the member account");
+
+        coursesPage.NavigateToCourses(BaseUrl);
+        coursesPage.SelectSemester(semesterName);
+        coursesPage.GetSignupButtonText(courseName).Should().Be("Pay & Sign Up", "paid courses should prompt parents to pay while signing up");
+        coursesPage.SignUpStudentForCourse(courseName, studentFullName);
+        coursesPage.GetSuccessMessage().Should().Contain("payment was recorded", "paid course signup should confirm payment recording");
+        coursesPage.GetSignupButtonText(courseName).Should().Be("Signed Up", "the enrolled student's course card should reflect the completed signup");
+
+        accountPage.NavigateToAccount(BaseUrl);
+        WaitUntil(_ => accountPage.IsEnrollmentVisible(courseName), 15, 300, "The signed-up course did not appear on the member account.");
+        accountPage.IsEnrollmentVisible(courseName).Should().BeTrue("the new enrollment should be reflected on the member account page");
+    }
+
     private void LoginAsAdmin()
     {
         NavigateToUrl($"{BaseUrl.TrimEnd('/')}/login");

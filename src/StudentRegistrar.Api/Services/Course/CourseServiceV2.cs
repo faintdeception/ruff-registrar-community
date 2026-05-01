@@ -1,5 +1,7 @@
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using StudentRegistrar.Api.DTOs;
+using StudentRegistrar.Data;
 using StudentRegistrar.Data.Repositories;
 using StudentRegistrar.Models;
 
@@ -10,27 +12,36 @@ public class CourseServiceV2 : ICourseServiceV2
     private readonly ICourseRepository _courseRepository;
     private readonly ICourseInstructorRepository _courseInstructorRepository;
     private readonly IAccountHolderRepository _accountHolderRepository;
+    private readonly IEnrollmentRepository _enrollmentRepository;
+    private readonly IPaymentRepository _paymentRepository;
     private readonly IEducatorRepository _educatorRepository;
     private readonly IRoomRepository _roomRepository;
     private readonly IKeycloakService _keycloakService;
     private readonly IMapper _mapper;
+    private readonly StudentRegistrarDbContext? _dbContext;
 
     public CourseServiceV2(
         ICourseRepository courseRepository, 
         ICourseInstructorRepository courseInstructorRepository,
         IAccountHolderRepository accountHolderRepository,
+        IEnrollmentRepository enrollmentRepository,
+        IPaymentRepository paymentRepository,
         IEducatorRepository educatorRepository,
         IRoomRepository roomRepository,
         IKeycloakService keycloakService,
-        IMapper mapper)
+        IMapper mapper,
+        StudentRegistrarDbContext? dbContext = null)
     {
         _courseRepository = courseRepository;
         _courseInstructorRepository = courseInstructorRepository;
         _accountHolderRepository = accountHolderRepository;
+        _enrollmentRepository = enrollmentRepository;
+        _paymentRepository = paymentRepository;
         _educatorRepository = educatorRepository;
         _roomRepository = roomRepository;
         _keycloakService = keycloakService;
         _mapper = mapper;
+        _dbContext = dbContext;
     }
 
     public async Task<IEnumerable<CourseDto>> GetAllCoursesAsync()
@@ -72,6 +83,109 @@ public class CourseServiceV2 : ICourseServiceV2
     public async Task<bool> DeleteCourseAsync(Guid id)
     {
         return await _courseRepository.DeleteAsync(id);
+    }
+
+    public async Task<CourseEnrollmentResultDto> EnrollStudentAsync(Guid courseId, CreateCourseEnrollmentDto createDto, string keycloakUserId)
+    {
+        if (string.IsNullOrWhiteSpace(keycloakUserId))
+        {
+            throw new UnauthorizedAccessException("User ID not found in token.");
+        }
+
+        var accountHolder = await _accountHolderRepository.GetByKeycloakUserIdAsync(keycloakUserId)
+            ?? throw new InvalidOperationException("Account holder not found.");
+
+        var student = accountHolder.Students.FirstOrDefault(s => s.Id == createDto.StudentId)
+            ?? throw new UnauthorizedAccessException("Student does not belong to the current account.");
+
+        var course = await _courseRepository.GetByIdAsync(courseId)
+            ?? throw new KeyNotFoundException("Course not found.");
+
+        if (await _enrollmentRepository.HasEnrollmentAsync(student.Id, course.Id))
+        {
+            throw new InvalidOperationException("This student is already signed up for this course.");
+        }
+
+        var isWaitlisted = course.CurrentEnrollment >= course.MaxCapacity;
+        var enrollment = new Enrollment
+        {
+            StudentId = student.Id,
+            CourseId = course.Id,
+            SemesterId = course.SemesterId,
+            EnrollmentType = isWaitlisted ? EnrollmentType.Waitlisted : EnrollmentType.Enrolled,
+            EnrollmentDate = DateTime.UtcNow,
+            FeeAmount = isWaitlisted ? 0 : course.Fee,
+            PaymentStatus = isWaitlisted || course.Fee <= 0 ? PaymentStatus.Paid : PaymentStatus.Pending,
+            WaitlistPosition = isWaitlisted ? await _enrollmentRepository.GetNextWaitlistPositionAsync(course.Id) : null
+        };
+
+        if (isWaitlisted)
+        {
+            enrollment.Notes = "Added to waitlist because the course is full.";
+        }
+
+        async Task<(Enrollment CreatedEnrollment, Payment? CreatedPayment)> CreateEnrollmentAndPaymentAsync()
+        {
+            var createdEnrollment = await _enrollmentRepository.CreateAsync(enrollment);
+            Payment? createdPayment = null;
+
+            if (!isWaitlisted && course.Fee > 0)
+            {
+                var paymentMethod = createDto.PaymentMethod ?? PaymentMethod.CreditCard;
+                createdPayment = await _paymentRepository.CreateAsync(new Payment
+                {
+                    AccountHolderId = accountHolder.Id,
+                    EnrollmentId = createdEnrollment.Id,
+                    Amount = course.Fee,
+                    PaymentDate = DateTime.UtcNow,
+                    PaymentMethod = paymentMethod,
+                    PaymentType = PaymentType.CourseFee,
+                    TransactionId = $"course-signup-{createdEnrollment.Id:N}",
+                    Notes = $"Course signup payment for {course.Name}."
+                });
+
+                createdEnrollment.AmountPaid = course.Fee;
+                createdEnrollment.PaymentStatus = PaymentStatus.Paid;
+                createdEnrollment = await _enrollmentRepository.UpdateAsync(createdEnrollment);
+            }
+
+            return (createdEnrollment, createdPayment);
+        }
+
+        var shouldCreateTransaction = _dbContext?.Database.CurrentTransaction == null;
+        var (createdEnrollment, createdPayment) = _dbContext != null && shouldCreateTransaction
+            ? await _dbContext.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
+                await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+                var result = await CreateEnrollmentAndPaymentAsync();
+                await transaction.CommitAsync();
+                return result;
+            })
+            : await CreateEnrollmentAndPaymentAsync();
+
+        if (createdEnrollment == null)
+        {
+            throw new InvalidOperationException("Course enrollment could not be created.");
+        }
+
+        return new CourseEnrollmentResultDto
+        {
+            EnrollmentId = createdEnrollment.Id.ToString(),
+            StudentId = student.Id.ToString(),
+            StudentName = student.FullName,
+            CourseId = course.Id.ToString(),
+            CourseName = course.Name,
+            EnrollmentType = createdEnrollment.EnrollmentType.ToString(),
+            FeeAmount = createdEnrollment.FeeAmount,
+            AmountPaid = createdEnrollment.AmountPaid,
+            PaymentStatus = createdEnrollment.PaymentStatus.ToString(),
+            PaymentId = createdPayment?.Id.ToString(),
+            Message = createdEnrollment.EnrollmentType == EnrollmentType.Waitlisted
+                ? "The course is full, so the student was added to the waitlist."
+                : course.Fee > 0
+                    ? "Student signed up and payment was recorded."
+                    : "Student signed up successfully."
+        };
     }
 
     // Instructor management methods

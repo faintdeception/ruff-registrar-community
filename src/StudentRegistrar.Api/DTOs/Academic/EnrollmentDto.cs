@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using StudentRegistrar.Models;
 
 namespace StudentRegistrar.Api.DTOs;
 
@@ -45,4 +46,27 @@ public class EnrollmentDetailDto
     public string PaymentStatus { get; set; } = string.Empty;
     public int? WaitlistPosition { get; set; }
     public string? Notes { get; set; }
+}
+
+public class CreateCourseEnrollmentDto
+{
+    [Required]
+    public Guid StudentId { get; set; }
+
+    public PaymentMethod? PaymentMethod { get; set; }
+}
+
+public class CourseEnrollmentResultDto
+{
+    public string EnrollmentId { get; set; } = string.Empty;
+    public string StudentId { get; set; } = string.Empty;
+    public string StudentName { get; set; } = string.Empty;
+    public string CourseId { get; set; } = string.Empty;
+    public string CourseName { get; set; } = string.Empty;
+    public string EnrollmentType { get; set; } = string.Empty;
+    public decimal FeeAmount { get; set; }
+    public decimal AmountPaid { get; set; }
+    public string PaymentStatus { get; set; } = string.Empty;
+    public string? PaymentId { get; set; }
+    public string Message { get; set; } = string.Empty;
 }

@@ -10,6 +10,7 @@ public interface ICourseServiceV2
     Task<CourseDto> CreateCourseAsync(CreateCourseDto createDto);
     Task<CourseDto?> UpdateCourseAsync(Guid id, UpdateCourseDto updateDto);
     Task<bool> DeleteCourseAsync(Guid id);
+    Task<CourseEnrollmentResultDto> EnrollStudentAsync(Guid courseId, CreateCourseEnrollmentDto createDto, string keycloakUserId);
     
     // Instructor management methods
     Task<IEnumerable<CourseInstructorDto>> GetCourseInstructorsAsync(Guid courseId);

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentRegistrar.Api.DTOs;
 using StudentRegistrar.Api.Services;
+using System.Security.Claims;
 
 namespace StudentRegistrar.Api.Controllers;
 
@@ -50,6 +51,31 @@ public class CoursesController : ControllerBase
     {
         var course = await _courseService.CreateCourseAsync(createCourseDto);
         return CreatedAtAction(nameof(GetCourse), new { id = course.Id }, course);
+    }
+
+    [HttpPost("{courseId:guid}/enrollments")]
+    public async Task<ActionResult<CourseEnrollmentResultDto>> EnrollStudent(Guid courseId, CreateCourseEnrollmentDto createEnrollmentDto)
+    {
+        var keycloakUserId = User.FindFirst("sub")?.Value
+            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        try
+        {
+            var result = await _courseService.EnrollStudentAsync(courseId, createEnrollmentDto, keycloakUserId ?? string.Empty);
+            return CreatedAtAction(nameof(GetCourse), new { id = courseId }, result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPut("{id:guid}")]
