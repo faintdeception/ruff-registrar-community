@@ -25,8 +25,8 @@ public class StudentsControllerTests
         // Arrange
         var expectedStudents = new List<StudentDto>
         {
-            new() { Id = 1, FirstName = "John", LastName = "Doe" },
-            new() { Id = 2, FirstName = "Jane", LastName = "Smith" }
+            new() { Id = Guid.NewGuid(), FirstName = "John", LastName = "Doe" },
+            new() { Id = Guid.NewGuid(), FirstName = "Jane", LastName = "Smith" }
         };
 
         _mockStudentService
@@ -50,7 +50,7 @@ public class StudentsControllerTests
         var studentId = Guid.NewGuid();
         var expectedStudent = new StudentDto 
         { 
-            Id = 1, 
+            Id = studentId, 
             FirstName = "John", 
             LastName = "Doe" 
         };
@@ -101,7 +101,7 @@ public class StudentsControllerTests
 
         var createdStudent = new StudentDto
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             FirstName = createDto.FirstName,
             LastName = createDto.LastName,
             Email = createDto.Email,
@@ -137,7 +137,7 @@ public class StudentsControllerTests
 
         var updatedStudent = new StudentDto
         {
-            Id = 1,
+            Id = studentId,
             FirstName = updateDto.FirstName,
             LastName = updateDto.LastName,
             Email = updateDto.Email,
@@ -224,8 +224,8 @@ public class StudentsControllerTests
         var accountHolderId = Guid.NewGuid();
         var expectedStudents = new List<StudentDto>
         {
-            new() { Id = 1, FirstName = "John", LastName = "Doe" },
-            new() { Id = 2, FirstName = "Jane", LastName = "Doe" }
+            new() { Id = Guid.NewGuid(), FirstName = "John", LastName = "Doe" },
+            new() { Id = Guid.NewGuid(), FirstName = "Jane", LastName = "Doe" }
         };
 
         _mockStudentService

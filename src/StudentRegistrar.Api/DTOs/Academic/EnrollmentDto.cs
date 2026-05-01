@@ -5,10 +5,10 @@ namespace StudentRegistrar.Api.DTOs;
 
 public class EnrollmentDto
 {
-    public int Id { get; set; }
-    public int StudentId { get; set; }
+    public Guid Id { get; set; }
+    public Guid StudentId { get; set; }
     public StudentDto Student { get; set; } = null!;
-    public int CourseId { get; set; }
+    public Guid CourseId { get; set; }
     public CourseDto Course { get; set; } = null!;
     public DateTime EnrollmentDate { get; set; }
     public DateTime? CompletionDate { get; set; }
@@ -20,10 +20,10 @@ public class EnrollmentDto
 public class CreateEnrollmentDto
 {
     [Required]
-    public int StudentId { get; set; }
+    public Guid StudentId { get; set; }
     
     [Required]
-    public int CourseId { get; set; }
+    public Guid CourseId { get; set; }
     
     [Required]
     public DateTime EnrollmentDate { get; set; }

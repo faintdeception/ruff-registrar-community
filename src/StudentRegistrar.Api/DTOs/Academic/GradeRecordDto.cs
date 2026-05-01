@@ -5,9 +5,9 @@ namespace StudentRegistrar.Api.DTOs;
 public class GradeRecordDto
 {
     public int Id { get; set; }
-    public int StudentId { get; set; }
+    public Guid StudentId { get; set; }
     public StudentDto Student { get; set; } = null!;
-    public int CourseId { get; set; }
+    public Guid CourseId { get; set; }
     public CourseDto Course { get; set; } = null!;
     public string? LetterGrade { get; set; }
     public decimal? NumericGrade { get; set; }
@@ -21,10 +21,10 @@ public class GradeRecordDto
 public class CreateGradeRecordDto
 {
     [Required]
-    public int StudentId { get; set; }
+    public Guid StudentId { get; set; }
     
     [Required]
-    public int CourseId { get; set; }
+    public Guid CourseId { get; set; }
     
     [StringLength(10)]
     public string? LetterGrade { get; set; }

@@ -1,5 +1,5 @@
 export interface Student {
-  id: number;
+  id: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -30,7 +30,7 @@ export interface CreateStudentDto {
 }
 
 export interface Course {
-  id: number;
+  id: string;
   name: string;
   code: string;
   description?: string;
@@ -53,10 +53,10 @@ export interface CreateCourseDto {
 }
 
 export interface Enrollment {
-  id: number;
-  studentId: number;
+  id: string;
+  studentId: string;
   student: Student;
-  courseId: number;
+  courseId: string;
   course: Course;
   enrollmentDate: string;
   completionDate?: string;
@@ -66,8 +66,8 @@ export interface Enrollment {
 }
 
 export interface CreateEnrollmentDto {
-  studentId: number;
-  courseId: number;
+  studentId: string;
+  courseId: string;
   enrollmentDate: string;
   status?: string;
 }
@@ -147,9 +147,9 @@ export interface EducatorInfo {
 
 export interface GradeRecord {
   id: number;
-  studentId: number;
+  studentId: string;
   student: Student;
-  courseId: number;
+  courseId: string;
   course: Course;
   letterGrade?: string;
   numericGrade?: number;
@@ -161,8 +161,8 @@ export interface GradeRecord {
 }
 
 export interface CreateGradeRecordDto {
-  studentId: number;
-  courseId: number;
+  studentId: string;
+  courseId: string;
   letterGrade?: string;
   numericGrade?: number;
   gradePoints?: number;
