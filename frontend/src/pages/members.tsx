@@ -131,7 +131,7 @@ const MembersPage: React.FC = () => {
       setSuccessMessage(null);
       setLoading(true);
 
-      const response = await apiClient.get('/api/members');
+      const response = await apiClient.get('/api/AccountHolders');
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -154,7 +154,7 @@ const MembersPage: React.FC = () => {
       setSuccessMessage(null);
       setCreating(true);
 
-      const response = await apiClient.post('/api/members', newMember);
+      const response = await apiClient.post('/api/AccountHolders', newMember);
 
       if (!response.ok) {
         const errorData = await response.json();
