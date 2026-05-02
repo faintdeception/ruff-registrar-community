@@ -16,7 +16,22 @@ public class CoursesPage
     }
 
     // Page elements
-    private IWebElement SemesterSelect => _wait.Until(d => d.FindElement(By.CssSelector("[data-testid='semester-select']")));
+    private IWebElement SemesterSelect => _wait.Until(d =>
+    {
+        var select = d.FindElements(By.CssSelector("[data-testid='semester-select']")).FirstOrDefault();
+        if (select != null)
+        {
+            return select;
+        }
+
+        var addCourseButton = d.FindElements(By.CssSelector("[data-testid='add-course-btn'], [data-testid='add-first-course-btn']")).FirstOrDefault();
+        if (addCourseButton != null)
+        {
+            throw new NoSuchElementException("Semester select is not rendered because no semesters are available.");
+        }
+
+        return null;
+    });
     private IWebElement CreateCourseButton => _driver.FindElement(By.XPath("//button[contains(text(), 'Add Course') or contains(text(), 'Add First Course')]"));
     private IWebElement CourseModal => _driver.FindElement(By.CssSelector(".fixed.inset-0"));
     private IWebElement CourseNameInput => _driver.FindElement(By.Id("name"));
@@ -436,7 +451,13 @@ public class CoursesPage
 
     public List<string> GetAvailableSemesters()
     {
-        var semesterSelect = new SelectElement(SemesterSelect);
+        var semesterSelectElement = _driver.FindElements(By.CssSelector("[data-testid='semester-select']")).FirstOrDefault();
+        if (semesterSelectElement == null)
+        {
+            return new List<string>();
+        }
+
+        var semesterSelect = new SelectElement(semesterSelectElement);
         return semesterSelect.Options
             .Where(option => !string.IsNullOrWhiteSpace(option.Text) && 
                            option.Text != "Select a semester..." &&
@@ -459,18 +480,30 @@ public class CoursesPage
 
     public List<(string Text, string Value)> GetAvailableSemestersWithValues()
     {
-        var semesterSelect = new SelectElement(SemesterSelect);
+        var semesterSelectElement = _driver.FindElements(By.CssSelector("[data-testid='semester-select']")).FirstOrDefault();
+        if (semesterSelectElement == null)
+        {
+            return new List<(string Text, string Value)>();
+        }
+
+        var semesterSelect = new SelectElement(semesterSelectElement);
         return semesterSelect.Options
             .Where(option => !string.IsNullOrWhiteSpace(option.Text) && 
                            option.Text != "Select a semester..." &&
                            !string.IsNullOrWhiteSpace(option.GetDomAttribute("value")))
-            .Select(option => (option.Text, option.GetDomAttribute("value")))
+            .Select(option => (option.Text, option.GetDomAttribute("value")!))
             .ToList();
     }
 
     public List<string> GetAvailableSemesterNames()
     {
-        var semesterSelect = new SelectElement(SemesterSelect);
+        var semesterSelectElement = _driver.FindElements(By.CssSelector("[data-testid='semester-select']")).FirstOrDefault();
+        if (semesterSelectElement == null)
+        {
+            return new List<string>();
+        }
+
+        var semesterSelect = new SelectElement(semesterSelectElement);
         return semesterSelect.Options
             .Where(option => !string.IsNullOrWhiteSpace(option.Text) && 
                            option.Text != "Select a semester..." &&

@@ -145,11 +145,20 @@ public class SemestersPage
 
     public bool IsSemesterVisible(string semesterName)
     {
-        var slug = semesterName.Replace(" ", "-").ToLower();
+        var slug = string.Join("-", semesterName
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .ToLowerInvariant();
         try
         {
-            var element = _driver.FindElement(By.Id($"semester-{slug}"));
+            var element = _wait.Until(d =>
+                d.FindElements(By.Id($"semester-{slug}")).FirstOrDefault(e => e.Displayed) ??
+                d.FindElements(By.XPath($"//div[@data-testid='semester-{slug}' or @id='semester-{slug}']")).FirstOrDefault(e => e.Displayed) ??
+                d.FindElements(By.XPath($"//h3[normalize-space()='{semesterName}']")).FirstOrDefault(e => e.Displayed));
             return element.Displayed;
+        }
+        catch (WebDriverTimeoutException)
+        {
+            return false;
         }
         catch (NoSuchElementException)
         {
