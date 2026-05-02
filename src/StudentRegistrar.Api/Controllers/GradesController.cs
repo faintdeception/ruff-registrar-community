@@ -24,8 +24,8 @@ public class GradesController : ControllerBase
         return Ok(grades);
     }
 
-    [HttpGet("{id:int}")]
-    public async Task<ActionResult<GradeRecordDto>> GetGrade(int id)
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<GradeRecordDto>> GetGrade(Guid id)
     {
         var grade = await _gradeService.GetGradeByIdAsync(id);
         if (grade == null)
@@ -41,8 +41,8 @@ public class GradesController : ControllerBase
         return CreatedAtAction(nameof(GetGrade), new { id = grade.Id }, grade);
     }
 
-    [HttpPut("{id:int}")]
-    public async Task<ActionResult<GradeRecordDto>> UpdateGrade(int id, CreateGradeRecordDto updateGradeDto)
+    [HttpPut("{id:guid}")]
+    public async Task<ActionResult<GradeRecordDto>> UpdateGrade(Guid id, CreateGradeRecordDto updateGradeDto)
     {
         var grade = await _gradeService.UpdateGradeAsync(id, updateGradeDto);
         if (grade == null)
@@ -51,8 +51,8 @@ public class GradesController : ControllerBase
         return Ok(grade);
     }
 
-    [HttpDelete("{id:int}")]
-    public async Task<IActionResult> DeleteGrade(int id)
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> DeleteGrade(Guid id)
     {
         var result = await _gradeService.DeleteGradeAsync(id);
         if (!result)

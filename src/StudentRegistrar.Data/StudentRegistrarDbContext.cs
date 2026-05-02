@@ -362,18 +362,20 @@ public class StudentRegistrarDbContext : DbContext
             entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Email).HasMaxLength(255);
             entity.Property(e => e.Phone).HasMaxLength(20);
+            entity.Property(e => e.KeycloakUserId).HasMaxLength(255);
             entity.Property(e => e.EducatorInfoJson).HasColumnType("jsonb");
             entity.Property(e => e.IsActive).IsRequired();
-            entity.Property(e => e.IsPrimary).IsRequired();
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
 
-            entity.HasOne(e => e.Course)
+            entity.HasOne(e => e.AccountHolder)
                 .WithMany()
-                .HasForeignKey(e => e.CourseId)
+                .HasForeignKey(e => e.AccountHolderId)
                 .OnDelete(DeleteBehavior.SetNull);
                 
             entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.Email });
+            entity.HasIndex(e => new { e.TenantId, e.KeycloakUserId });
         });
 
         // Configure User
@@ -410,7 +412,7 @@ public class StudentRegistrarDbContext : DbContext
             entity.Property(e => e.ProfilePictureUrl).HasMaxLength(500);
 
             entity.HasOne(p => p.User)
-                .WithOne()
+                .WithOne(u => u.UserProfile)
                 .HasForeignKey<UserProfile>(p => p.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
                 
@@ -525,11 +527,15 @@ public class StudentRegistrarDbContext : DbContext
 
         foreach (var entry in entries)
         {
-            if (entry.State == EntityState.Added)
+            if (entry.State == EntityState.Added && entry.Metadata.FindProperty("CreatedAt") != null)
             {
                 entry.Property("CreatedAt").CurrentValue = DateTime.UtcNow;
             }
-            entry.Property("UpdatedAt").CurrentValue = DateTime.UtcNow;
+
+            if (entry.Metadata.FindProperty("UpdatedAt") != null)
+            {
+                entry.Property("UpdatedAt").CurrentValue = DateTime.UtcNow;
+            }
         }
     }
 }

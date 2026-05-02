@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentRegistrar.Api.DTOs;
 using StudentRegistrar.Api.Services;
+using System.Security.Claims;
 
 namespace StudentRegistrar.Api.Controllers;
 
@@ -52,6 +53,31 @@ public class CoursesController : ControllerBase
         return CreatedAtAction(nameof(GetCourse), new { id = course.Id }, course);
     }
 
+    [HttpPost("{courseId:guid}/enrollments")]
+    public async Task<ActionResult<CourseEnrollmentResultDto>> EnrollStudent(Guid courseId, CreateCourseEnrollmentDto createEnrollmentDto)
+    {
+        var keycloakUserId = User.FindFirst("sub")?.Value
+            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        try
+        {
+            var result = await _courseService.EnrollStudentAsync(courseId, createEnrollmentDto, keycloakUserId ?? string.Empty);
+            return CreatedAtAction(nameof(GetCourse), new { id = courseId }, result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<CourseDto>> UpdateCourse(Guid id, UpdateCourseDto updateCourseDto)
     {
@@ -70,46 +96,6 @@ public class CoursesController : ControllerBase
             return NotFound();
 
         return NoContent();
-    }
-
-    // Legacy integer ID endpoints - will be deprecated
-    [HttpGet("legacy/{id:int}")]
-    [Obsolete("Use GetCourse(Guid id) instead")]
-    public async Task<ActionResult<CourseDto>> GetCourseLegacy(int id)
-    {
-        // Legacy bridge - try to find by hash code
-        var courses = await _courseService.GetAllCoursesAsync();
-        var course = courses.FirstOrDefault(c => c.Id.GetHashCode() == id);
-        if (course == null)
-            return NotFound();
-
-        return Ok(course);
-    }
-
-    [HttpPut("legacy/{id:int}")]
-    [Obsolete("Use UpdateCourse(Guid id, UpdateCourseDto) instead")]
-    public async Task<ActionResult<CourseDto>> UpdateCourseLegacy(int id, UpdateCourseDto updateCourseDto)
-    {
-        // Legacy bridge - try to find by hash code
-        var courses = await _courseService.GetAllCoursesAsync();
-        var course = courses.FirstOrDefault(c => c.Id.GetHashCode() == id);
-        if (course == null)
-            return NotFound();
-
-        return await UpdateCourse(course.Id, updateCourseDto);
-    }
-
-    [HttpDelete("legacy/{id:int}")]
-    [Obsolete("Use DeleteCourse(Guid id) instead")]
-    public async Task<IActionResult> DeleteCourseLegacy(int id)
-    {
-        // Legacy bridge - try to find by hash code
-        var courses = await _courseService.GetAllCoursesAsync();
-        var course = courses.FirstOrDefault(c => c.Id.GetHashCode() == id);
-        if (course == null)
-            return NotFound();
-
-        return await DeleteCourse(course.Id);
     }
 
     // Instructor Management Endpoints

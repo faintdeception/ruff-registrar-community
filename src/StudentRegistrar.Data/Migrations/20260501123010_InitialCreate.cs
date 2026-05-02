@@ -1,6 +1,5 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -16,8 +15,8 @@ namespace StudentRegistrar.Data.Migrations
                 name: "AcademicYears",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
                     Name = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     StartDate = table.Column<DateOnly>(type: "date", nullable: false),
                     EndDate = table.Column<DateOnly>(type: "date", nullable: false),
@@ -35,6 +34,7 @@ namespace StudentRegistrar.Data.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
                     FirstName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     LastName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     AddressJson = table.Column<string>(type: "jsonb", nullable: false),
@@ -57,10 +57,29 @@ namespace StudentRegistrar.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Rooms",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Capacity = table.Column<int>(type: "integer", nullable: false),
+                    Notes = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    RoomType = table.Column<int>(type: "integer", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Rooms", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Semesters",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
                     Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     Code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     StartDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
@@ -78,10 +97,38 @@ namespace StudentRegistrar.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Tenants",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Subdomain = table.Column<string>(type: "character varying(63)", maxLength: 63, nullable: false),
+                    SubscriptionTier = table.Column<int>(type: "integer", nullable: false),
+                    SubscriptionStatus = table.Column<int>(type: "integer", nullable: false),
+                    StripeCustomerId = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    StripeSubscriptionId = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    StripeSetupIntentId = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    StripePaymentMethodId = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    LogoBase64 = table.Column<string>(type: "character varying(700000)", maxLength: 700000, nullable: true),
+                    LogoMimeType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    ThemeConfigJson = table.Column<string>(type: "jsonb", nullable: false),
+                    KeycloakRealm = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    AdminEmail = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Tenants", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Users",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
                     Email = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false),
                     FirstName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     LastName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
@@ -97,10 +144,39 @@ namespace StudentRegistrar.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Educators",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
+                    FirstName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    LastName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Email = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    Phone = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
+                    AccountHolderId = table.Column<Guid>(type: "uuid", nullable: true),
+                    KeycloakUserId = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    EducatorInfoJson = table.Column<string>(type: "jsonb", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Educators", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Educators_AccountHolders_AccountHolderId",
+                        column: x => x.AccountHolderId,
+                        principalTable: "AccountHolders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Students",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
                     AccountHolderId = table.Column<Guid>(type: "uuid", nullable: false),
                     FirstName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     LastName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
@@ -127,11 +203,12 @@ namespace StudentRegistrar.Data.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
                     SemesterId = table.Column<Guid>(type: "uuid", nullable: false),
                     Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     Code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
                     Description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
-                    Room = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    RoomId = table.Column<Guid>(type: "uuid", nullable: true),
                     MaxCapacity = table.Column<int>(type: "integer", nullable: false),
                     Fee = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: false),
                     PeriodCode = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
@@ -146,6 +223,12 @@ namespace StudentRegistrar.Data.Migrations
                 {
                     table.PrimaryKey("PK_Courses", x => x.Id);
                     table.ForeignKey(
+                        name: "FK_Courses_Rooms_RoomId",
+                        column: x => x.RoomId,
+                        principalTable: "Rooms",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
                         name: "FK_Courses_Semesters_SemesterId",
                         column: x => x.SemesterId,
                         principalTable: "Semesters",
@@ -158,6 +241,7 @@ namespace StudentRegistrar.Data.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     PhoneNumber = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
                     Address = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
@@ -167,8 +251,7 @@ namespace StudentRegistrar.Data.Migrations
                     Country = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     DateOfBirth = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     Bio = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
-                    ProfilePictureUrl = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    UserId1 = table.Column<Guid>(type: "uuid", nullable: true)
+                    ProfilePictureUrl = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -179,11 +262,6 @@ namespace StudentRegistrar.Data.Migrations
                         principalTable: "Users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_UserProfiles_Users_UserId1",
-                        column: x => x.UserId1,
-                        principalTable: "Users",
-                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -191,7 +269,10 @@ namespace StudentRegistrar.Data.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
                     CourseId = table.Column<Guid>(type: "uuid", nullable: false),
+                    AccountHolderId = table.Column<Guid>(type: "uuid", nullable: true),
+                    StripeAccountId = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
                     FirstName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     LastName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     Email = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
@@ -205,6 +286,11 @@ namespace StudentRegistrar.Data.Migrations
                 {
                     table.PrimaryKey("PK_CourseInstructors", x => x.Id);
                     table.ForeignKey(
+                        name: "FK_CourseInstructors_AccountHolders_AccountHolderId",
+                        column: x => x.AccountHolderId,
+                        principalTable: "AccountHolders",
+                        principalColumn: "Id");
+                    table.ForeignKey(
                         name: "FK_CourseInstructors_Courses_CourseId",
                         column: x => x.CourseId,
                         principalTable: "Courses",
@@ -213,36 +299,11 @@ namespace StudentRegistrar.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Educators",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    FirstName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    LastName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    Email = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
-                    Phone = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
-                    CourseId = table.Column<Guid>(type: "uuid", nullable: true),
-                    IsPrimary = table.Column<bool>(type: "boolean", nullable: false),
-                    EducatorInfoJson = table.Column<string>(type: "jsonb", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Educators", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Educators_Courses_CourseId",
-                        column: x => x.CourseId,
-                        principalTable: "Courses",
-                        principalColumn: "Id");
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Enrollments",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
                     StudentId = table.Column<Guid>(type: "uuid", nullable: false),
                     CourseId = table.Column<Guid>(type: "uuid", nullable: false),
                     SemesterId = table.Column<Guid>(type: "uuid", nullable: false),
@@ -284,8 +345,8 @@ namespace StudentRegistrar.Data.Migrations
                 name: "GradeRecords",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
                     StudentId = table.Column<Guid>(type: "uuid", nullable: false),
                     CourseId = table.Column<Guid>(type: "uuid", nullable: false),
                     LetterGrade = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: true),
@@ -318,6 +379,7 @@ namespace StudentRegistrar.Data.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
                     AccountHolderId = table.Column<Guid>(type: "uuid", nullable: false),
                     EnrollmentId = table.Column<Guid>(type: "uuid", nullable: true),
                     Amount = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: false),
@@ -347,22 +409,37 @@ namespace StudentRegistrar.Data.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_AcademicYears_Name",
+                name: "IX_AcademicYears_TenantId",
                 table: "AcademicYears",
-                column: "Name",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AcademicYears_TenantId_Name",
+                table: "AcademicYears",
+                columns: new[] { "TenantId", "Name" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_AccountHolders_EmailAddress",
+                name: "IX_AccountHolders_TenantId",
                 table: "AccountHolders",
-                column: "EmailAddress",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AccountHolders_TenantId_EmailAddress",
+                table: "AccountHolders",
+                columns: new[] { "TenantId", "EmailAddress" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_AccountHolders_KeycloakUserId",
+                name: "IX_AccountHolders_TenantId_KeycloakUserId",
                 table: "AccountHolders",
-                column: "KeycloakUserId",
+                columns: new[] { "TenantId", "KeycloakUserId" },
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CourseInstructors_AccountHolderId",
+                table: "CourseInstructors",
+                column: "AccountHolderId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_CourseInstructors_CourseId",
@@ -370,14 +447,44 @@ namespace StudentRegistrar.Data.Migrations
                 column: "CourseId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_CourseInstructors_TenantId",
+                table: "CourseInstructors",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Courses_RoomId",
+                table: "Courses",
+                column: "RoomId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Courses_SemesterId",
                 table: "Courses",
                 column: "SemesterId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Educators_CourseId",
+                name: "IX_Courses_TenantId",
+                table: "Courses",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Educators_AccountHolderId",
                 table: "Educators",
-                column: "CourseId");
+                column: "AccountHolderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Educators_TenantId",
+                table: "Educators",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Educators_TenantId_Email",
+                table: "Educators",
+                columns: new[] { "TenantId", "Email" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Educators_TenantId_KeycloakUserId",
+                table: "Educators",
+                columns: new[] { "TenantId", "KeycloakUserId" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Enrollments_CourseId",
@@ -396,6 +503,11 @@ namespace StudentRegistrar.Data.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_Enrollments_TenantId",
+                table: "Enrollments",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_GradeRecords_CourseId",
                 table: "GradeRecords",
                 column: "CourseId");
@@ -404,6 +516,11 @@ namespace StudentRegistrar.Data.Migrations
                 name: "IX_GradeRecords_StudentId",
                 table: "GradeRecords",
                 column: "StudentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_GradeRecords_TenantId",
+                table: "GradeRecords",
+                column: "TenantId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Payments_AccountHolderId",
@@ -416,9 +533,30 @@ namespace StudentRegistrar.Data.Migrations
                 column: "EnrollmentId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Semesters_Code",
+                name: "IX_Payments_TenantId",
+                table: "Payments",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Rooms_TenantId",
+                table: "Rooms",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Rooms_TenantId_Name",
+                table: "Rooms",
+                columns: new[] { "TenantId", "Name" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Semesters_TenantId",
                 table: "Semesters",
-                column: "Code",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Semesters_TenantId_Code",
+                table: "Semesters",
+                columns: new[] { "TenantId", "Code" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -427,27 +565,48 @@ namespace StudentRegistrar.Data.Migrations
                 column: "AccountHolderId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Students_TenantId",
+                table: "Students",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Tenants_KeycloakRealm",
+                table: "Tenants",
+                column: "KeycloakRealm",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Tenants_Subdomain",
+                table: "Tenants",
+                column: "Subdomain",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserProfiles_TenantId",
+                table: "UserProfiles",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_UserProfiles_UserId",
                 table: "UserProfiles",
                 column: "UserId",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_UserProfiles_UserId1",
-                table: "UserProfiles",
-                column: "UserId1",
+                name: "IX_Users_TenantId",
+                table: "Users",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_TenantId_Email",
+                table: "Users",
+                columns: new[] { "TenantId", "Email" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Users_Email",
+                name: "IX_Users_TenantId_KeycloakId",
                 table: "Users",
-                column: "Email",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Users_KeycloakId",
-                table: "Users",
-                column: "KeycloakId",
+                columns: new[] { "TenantId", "KeycloakId" },
                 unique: true);
         }
 
@@ -470,6 +629,9 @@ namespace StudentRegistrar.Data.Migrations
                 name: "Payments");
 
             migrationBuilder.DropTable(
+                name: "Tenants");
+
+            migrationBuilder.DropTable(
                 name: "UserProfiles");
 
             migrationBuilder.DropTable(
@@ -483,6 +645,9 @@ namespace StudentRegistrar.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "Students");
+
+            migrationBuilder.DropTable(
+                name: "Rooms");
 
             migrationBuilder.DropTable(
                 name: "Semesters");

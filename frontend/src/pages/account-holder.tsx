@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
 import { useAuth } from '../lib/auth';
 import ProtectedRoute from '../components/ProtectedRoute';
 import apiClient from '../lib/api-client';
@@ -94,7 +93,6 @@ interface CreateStudentForm {
 
 const AccountHolderPage: React.FC = () => {
   const { user } = useAuth();
-  const router = useRouter();
   const [accountHolder, setAccountHolder] = useState<AccountHolder | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,6 +130,11 @@ const AccountHolderPage: React.FC = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
+  const formatEnrollmentStatus = (enrollment: Enrollment) => {
+    const paidLabel = enrollment.paymentStatus === 'Paid' ? 'Paid' : enrollment.paymentStatus;
+    return `${enrollment.enrollmentType} - ${paidLabel}`;
+  };
+
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -139,7 +142,7 @@ const AccountHolderPage: React.FC = () => {
       setSuccessMessage(null);
       setAddingStudent(true);
 
-      const response = await apiClient.post('/api/account-holders/me/students', {
+      await apiClient.post('/api/AccountHolders/me/students', {
         firstName: newStudent.firstName,
         lastName: newStudent.lastName,
         grade: newStudent.grade || null,
@@ -193,7 +196,7 @@ const AccountHolderPage: React.FC = () => {
       setError(null);
       setSuccessMessage(null);
       
-      await apiClient.delete(`/api/account-holders/me/students/${studentId}`);
+      await apiClient.delete(`/api/AccountHolders/me/students/${studentId}`);
 
       // Refresh account holder data
       fetchAccountHolder();
@@ -211,7 +214,7 @@ const AccountHolderPage: React.FC = () => {
       setError(null);
       setSuccessMessage(null);
       
-      const response = await apiClient.get('/api/account-holders/me');
+      const response = await apiClient.get('/api/AccountHolders/me');
       
       if (!response.ok) {
         throw new Error('Failed to fetch account holder data');
@@ -392,6 +395,7 @@ const AccountHolderPage: React.FC = () => {
             <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
               <h2 className="text-lg font-medium text-gray-900">Students</h2>
               <button
+                data-testid="add-student-button"
                 onClick={() => setShowAddStudentForm(true)}
                 className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
@@ -409,6 +413,7 @@ const AccountHolderPage: React.FC = () => {
                         First Name *
                       </label>
                       <input
+                        data-testid="student-first-name-input"
                         type="text"
                         required
                         value={newStudent.firstName}
@@ -421,6 +426,7 @@ const AccountHolderPage: React.FC = () => {
                         Last Name *
                       </label>
                       <input
+                        data-testid="student-last-name-input"
                         type="text"
                         required
                         value={newStudent.lastName}
@@ -433,6 +439,7 @@ const AccountHolderPage: React.FC = () => {
                         Preferred Name
                       </label>
                       <input
+                        data-testid="student-preferred-name-input"
                         type="text"
                         value={newStudent.studentInfoJson.preferredName}
                         onChange={(e) => setNewStudent({
@@ -447,6 +454,7 @@ const AccountHolderPage: React.FC = () => {
                         Grade
                       </label>
                       <input
+                        data-testid="student-grade-input"
                         type="text"
                         value={newStudent.grade}
                         onChange={(e) => setNewStudent({...newStudent, grade: e.target.value})}
@@ -459,6 +467,7 @@ const AccountHolderPage: React.FC = () => {
                         Date of Birth
                       </label>
                       <input
+                        data-testid="student-date-of-birth-input"
                         type="date"
                         value={newStudent.dateOfBirth}
                         onChange={(e) => setNewStudent({...newStudent, dateOfBirth: e.target.value})}
@@ -472,6 +481,7 @@ const AccountHolderPage: React.FC = () => {
                       Allergies (comma-separated)
                     </label>
                     <input
+                      data-testid="student-allergies-input"
                       type="text"
                       value={newStudent.studentInfoJson.allergies?.join(', ') || ''}
                       onChange={(e) => setNewStudent({
@@ -491,6 +501,7 @@ const AccountHolderPage: React.FC = () => {
                       Medications (comma-separated)
                     </label>
                     <input
+                      data-testid="student-medications-input"
                       type="text"
                       value={newStudent.studentInfoJson.medications?.join(', ') || ''}
                       onChange={(e) => setNewStudent({
@@ -510,6 +521,7 @@ const AccountHolderPage: React.FC = () => {
                       Special Conditions (comma-separated)
                     </label>
                     <input
+                      data-testid="student-special-conditions-input"
                       type="text"
                       value={newStudent.studentInfoJson.specialConditions?.join(', ') || ''}
                       onChange={(e) => setNewStudent({
@@ -529,6 +541,7 @@ const AccountHolderPage: React.FC = () => {
                       Parent Notes
                     </label>
                     <textarea
+                      data-testid="student-parent-notes-input"
                       value={newStudent.studentInfoJson.parentNotes}
                       onChange={(e) => setNewStudent({
                         ...newStudent, 
@@ -545,6 +558,7 @@ const AccountHolderPage: React.FC = () => {
                       General Notes
                     </label>
                     <textarea
+                      data-testid="student-notes-input"
                       value={newStudent.notes}
                       onChange={(e) => setNewStudent({...newStudent, notes: e.target.value})}
                       rows={2}
@@ -579,6 +593,7 @@ const AccountHolderPage: React.FC = () => {
                     </button>
                     <button
                       type="submit"
+                      data-testid="save-student-button"
                       disabled={addingStudent}
                       className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
                     >
@@ -593,7 +608,7 @@ const AccountHolderPage: React.FC = () => {
               {accountHolder.students && accountHolder.students.length > 0 ? (
                 <div className="space-y-6 px-4 py-5 sm:px-6">
                   {accountHolder.students.map((student) => (
-                    <div key={student.id} className="border border-gray-200 rounded-lg p-4">
+                    <div key={student.id} data-testid={`student-card-${student.firstName}-${student.lastName}`.toLowerCase().replace(/\s+/g, '-')} className="border border-gray-200 rounded-lg p-4">
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <h3 className="text-lg font-medium text-gray-900">
@@ -644,12 +659,36 @@ const AccountHolderPage: React.FC = () => {
                           )}
                         </div>
                       )}
+
+                      {student.enrollments && student.enrollments.length > 0 && (
+                        <div className="mt-4 border-t border-gray-200 pt-4">
+                          <h4 className="text-sm font-medium text-gray-900 mb-2">Enrollments</h4>
+                          <div className="space-y-2">
+                            {student.enrollments.map((enrollment) => (
+                              <div key={enrollment.id} data-testid={`student-enrollment-${enrollment.courseName.replace(/\s+/g, '-').toLowerCase()}`} className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-md bg-gray-50 px-3 py-2">
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">{enrollment.courseName}</p>
+                                  <p className="text-xs text-gray-500">{enrollment.semesterName}</p>
+                                </div>
+                                <div className="mt-2 text-sm text-gray-700 sm:mt-0 sm:text-right">
+                                  <p>{formatEnrollmentStatus(enrollment)}</p>
+                                  {enrollment.feeAmount > 0 && (
+                                    <p className="text-xs text-gray-500">
+                                      {formatCurrency(enrollment.amountPaid)} / {formatCurrency(enrollment.feeAmount)} paid
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="px-4 py-5 sm:px-6 text-center text-gray-500">
-                  No students added yet. Click "Add Student" to get started.
+                  No students added yet. Click &quot;Add Student&quot; to get started.
                 </div>
               )}
             </div>

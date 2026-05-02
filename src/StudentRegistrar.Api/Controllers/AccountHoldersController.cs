@@ -40,8 +40,22 @@ public class AccountHoldersController : ControllerBase
         var accountHolder = await _accountHolderService.GetAccountHolderByUserIdAsync(keycloakUserId);
         if (accountHolder == null)
         {
-            // Auto-create account holder from JWT token claims
             var email = GetCurrentUserEmail();
+            if (!string.IsNullOrEmpty(email))
+            {
+                accountHolder = await _accountHolderService.LinkAccountHolderToUserAsync(email, keycloakUserId);
+                if (accountHolder != null)
+                {
+                    _logger.LogInformation("Linked existing account holder for email {Email} to user {UserId}", email, keycloakUserId);
+                }
+            }
+
+            if (accountHolder != null)
+            {
+                return Ok(accountHolder);
+            }
+
+            // Auto-create account holder from JWT token claims
             var firstName = GetCurrentUserFirstName();
             var lastName = GetCurrentUserLastName();
 

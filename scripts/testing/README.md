@@ -8,6 +8,7 @@ This directory contains all scripts related to testing the Student Registrar app
 scripts/testing/
 ├── run-e2e-tests.sh       # 🎯 Main E2E testing script (recommended)
 ├── setup-test-users.sh    # 👥 Creates test users in Keycloak
+├── setup-test-users.ps1   # 👥 Windows/PowerShell test user setup
 ├── test-e2e-only.sh       # 🔧 Simple E2E test runner
 ├── seed-database.sh       # 🌱 Seeds database with test data
 └── Dockerfile             # 🐳 Docker container for E2E tests
@@ -25,6 +26,15 @@ scripts/testing/
 
 # Setup test users and run all tests
 ./scripts/testing/run-e2e-tests.sh --setup-users
+```
+
+On Windows, prefer the PowerShell setup script before running E2E so Keycloak users and local database rows are synchronized with live Keycloak IDs:
+
+```powershell
+./scripts/testing/setup-test-users.ps1 -AdminPassword 'admin123!'
+$env:SeleniumSettings__Headless='true'
+dotnet test tests/StudentRegistrar.E2E.Tests/StudentRegistrar.E2E.Tests.csproj --logger "console;verbosity=normal" --collect:"XPlat Code Coverage"
+Remove-Item Env:SeleniumSettings__Headless
 ```
 
 ### Run Specific Test Suites
@@ -46,6 +56,9 @@ scripts/testing/
 ```bash
 # Create test users without running tests
 ./scripts/testing/run-e2e-tests.sh --setup-users --no-tests
+
+# Windows/PowerShell: create or reset test users directly
+./scripts/testing/setup-test-users.ps1 -KeycloakUrl http://localhost:8080 -AdminPassword 'admin123!'
 ```
 
 ## 📋 Prerequisites
@@ -58,20 +71,23 @@ scripts/testing/
    - If using Aspire: Keycloak starts with the AppHost
    - If using Docker Compose: `docker-compose up keycloak`
 
-3. **Database Seeded** (optional for realistic scenarios)
+3. **Database Seeded or Synced**
    ```bash
    ./scripts/testing/seed-database.sh
    ```
+   On Windows, `setup-test-users.ps1` also syncs the required E2E `Users` and `AccountHolders` rows with live Keycloak IDs when a local PostgreSQL container is available. This sync is required for workflows that authorize an existing member, such as `parenteducator1`.
 
 ## 🧪 Test Users
 
-The following test users are created by `setup-test-users.sh`:
+The following test users are created by `setup-test-users.sh` and `setup-test-users.ps1`:
 
-| Username   | Password         | Role        | Purpose                      |
-|------------|------------------|-------------|------------------------------|
-| scoopadmin | changethis123!       | Admin       | Full system access (existing) |
-| educator1  | EducatorPass123! | Educator    | Teaching + family management |
-| member1    | MemberPass123!   | Member      | Family management only       |
+| Username        | Password                 | Role     | Purpose                                      |
+|-----------------|--------------------------|----------|----------------------------------------------|
+| scoopadmin      | changethis123!           | Admin    | Full system access (existing)                |
+| admin1          | AdminPass123!            | Admin    | E2E administrator workflows                   |
+| educator1       | EducatorPass123!         | Educator | Teaching + family management                 |
+| member1         | MemberPass123!           | Member   | Stable member-only baseline                  |
+| parenteducator1 | ParentEducatorPass123!   | Member   | Promoted during parent-as-educator workflow  |
 
 ## 📊 Test Organization
 
@@ -113,7 +129,7 @@ Tests are organized by user roles to reflect real-world usage:
 ### `setup-test-users.sh`
 **Purpose**: Creates required test users in Keycloak
 **Features**:
-- ✅ Creates educator1 and member1 users
+- ✅ Creates admin1, educator1, member1, and parenteducator1 users
 - ✅ Assigns proper roles
 - ✅ Checks for existing users
 - ✅ Validates Keycloak connectivity
@@ -121,6 +137,23 @@ Tests are organized by user roles to reflect real-world usage:
 ```bash
 ./scripts/testing/setup-test-users.sh
 ```
+
+### `setup-test-users.ps1`
+**Purpose**: Windows-native Keycloak test user setup
+**Features**:
+- Creates the same test users as the Bash script
+- Resets baseline roles so `member1` remains member-only between E2E reruns
+- Assigns the realm default role so SPA tokens include the API-accepted audience
+- Syncs local `Users` and `AccountHolders` rows with live Keycloak IDs when a PostgreSQL container is available
+- Supports local Aspire or deployed Keycloak URLs
+
+```powershell
+./scripts/testing/setup-test-users.ps1 -AdminPassword 'admin123!'
+./scripts/testing/setup-test-users.ps1 -KeycloakUrl http://localhost:8080 -RealmName student-registrar
+```
+
+When `-KeycloakUrl` is omitted, the PowerShell script tries `http://localhost:8080` first and then falls back to the mapped Aspire Keycloak Docker port when available.
+When `-DbContainer` is omitted, it auto-detects the mapped Aspire PostgreSQL container. Use `-SkipDatabaseSync` to update only Keycloak.
 
 ### `test-e2e-only.sh`
 **Purpose**: Simple E2E test runner (assumes app is running)
@@ -171,6 +204,17 @@ docker run --rm student-registrar-e2e
 ./scripts/testing/run-e2e-tests.sh --headless --setup-users
 ```
 
+### Windows / PowerShell
+```powershell
+# Setup users and required local database rows
+./scripts/testing/setup-test-users.ps1 -AdminPassword 'admin123!'
+
+# Run the full browser suite headless
+$env:SeleniumSettings__Headless='true'
+dotnet test tests/StudentRegistrar.E2E.Tests/StudentRegistrar.E2E.Tests.csproj --logger "console;verbosity=normal" --collect:"XPlat Code Coverage"
+Remove-Item Env:SeleniumSettings__Headless
+```
+
 ### Debugging
 ```bash
 # Browser visible for debugging
@@ -198,11 +242,11 @@ docker run --rm student-registrar-e2e
 Symptoms: login tests stay on `/login` or Keycloak returns `Realm does not exist`.
 
 **Solution**:
-1. Run `./setup-keycloak.sh` to recreate the realm/client.
+1. Run `./setup-keycloak.sh` to recreate the realm/client, or `./scripts/keycloak/bootstrap-keycloak.sh` plus `./scripts/keycloak/add-spa-client.sh` for the newer fail-fast bootstrap flow.
 2. Update `src/StudentRegistrar.AppHost/appsettings.json` with the new client secret.
 3. Run `./scripts/keycloak/add-spa-client.sh` to ensure the public SPA client exists.
 4. Restart the AppHost.
-5. Run `./scripts/testing/setup-test-users.sh`.
+5. Run `./scripts/testing/setup-test-users.sh`, or on Windows run `./scripts/testing/setup-test-users.ps1 -AdminPassword 'admin123!'` so database rows are synced too.
 
 ### Test Failures
 1. Check application logs: `docker-compose logs frontend`

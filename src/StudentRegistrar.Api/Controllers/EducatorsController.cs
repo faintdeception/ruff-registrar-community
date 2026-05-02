@@ -22,6 +22,27 @@ public class EducatorsController : ControllerBase
         _logger = logger;
     }
 
+    [HttpPost("invite")]
+    public async Task<ActionResult<InviteEducatorResponse>> InviteEducator(InviteEducatorDto inviteDto)
+    {
+        try
+        {
+            var userRole = GetUserRole();
+            if (userRole != "Administrator")
+            {
+                return Forbid("Only administrators can invite educators");
+            }
+
+            var invitation = await _educatorService.InviteEducatorAsync(inviteDto);
+            return CreatedAtAction(nameof(GetEducator), new { id = invitation.Educator.Id }, invitation);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error inviting educator");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
     [HttpGet]
     public async Task<ActionResult<IEnumerable<EducatorDto>>> GetEducators()
     {
@@ -179,38 +200,6 @@ public class EducatorsController : ControllerBase
         }
     }
 
-    [HttpGet("course/{courseId}")]
-    public async Task<ActionResult<IEnumerable<EducatorDto>>> GetEducatorsByCourse(Guid courseId)
-    {
-        try
-        {
-            // Allow all authenticated users to view educators by course
-            var educators = await _educatorService.GetEducatorsByCourseIdAsync(courseId);
-            return Ok(educators);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving educators for course {CourseId}", courseId);
-            return StatusCode(500, "Internal server error");
-        }
-    }
-
-    [HttpGet("unassigned")]
-    public async Task<ActionResult<IEnumerable<EducatorDto>>> GetUnassignedEducators()
-    {
-        try
-        {
-            // Allow all authenticated users to view unassigned educators
-            var educators = await _educatorService.GetUnassignedEducatorsAsync();
-            return Ok(educators);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving unassigned educators");
-            return StatusCode(500, "Internal server error");
-        }
-    }
-
     private string GetUserRole()
     {
         var authHeader = Request.Headers["Authorization"].FirstOrDefault();
@@ -236,7 +225,7 @@ public class EducatorsController : ControllerBase
                     if (rolesObject != null)
                     {
                         var roles = System.Text.Json.JsonSerializer.Deserialize<string[]>(rolesObject.ToString()!);
-                        return roles?.FirstOrDefault(r => r == "Administrator" || r == "Member" || r == "Instructor") ?? "";
+                        return roles?.FirstOrDefault(r => r == "Administrator" || r == "Member" || r == "Educator" || r == "Instructor") ?? "";
                     }
                 }
             }

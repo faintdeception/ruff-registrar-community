@@ -12,6 +12,7 @@ import {
   ClockIcon,
   MapPinIcon,
   CurrencyDollarIcon,
+  CreditCardIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline';
 
@@ -83,6 +84,31 @@ interface AccountHolder {
   firstName: string;
   lastName: string;
   emailAddress: string;
+  students?: Student[];
+}
+
+interface Student {
+  id: string;
+  firstName: string;
+  lastName: string;
+  enrollments?: Enrollment[];
+}
+
+interface Enrollment {
+  id: string;
+  courseId: string;
+  enrollmentType: string;
+  paymentStatus: string;
+}
+
+interface CreateCourseInstructorPayload {
+  courseId: string;
+  accountHolderId: string | null;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  isPrimary: boolean;
 }
 
 export default function CoursesPage() {
@@ -98,15 +124,32 @@ export default function CoursesPage() {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [availableMembers, setAvailableMembers] = useState<AccountHolder[]>([]);
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
+  const [accountHolder, setAccountHolder] = useState<AccountHolder | null>(null);
   const [roomError, setRoomError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showSignupModal, setShowSignupModal] = useState(false);
+  const [signupCourse, setSignupCourse] = useState<Course | null>(null);
+  const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('2');
+  const [isSigningUp, setIsSigningUp] = useState(false);
 
   const isAdmin = !!user?.roles.includes('Administrator');
+  const canCreateCourses = isAdmin || !!user?.roles.includes('Educator');
+  const canSignUpForCourses = !!user;
 
   useEffect(() => {
     fetchSemesters();
     fetchAvailableRooms(); // Load rooms once when component mounts
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchMyAccountHolder();
+    } else {
+      setAccountHolder(null);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (selectedSemester) {
@@ -145,7 +188,7 @@ export default function CoursesPage() {
             setSelectedSemester(semestersData[0].id);
           }
         }
-      } catch (err) {
+      } catch {
         // No active semester found, use the first one if available
         if (semestersData.length > 0) {
           setSelectedSemester(semestersData[0].id);
@@ -161,7 +204,7 @@ export default function CoursesPage() {
 
   const fetchCoursesBySemester = async (semesterId: string) => {
     try {
-      const coursesResponse = await apiClient.get(`/api/courses?semesterId=${semesterId}`);
+      const coursesResponse = await apiClient.get(`/api/courses/semester/${semesterId}`);
 
       if (!coursesResponse.ok) {
         throw new Error('Failed to fetch courses');
@@ -217,10 +260,18 @@ export default function CoursesPage() {
     }
   }, []);
 
-  // Function to refresh rooms when needed (e.g., after room changes)
-  const refreshRooms = useCallback(() => {
-    fetchAvailableRooms();
-  }, [fetchAvailableRooms]);
+  const fetchMyAccountHolder = async () => {
+    try {
+      const response = await apiClient.get('/api/AccountHolders/me');
+
+      if (response.ok) {
+        const data = await response.json();
+        setAccountHolder(data);
+      }
+    } catch (err) {
+      console.error('Error fetching account holder:', err);
+    }
+  };
 
   const openEditModal = useCallback(async (course: Course) => {
     if (!isAdmin) return; // guard for non-admin users
@@ -242,6 +293,57 @@ export default function CoursesPage() {
       style: 'currency',
       currency: 'USD'
     }).format(amount);
+  };
+
+  const isStudentSignedUpForCourse = (courseId: string) => {
+    return accountHolder?.students?.some(student =>
+      student.enrollments?.some(enrollment =>
+        enrollment.courseId === courseId &&
+        enrollment.enrollmentType !== 'Withdrawn' &&
+        enrollment.enrollmentType !== 'Cancelled'
+      )
+    ) ?? false;
+  };
+
+  const openSignupModal = (course: Course) => {
+    setError(null);
+    setSuccessMessage(null);
+    setSignupCourse(course);
+    setSelectedStudentId(accountHolder?.students?.[0]?.id ?? '');
+    setPaymentMethod('2');
+    setShowSignupModal(true);
+  };
+
+  const submitCourseSignup = async () => {
+    if (!signupCourse || !selectedStudentId) return;
+
+    try {
+      setIsSigningUp(true);
+      setError(null);
+      setSuccessMessage(null);
+
+      const response = await apiClient.post(`/api/courses/${signupCourse.id}/enrollments`, {
+        studentId: selectedStudentId,
+        paymentMethod: signupCourse.fee > 0 ? Number(paymentMethod) : null
+      });
+
+      const responseData = await response.json();
+      if (!response.ok) {
+        throw new Error(responseData.message || 'Failed to sign up for course');
+      }
+
+      setSuccessMessage(responseData.message || 'Course signup completed.');
+      setShowSignupModal(false);
+      setSignupCourse(null);
+      await fetchMyAccountHolder();
+      if (selectedSemester) {
+        await fetchCoursesBySemester(selectedSemester);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sign up for course');
+    } finally {
+      setIsSigningUp(false);
+    }
   };
 
   const createCourse = async (courseData: {
@@ -285,8 +387,6 @@ export default function CoursesPage() {
         throw new Error(errorData.message || 'Failed to create course');
       }
 
-      const newCourse = await response.json();
-      
       // Refresh the courses list
       await fetchCoursesBySemester(selectedSemester);
       
@@ -346,7 +446,7 @@ export default function CoursesPage() {
       try {
         setAddingInstructor(true);
 
-        const instructorData: any = {
+        const instructorData: CreateCourseInstructorPayload = {
           courseId: editingCourse.id,
           accountHolderId: newInstructor.accountHolderId || null,
           firstName: newInstructor.firstName,
@@ -718,7 +818,7 @@ export default function CoursesPage() {
       }));
     };
 
-  if (!isAdmin || !showCreateModal) return null;
+  if (!canCreateCourses || !showCreateModal) return null;
 
     return (
       <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -743,6 +843,7 @@ export default function CoursesPage() {
                 <input
                   type="text"
                   id="name"
+                  data-testid="course-name-input"
                   name="name"
                   required
                   value={formData.name}
@@ -759,6 +860,7 @@ export default function CoursesPage() {
                 <input
                   type="text"
                   id="code"
+                  data-testid="course-code-input"
                   name="code"
                   value={formData.code}
                   onChange={handleChange}
@@ -773,6 +875,7 @@ export default function CoursesPage() {
                 </label>
                 <select
                   id="ageGroup"
+                  data-testid="course-age-group-select"
                   name="ageGroup"
                   required
                   value={formData.ageGroup}
@@ -794,6 +897,7 @@ export default function CoursesPage() {
                 <input
                   type="number"
                   id="maxCapacity"
+                  data-testid="course-max-capacity-input"
                   name="maxCapacity"
                   min="1"
                   value={formData.maxCapacity}
@@ -808,6 +912,7 @@ export default function CoursesPage() {
                 </label>
                 <select
                   id="roomId"
+                  data-testid="course-room-select"
                   name="roomId"
                   value={formData.roomId}
                   onChange={handleChange}
@@ -841,6 +946,7 @@ export default function CoursesPage() {
                 <input
                   type="number"
                   id="fee"
+                  data-testid="course-fee-input"
                   name="fee"
                   min="0"
                   step="0.01"
@@ -857,6 +963,7 @@ export default function CoursesPage() {
                 <input
                   type="text"
                   id="periodCode"
+                  data-testid="course-period-code-input"
                   name="periodCode"
                   value={formData.periodCode}
                   onChange={handleChange}
@@ -872,6 +979,7 @@ export default function CoursesPage() {
                 <input
                   type="time"
                   id="startTime"
+                  data-testid="course-start-time-input"
                   name="startTime"
                   value={formData.startTime}
                   onChange={handleChange}
@@ -886,6 +994,7 @@ export default function CoursesPage() {
                 <input
                   type="time"
                   id="endTime"
+                  data-testid="course-end-time-input"
                   name="endTime"
                   value={formData.endTime}
                   onChange={handleChange}
@@ -900,6 +1009,7 @@ export default function CoursesPage() {
               </label>
               <textarea
                 id="description"
+                data-testid="course-description-input"
                 name="description"
                 rows={3}
                 value={formData.description}
@@ -919,6 +1029,7 @@ export default function CoursesPage() {
               </button>
               <button
                 type="submit"
+                data-testid="save-course-btn"
                 disabled={isCreating}
                 className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -926,6 +1037,123 @@ export default function CoursesPage() {
               </button>
             </div>
           </form>
+        </div>
+      </div>
+    );
+  };
+
+  const CourseSignupModal = () => {
+    if (!showSignupModal || !signupCourse) return null;
+
+    const students = accountHolder?.students ?? [];
+    const selectedStudent = students.find(student => student.id === selectedStudentId);
+    const isWaitlist = signupCourse.currentEnrollment >= signupCourse.maxCapacity;
+    const requiresPayment = signupCourse.fee > 0 && !isWaitlist;
+
+    return (
+      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div data-testid="course-signup-modal" className="relative top-20 mx-auto p-5 border w-full max-w-xl shadow-lg rounded-md bg-white">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-gray-900">Sign Up for {signupCourse.name}</h3>
+            <button
+              onClick={() => setShowSignupModal(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <span className="sr-only">Close</span>
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+          </div>
+
+          <div className="space-y-5">
+            <div className="rounded-md border border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900">{signupCourse.name}</p>
+                  <p className="text-sm text-gray-600">
+                    {signupCourse.currentEnrollment} / {signupCourse.maxCapacity} students enrolled
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-500">Fee</p>
+                  <p className="font-semibold text-gray-900">{formatCurrency(signupCourse.fee)}</p>
+                </div>
+              </div>
+              {isWaitlist && (
+                <p className="mt-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                  This course is full. Your child will be added to the waitlist and no payment will be collected now.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="studentId" className="block text-sm font-medium text-gray-700">
+                Student
+              </label>
+              <select
+                id="studentId"
+                data-testid="course-signup-student-select"
+                value={selectedStudentId}
+                onChange={(event) => setSelectedStudentId(event.target.value)}
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
+              >
+                {students.length === 0 ? (
+                  <option value="">Add a student from your account first</option>
+                ) : (
+                  students.map(student => (
+                    <option key={student.id} value={student.id}>
+                      {student.firstName} {student.lastName}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+
+            {requiresPayment && (
+              <div>
+                <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-700">
+                  Payment Method
+                </label>
+                <div className="mt-1 flex items-center gap-2">
+                  <CreditCardIcon className="h-5 w-5 text-gray-400" />
+                  <select
+                    id="paymentMethod"
+                    data-testid="course-signup-payment-method-select"
+                    value={paymentMethod}
+                    onChange={(event) => setPaymentMethod(event.target.value)}
+                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="2">Credit Card</option>
+                    <option value="1">Check</option>
+                    <option value="5">Zelle</option>
+                    <option value="6">Bank Transfer</option>
+                    <option value="7">Other</option>
+                  </select>
+                </div>
+                <p className="mt-2 text-sm text-gray-600">
+                  {formatCurrency(signupCourse.fee)} will be recorded for {selectedStudent?.firstName || 'this student'}.
+                </p>
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowSignupModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={submitCourseSignup}
+                data-testid="confirm-course-signup-button"
+                disabled={isSigningUp || !selectedStudentId}
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSigningUp ? 'Signing up...' : isWaitlist ? 'Join Waitlist' : requiresPayment ? 'Pay and Sign Up' : 'Sign Up'}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -954,13 +1182,16 @@ export default function CoursesPage() {
               <BookOpenIcon className="h-8 w-8 text-primary-600" />
               <h1 className="ml-3 text-2xl font-bold text-gray-900">Courses</h1>
             </div>
-            {isAdmin && (
+            {canCreateCourses && (
               <div className="flex space-x-3">
-                <Link href="/semesters" className="btn btn-secondary">
-                  <CalendarIcon className="h-5 w-5" />
-                  Manage Semesters
-                </Link>
+                {isAdmin && (
+                  <Link href="/semesters" className="btn btn-secondary">
+                    <CalendarIcon className="h-5 w-5" />
+                    Manage Semesters
+                  </Link>
+                )}
                   <button 
+                    data-testid="add-course-btn"
                     onClick={() => setShowCreateModal(true)}
                     disabled={!selectedSemester}
                     className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
@@ -976,6 +1207,12 @@ export default function CoursesPage() {
           {error && (
             <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
               <p className="text-red-600">{error}</p>
+            </div>
+          )}
+
+          {successMessage && (
+            <div className="mb-6 bg-green-50 border border-green-200 rounded-md p-4">
+              <p className="text-green-700">{successMessage}</p>
             </div>
           )}
 
@@ -1050,8 +1287,9 @@ export default function CoursesPage() {
               <p className="text-gray-600 mb-6">
                 There are no courses scheduled for the selected semester.
               </p>
-              {isAdmin && (
+              {canCreateCourses && (
                 <button 
+                  data-testid="add-first-course-btn"
                   onClick={() => setShowCreateModal(true)}
                   disabled={!selectedSemester}
                   className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1064,7 +1302,7 @@ export default function CoursesPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {courses.map((course) => (
-                <div key={course.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                <div key={course.id} data-testid={`course-${course.name.replace(/\s+/g, '-').toLowerCase()}`} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
                   <div className="p-6">
                     {/* Course Header */}
                     <div className="mb-4">
@@ -1114,7 +1352,7 @@ export default function CoursesPage() {
                       {course.fee > 0 && (
                         <div className="flex items-center text-sm text-gray-600">
                           <CurrencyDollarIcon className="h-4 w-4 mr-2 flex-shrink-0" />
-                          <span>{formatCurrency(course.fee)}</span>
+                          <span data-testid={`course-fee-${course.name.replace(/\s+/g, '-').toLowerCase()}`}>{formatCurrency(course.fee)}</span>
                         </div>
                       )}
                     </div>
@@ -1164,6 +1402,24 @@ export default function CoursesPage() {
                       <button className="flex-1 btn btn-secondary text-sm py-2">
                         View Details
                       </button>
+                      {canSignUpForCourses && !isAdmin && (
+                        <button
+                          data-testid={`course-signup-${course.name.replace(/\s+/g, '-').toLowerCase()}`}
+                          onClick={() => openSignupModal(course)}
+                          disabled={isStudentSignedUpForCourse(course.id) || (accountHolder?.students?.length ?? 0) === 0}
+                          className="flex-1 btn btn-primary text-sm py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isStudentSignedUpForCourse(course.id)
+                            ? 'Signed Up'
+                            : (accountHolder?.students?.length ?? 0) === 0
+                              ? 'Add Student'
+                              : course.currentEnrollment >= course.maxCapacity
+                                ? 'Waitlist'
+                                : course.fee > 0
+                                  ? 'Pay & Sign Up'
+                                  : 'Sign Up'}
+                        </button>
+                      )}
                       {isAdmin && (
                         <button 
                           onClick={() => openEditModal(course)}
@@ -1184,6 +1440,9 @@ export default function CoursesPage() {
 
         {/* Course Edit Modal */}
         <CourseEditModal />
+
+        {/* Course Signup Modal */}
+        <CourseSignupModal />
       </main>
     </Layout>
   );

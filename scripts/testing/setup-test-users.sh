@@ -278,12 +278,86 @@ else
     echo "ℹ️ User $MEMBER1_USERNAME already exists in realm $REALM_NAME."
 fi
 
+# Create parenteducator1 test user. This account starts as a Member and is
+# promoted by the parent-as-educator workflow so member1 remains a stable
+# baseline for member-only role tests.
+PARENT_EDUCATOR_USERNAME="parenteducator1"
+PARENT_EDUCATOR_PASSWORD="ParentEducatorPass123!"
+
+echo "👤 Checking if user $PARENT_EDUCATOR_USERNAME exists..."
+USER_EXISTS=$(curl -s -X GET "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/users?username=${PARENT_EDUCATOR_USERNAME}" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" | jq 'length')
+
+if [ "$USER_EXISTS" -eq 0 ]; then
+    echo "👤 Creating user: $PARENT_EDUCATOR_USERNAME in realm: $REALM_NAME"
+
+    USER_RESPONSE=$(curl -s -X POST "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/users" \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "{
+            \"username\": \"$PARENT_EDUCATOR_USERNAME\",
+            \"enabled\": true,
+            \"emailVerified\": true,
+            \"firstName\": \"Sarah\",
+            \"lastName\": \"Johnson\",
+            \"email\": \"sarah.johnson@example.com\"
+        }")
+
+    if ! check_api_response "$USER_RESPONSE" "create user"; then
+        echo "❌ Failed to create user $PARENT_EDUCATOR_USERNAME"
+        exit 1
+    fi
+
+    USER_ID=$(curl -s -X GET "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/users?username=${PARENT_EDUCATOR_USERNAME}" \
+        -H "Authorization: Bearer $TOKEN" | jq -r '.[0].id')
+
+    if [ "$USER_ID" != "null" ] && [ -n "$USER_ID" ]; then
+        PASSWORD_RESPONSE=$(curl -s -X PUT "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/users/${USER_ID}/reset-password" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+                \"type\": \"password\",
+                \"value\": \"$PARENT_EDUCATOR_PASSWORD\",
+                \"temporary\": false
+            }")
+
+        if ! check_api_response "$PASSWORD_RESPONSE" "set password"; then
+            echo "⚠️  User created but failed to set password"
+        fi
+
+        MEMBER_ROLE_ID=$(curl -s -X GET "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/roles/Member" \
+            -H "Authorization: Bearer $TOKEN" | jq -r '.id')
+
+        if [ "$MEMBER_ROLE_ID" != "null" ] && [ -n "$MEMBER_ROLE_ID" ]; then
+            ROLE_RESPONSE=$(curl -s -X POST "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/users/${USER_ID}/role-mappings/realm" \
+                -H "Authorization: Bearer $TOKEN" \
+                -H "Content-Type: application/json" \
+                -d "[{
+                    \"id\": \"$MEMBER_ROLE_ID\",
+                    \"name\": \"Member\"
+                }]")
+
+            if ! check_api_response "$ROLE_RESPONSE" "assign Member role"; then
+                echo "⚠️  User created but failed to assign Member role"
+            fi
+
+            echo "✅ User $PARENT_EDUCATOR_USERNAME created with Member role."
+        else
+            echo "❌ Member role not found in Keycloak realm"
+        fi
+    fi
+else
+    echo "ℹ️ User $PARENT_EDUCATOR_USERNAME already exists in realm $REALM_NAME."
+fi
+
 echo "✅ Test user setup complete!"
 echo ""
 echo "📋 Created test users:"
 echo "  👨‍💼 admin1 (AdminPass123!) - Role: Administrator [TEST ONLY]"
 echo "  👨‍🏫 educator1 (EducatorPass123!) - Role: Educator [TEST ONLY]"
 echo "  👤 member1 (MemberPass123!) - Role: Member [TEST ONLY]"
+echo "  👤 parenteducator1 (ParentEducatorPass123!) - Role: Member promoted during parent educator workflow [TEST ONLY]"
 echo ""
 echo "🔧 System admin account (separate from tests):"
 echo "  👨‍💼 scoopadmin (changethis123!) - Role: Administrator [SYSTEM ACCOUNT]"

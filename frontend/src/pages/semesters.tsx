@@ -184,8 +184,8 @@ export default function SemestersPage() {
 
       await fetchSemesters();
       closeModal();
-    } catch (err: any) {
-      setError(err.message || 'Failed to save semester');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save semester');
       console.error('Error saving semester:', err);
     } finally {
       setSubmitting(false);

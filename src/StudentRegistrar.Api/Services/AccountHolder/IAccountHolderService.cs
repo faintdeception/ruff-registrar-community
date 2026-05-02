@@ -6,6 +6,7 @@ public interface IAccountHolderService
 {
     Task<IEnumerable<AccountHolderDto>> GetAllAccountHoldersAsync();
     Task<AccountHolderDto?> GetAccountHolderByUserIdAsync(string userId);
+    Task<AccountHolderDto?> LinkAccountHolderToUserAsync(string email, string keycloakUserId);
     Task<AccountHolderDto?> GetAccountHolderByIdAsync(Guid id);
     Task<AccountHolderDto> CreateAccountHolderAsync(CreateAccountHolderDto createDto);
     Task<AccountHolderDto> CreateAccountHolderAsync(CreateAccountHolderDto createDto, string? keycloakUserId);

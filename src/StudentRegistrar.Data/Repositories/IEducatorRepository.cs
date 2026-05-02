@@ -6,8 +6,7 @@ public interface IEducatorRepository
 {
     Task<IEnumerable<Educator>> GetAllAsync();
     Task<Educator?> GetByIdAsync(Guid id);
-    Task<IEnumerable<Educator>> GetByCourseIdAsync(Guid courseId);
-    Task<IEnumerable<Educator>> GetUnassignedAsync();
+    Task<Educator?> GetByAccountHolderIdAsync(Guid accountHolderId);
     Task<IEnumerable<Educator>> GetActiveAsync();
     Task<Educator> CreateAsync(Educator educator);
     Task<Educator> UpdateAsync(Educator educator);

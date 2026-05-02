@@ -7,7 +7,6 @@ import {
   UserGroupIcon,
   PlusIcon,
   AcademicCapIcon,
-  XMarkIcon,
   XCircleIcon,
   CalendarIcon,
   BookOpenIcon
@@ -27,7 +26,7 @@ interface Student {
     parentNotes?: string;
   };
   notes?: string;
-  enrollments: any[];
+  enrollments: unknown[];
   accountHolderName: string;
 }
 
@@ -49,7 +48,7 @@ export default function StudentsPage() {
 
       // For regular users, get their students through account holder endpoint
       // For admins, we'd need a different endpoint to get all students
-      const endpoint = isAdmin ? '/api/students' : '/api/account-holders/me/students';
+      const endpoint = isAdmin ? '/api/students' : '/api/AccountHolders/me/students';
       
       const response = await apiClient.get(endpoint);
       

@@ -36,18 +36,25 @@ public class TenantAuthorizationHandler : AuthorizationHandler<TenantMembershipR
     private readonly ILogger<TenantAuthorizationHandler> _logger;
     private readonly StudentRegistrarDbContext _dbContext;
     private readonly IMemoryCache _cache;
+    private readonly bool _isSaaSMode;
     private const int CacheExpirationMinutes = 5;
 
     public TenantAuthorizationHandler(
         ITenantContextAccessor tenantContextAccessor,
         ILogger<TenantAuthorizationHandler> logger,
         StudentRegistrarDbContext dbContext,
-        IMemoryCache cache)
+        IMemoryCache cache,
+        IConfiguration configuration)
     {
         _tenantContextAccessor = tenantContextAccessor;
         _logger = logger;
         _dbContext = dbContext;
         _cache = cache;
+
+        var modeString = configuration["DEPLOYMENT_MODE"]
+            ?? Environment.GetEnvironmentVariable("DEPLOYMENT_MODE")
+            ?? "selfhosted";
+        _isSaaSMode = modeString.Equals("saas", StringComparison.OrdinalIgnoreCase);
     }
 
     protected override async Task HandleRequirementAsync(
@@ -56,11 +63,15 @@ public class TenantAuthorizationHandler : AuthorizationHandler<TenantMembershipR
     {
         var tenantContext = _tenantContextAccessor.TenantContext;
         
-        // If no tenant context, this is likely a non-tenant route (e.g., portal, health checks)
-        // Let it through - route-specific authorization will handle access control
         if (tenantContext == null)
         {
-            context.Succeed(requirement);
+            if (!_isSaaSMode)
+            {
+                context.Succeed(requirement);
+                return;
+            }
+
+            _logger.LogWarning("Tenant authorization failed: SaaS request has no resolved tenant context");
             return;
         }
 
@@ -140,14 +151,17 @@ public static class TenantAuthorizationExtensions
     {
         // Register the authorization handler as scoped (not singleton) because it depends on DbContext
         services.AddScoped<IAuthorizationHandler, TenantAuthorizationHandler>();
-        
-        // Add authorization policy that requires tenant membership
-        services.AddAuthorizationBuilder()
-            .AddPolicy("TenantMember", policy =>
-            {
-                policy.RequireAuthenticatedUser();
-                policy.AddRequirements(new TenantMembershipRequirement());
-            });
+
+        services.AddAuthorization(options =>
+        {
+            var tenantMemberPolicy = new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .AddRequirements(new TenantMembershipRequirement())
+                .Build();
+
+            options.DefaultPolicy = tenantMemberPolicy;
+            options.AddPolicy("TenantMember", tenantMemberPolicy);
+        });
         
         return services;
     }

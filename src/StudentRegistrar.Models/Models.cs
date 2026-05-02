@@ -8,7 +8,7 @@ namespace StudentRegistrar.Models;
 
 public class GradeRecord : ITenantEntity
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
     
     /// <summary>
     /// The tenant (organization) this grade record belongs to.
@@ -40,7 +40,7 @@ public class GradeRecord : ITenantEntity
 
 public class AcademicYear : ITenantEntity
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
     
     /// <summary>
     /// The tenant (organization) this academic year belongs to.

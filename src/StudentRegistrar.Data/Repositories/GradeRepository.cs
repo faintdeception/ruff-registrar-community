@@ -20,7 +20,7 @@ public class GradeRepository : IGradeRepository
             .ToListAsync();
     }
 
-    public async Task<GradeRecord?> GetByIdAsync(int id)
+    public async Task<GradeRecord?> GetByIdAsync(Guid id)
     {
         return await _context.GradeRecords
             .Include(g => g.Student)
@@ -60,7 +60,7 @@ public class GradeRepository : IGradeRepository
         return grade;
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<bool> DeleteAsync(Guid id)
     {
         var grade = await _context.GradeRecords.FindAsync(id);
         if (grade == null)

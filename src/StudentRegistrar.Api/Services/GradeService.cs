@@ -24,7 +24,7 @@ public class GradeService : IGradeService
         return _mapper.Map<IEnumerable<GradeRecordDto>>(grades);
     }
 
-    public async Task<GradeRecordDto?> GetGradeByIdAsync(int id)
+    public async Task<GradeRecordDto?> GetGradeByIdAsync(Guid id)
     {
         var grade = await _gradeRepository.GetByIdAsync(id);
         return grade == null ? null : _mapper.Map<GradeRecordDto>(grade);
@@ -49,7 +49,7 @@ public class GradeService : IGradeService
         return _mapper.Map<GradeRecordDto>(createdGrade);
     }
 
-    public async Task<GradeRecordDto?> UpdateGradeAsync(int id, CreateGradeRecordDto updateGradeDto)
+    public async Task<GradeRecordDto?> UpdateGradeAsync(Guid id, CreateGradeRecordDto updateGradeDto)
     {
         var existingGrade = await _gradeRepository.GetByIdAsync(id);
         if (existingGrade == null)
@@ -60,7 +60,7 @@ public class GradeService : IGradeService
         return _mapper.Map<GradeRecordDto>(updatedGrade);
     }
 
-    public async Task<bool> DeleteGradeAsync(int id)
+    public async Task<bool> DeleteGradeAsync(Guid id)
     {
         return await _gradeRepository.DeleteAsync(id);
     }

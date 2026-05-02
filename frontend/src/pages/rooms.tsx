@@ -171,8 +171,8 @@ export default function RoomsPage() {
 
       await fetchRooms();
       closeModal();
-    } catch (err: any) {
-      setError(err.message || 'Failed to save room');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save room');
       console.error('Error saving room:', err);
     } finally {
       setSubmitting(false);
@@ -198,8 +198,8 @@ export default function RoomsPage() {
       }
 
       await fetchRooms();
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete room');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to delete room');
       console.error('Error deleting room:', err);
     }
   };

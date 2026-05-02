@@ -1,5 +1,4 @@
 // This file has been refactored. Each interface has been moved to its own file:
-// - ICourseService.cs
 // - IGradeService.cs
 // - IKeycloakService.cs
 // - ICourseInstructorService.cs

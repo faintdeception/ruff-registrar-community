@@ -1,5 +1,5 @@
 export interface Student {
-  id: number;
+  id: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -30,7 +30,7 @@ export interface CreateStudentDto {
 }
 
 export interface Course {
-  id: number;
+  id: string;
   name: string;
   code: string;
   description?: string;
@@ -53,10 +53,10 @@ export interface CreateCourseDto {
 }
 
 export interface Enrollment {
-  id: number;
-  studentId: number;
+  id: string;
+  studentId: string;
   student: Student;
-  courseId: number;
+  courseId: string;
   course: Course;
   enrollmentDate: string;
   completionDate?: string;
@@ -66,8 +66,8 @@ export interface Enrollment {
 }
 
 export interface CreateEnrollmentDto {
-  studentId: number;
-  courseId: number;
+  studentId: string;
+  courseId: string;
   enrollmentDate: string;
   status?: string;
 }
@@ -75,30 +75,57 @@ export interface CreateEnrollmentDto {
 // Independent Educator types (not tied to courses)
 export interface EducatorDto {
   id: string;
-  courseId?: string;
+  accountHolderId?: string;
+  keycloakUserId?: string;
   firstName: string;
   lastName: string;
   fullName: string;
   email?: string;
   phone?: string;
-  isPrimary: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
   educatorInfo: EducatorInfo;
-  isAssignedToCourse: boolean;
-  course?: any; // Course details if assigned
 }
 
 export interface CreateEducatorDto {
-  courseId?: string;
+  accountHolderId?: string;
   firstName: string;
   lastName: string;
   email?: string;
   phone?: string;
-  isPrimary?: boolean;
   isActive?: boolean;
   educatorInfo?: EducatorInfo;
+}
+
+export interface InviteEducatorDto {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  accountHolderId?: string;
+  educatorInfo?: EducatorInfo;
+}
+
+export interface UserCredentials {
+  username: string;
+  temporaryPassword: string;
+  mustChangePassword: boolean;
+}
+
+export interface InviteEducatorResponse {
+  educator: EducatorDto;
+  credentials?: UserCredentials;
+  message: string;
+}
+
+export interface AccountHolderDto {
+  id: string;
+  firstName: string;
+  lastName: string;
+  emailAddress: string;
+  homePhone?: string;
+  mobilePhone?: string;
 }
 
 export interface UpdateEducatorDto {
@@ -119,10 +146,10 @@ export interface EducatorInfo {
 }
 
 export interface GradeRecord {
-  id: number;
-  studentId: number;
+  id: string;
+  studentId: string;
   student: Student;
-  courseId: number;
+  courseId: string;
   course: Course;
   letterGrade?: string;
   numericGrade?: number;
@@ -134,8 +161,8 @@ export interface GradeRecord {
 }
 
 export interface CreateGradeRecordDto {
-  studentId: number;
-  courseId: number;
+  studentId: string;
+  courseId: string;
   letterGrade?: string;
   numericGrade?: number;
   gradePoints?: number;

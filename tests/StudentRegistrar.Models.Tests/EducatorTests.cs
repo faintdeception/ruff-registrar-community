@@ -20,8 +20,6 @@ public class EducatorTests
         educator.Email.Should().BeNull();
         educator.Phone.Should().BeNull();
         educator.IsActive.Should().BeTrue();
-        educator.CourseId.Should().BeNull();
-        educator.IsPrimary.Should().BeFalse();
         educator.EducatorInfoJson.Should().Be("{}");
         educator.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
         educator.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
@@ -39,32 +37,6 @@ public class EducatorTests
 
         // Act & Assert
         educator.FullName.Should().Be("Dr. Sarah Wilson");
-    }
-
-    [Fact]
-    public void IsAssignedToCourse_Should_ReturnTrue_WhenCourseIdIsSet()
-    {
-        // Arrange
-        var educator = new Educator
-        {
-            CourseId = Guid.NewGuid()
-        };
-
-        // Act & Assert
-        educator.IsAssignedToCourse.Should().BeTrue();
-    }
-
-    [Fact]
-    public void IsAssignedToCourse_Should_ReturnFalse_WhenCourseIdIsNull()
-    {
-        // Arrange
-        var educator = new Educator
-        {
-            CourseId = null
-        };
-
-        // Act & Assert
-        educator.IsAssignedToCourse.Should().BeFalse();
     }
 
     [Fact]
@@ -240,65 +212,20 @@ public class EducatorTests
     }
 
     [Fact]
-    public void Educator_Should_SupportPrimaryInstructorFlag()
-    {
-        // Arrange
-        var educator = new Educator();
-
-        // Default should be non-primary
-        educator.IsPrimary.Should().BeFalse();
-
-        // Act - make primary
-        educator.IsPrimary = true;
-
-        // Assert
-        educator.IsPrimary.Should().BeTrue();
-    }
-
-    [Fact]
-    public void Educator_Should_SupportCourseAssignment()
-    {
-        // Arrange
-        var educator = new Educator();
-        var courseId = Guid.NewGuid();
-
-        // Initially unassigned
-        educator.IsAssignedToCourse.Should().BeFalse();
-        educator.CourseId.Should().BeNull();
-
-        // Act - assign to course
-        educator.CourseId = courseId;
-
-        // Assert
-        educator.CourseId.Should().Be(courseId);
-        educator.IsAssignedToCourse.Should().BeTrue();
-
-        // Act - unassign from course
-        educator.CourseId = null;
-
-        // Assert
-        educator.CourseId.Should().BeNull();
-        educator.IsAssignedToCourse.Should().BeFalse();
-    }
-
-    [Fact]
     public void Educator_Should_HandleIndependentEducatorScenario()
     {
-        // Arrange - Independent educator not assigned to any specific course
+        // Arrange - Educator profile independent of course assignment
         var educator = new Educator
         {
             FirstName = "Independent",
             LastName = "Teacher",
             Email = "independent@freelance.edu",
-            IsActive = true,
-            CourseId = null,
-            IsPrimary = false
+            IsActive = true
         };
 
         // Assert
-        educator.IsAssignedToCourse.Should().BeFalse();
         educator.IsActive.Should().BeTrue();
-        educator.IsPrimary.Should().BeFalse(); // Primary flag not relevant for unassigned educators
+        educator.FullName.Should().Be("Independent Teacher");
     }
 
     [Fact]

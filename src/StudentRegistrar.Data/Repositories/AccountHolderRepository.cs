@@ -18,6 +18,7 @@ public class AccountHolderRepository : IAccountHolderRepository
             .Include(a => a.Students)
                 .ThenInclude(s => s.Enrollments)
                     .ThenInclude(e => e.Course)
+                        .ThenInclude(c => c.Semester)
             .Include(a => a.Payments)
             .FirstOrDefaultAsync(a => a.Id == id);
     }
@@ -26,6 +27,9 @@ public class AccountHolderRepository : IAccountHolderRepository
     {
         return await _context.AccountHolders
             .Include(a => a.Students)
+                .ThenInclude(s => s.Enrollments)
+                    .ThenInclude(e => e.Course)
+                        .ThenInclude(c => c.Semester)
             .Include(a => a.Payments)
             .FirstOrDefaultAsync(a => a.KeycloakUserId == keycloakUserId);
     }
@@ -34,6 +38,9 @@ public class AccountHolderRepository : IAccountHolderRepository
     {
         return await _context.AccountHolders
             .Include(a => a.Students)
+                .ThenInclude(s => s.Enrollments)
+                    .ThenInclude(e => e.Course)
+                        .ThenInclude(c => c.Semester)
             .Include(a => a.Payments)
             .FirstOrDefaultAsync(a => a.EmailAddress == email);
     }

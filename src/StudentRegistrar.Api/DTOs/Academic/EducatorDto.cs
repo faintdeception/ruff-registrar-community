@@ -6,24 +6,23 @@ namespace StudentRegistrar.Api.DTOs;
 public class EducatorDto
 {
     public Guid Id { get; set; }
-    public Guid? CourseId { get; set; }
+    public Guid? AccountHolderId { get; set; }
+    public string? KeycloakUserId { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string FullName => $"{FirstName} {LastName}";
     public string? Email { get; set; }
     public string? Phone { get; set; }
-    public bool IsPrimary { get; set; } = false;
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public EducatorInfo EducatorInfo { get; set; } = new();
-    public bool IsAssignedToCourse => CourseId.HasValue;
-    public CourseDto? Course { get; set; }
+    public AccountHolderDto? AccountHolder { get; set; }
 }
 
 public class CreateEducatorDto
 {
-    public Guid? CourseId { get; set; } // Optional - can create educators without courses
+    public Guid? AccountHolderId { get; set; }
     
     [Required]
     [StringLength(100)]
@@ -41,7 +40,6 @@ public class CreateEducatorDto
     [StringLength(20)]
     public string? Phone { get; set; }
     
-    public bool IsPrimary { get; set; } = false;
     public bool IsActive { get; set; } = true;
     
     public EducatorInfo? EducatorInfo { get; set; }
@@ -49,7 +47,7 @@ public class CreateEducatorDto
 
 public class UpdateEducatorDto
 {
-    public Guid? CourseId { get; set; } // Can assign/unassign courses
+    public Guid? AccountHolderId { get; set; }
     
     [Required]
     [StringLength(100)]
@@ -67,7 +65,6 @@ public class UpdateEducatorDto
     [StringLength(20)]
     public string? Phone { get; set; }
     
-    public bool IsPrimary { get; set; } = false;
     public bool IsActive { get; set; } = true;
     
     public EducatorInfo? EducatorInfo { get; set; }

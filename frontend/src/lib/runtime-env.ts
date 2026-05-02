@@ -7,12 +7,16 @@ export type RuntimeEnv = {
   NEXT_PUBLIC_APP_VERSION?: string;
 };
 
+type RuntimeWindow = Window & {
+  __ENV__?: RuntimeEnv;
+};
+
 export const getRuntimeEnv = (): RuntimeEnv | undefined => {
   if (typeof window === 'undefined') {
     return undefined;
   }
 
-  return (window as any).__ENV__ as RuntimeEnv | undefined;
+  return (window as RuntimeWindow).__ENV__;
 };
 
 export const getApiBaseUrl = (): string => {

@@ -40,6 +40,12 @@ public class CoursesPage
         WaitForPageLoad();
     }
 
+    public void NavigateToCourses(string baseUrl)
+    {
+        _driver.Navigate().GoToUrl($"{baseUrl.TrimEnd('/')}/courses");
+        WaitForPageLoad();
+    }
+
     public void WaitForPageLoad()
     {
         _wait.Until(driver => driver.Url.Contains("/courses"));
@@ -113,6 +119,14 @@ public class CoursesPage
         WaitForModalToOpen();
     }
 
+    public void CreateCourse(string name, string code, string ageGroup, int maxCapacity, decimal fee, string periodCode, string description)
+    {
+        ClickCreateCourse();
+        FillCourseForm(name, code, ageGroup, maxCapacity, fee: fee, periodCode: periodCode, description: description);
+        SaveCourse();
+        _wait.Until(d => IsCourseVisible(name));
+    }
+
     public void WaitForModalToOpen()
     {
         _wait.Until(driver =>
@@ -122,12 +136,97 @@ public class CoursesPage
         });
     }
 
+    public bool IsCourseFeeVisible(string courseName, string expectedFee)
+    {
+        var slug = ToSlug(courseName);
+        return _driver.FindElements(By.CssSelector($"[data-testid='course-fee-{slug}']"))
+            .Any(e => e.Displayed && e.Text.Contains(expectedFee, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public string GetSignupButtonText(string courseName)
+    {
+        return FindSignupButton(courseName, requireEnabled: false).Text.Trim();
+    }
+
+    public void OpenSignup(string courseName)
+    {
+        SafeClick(FindSignupButton(courseName, requireEnabled: true));
+        _wait.Until(d =>
+            d.FindElements(By.CssSelector("[data-testid='course-signup-modal']")).Any(e => e.Displayed) ||
+            d.PageSource.Contains($"Sign Up for {courseName}", StringComparison.OrdinalIgnoreCase));
+    }
+
+    public void SelectSignupStudent(string studentFullName)
+    {
+        var selectElement = _driver.FindElements(By.CssSelector("[data-testid='course-signup-student-select']")).FirstOrDefault(e => e.Displayed) ??
+            _driver.FindElement(By.Id("studentId"));
+        var select = new SelectElement(selectElement);
+        var option = select.Options.FirstOrDefault(o => o.Text.Contains(studentFullName, StringComparison.OrdinalIgnoreCase));
+        if (option == null)
+        {
+            throw new NoSuchElementException($"Could not find signup student option containing: {studentFullName}");
+        }
+
+        option.Click();
+    }
+
+    public void ConfirmSignup()
+    {
+        var button = _driver.FindElements(By.CssSelector("[data-testid='confirm-course-signup-button']")).FirstOrDefault(e => e.Displayed) ??
+            _driver.FindElement(By.XPath("//button[contains(normalize-space(.), 'Pay and Sign Up') or contains(normalize-space(.), 'Sign Up') or contains(normalize-space(.), 'Join Waitlist')]"));
+        SafeClick(button);
+        WaitForSignupModalToClose();
+    }
+
+    public void SignUpStudentForCourse(string courseName, string studentFullName)
+    {
+        OpenSignup(courseName);
+        SelectSignupStudent(studentFullName);
+        ConfirmSignup();
+    }
+
+    private static string ToSlug(string value)
+    {
+        return string.Join("-", value.Split(' ', StringSplitOptions.RemoveEmptyEntries)).ToLowerInvariant();
+    }
+
+    private IWebElement FindSignupButton(string courseName, bool requireEnabled)
+    {
+        var slug = ToSlug(courseName);
+        return _wait.Until(d =>
+            d.FindElements(By.CssSelector($"[data-testid='course-signup-{slug}']")).FirstOrDefault(e => e.Displayed && (!requireEnabled || e.Enabled)) ??
+            d.FindElements(By.XPath($"//div[.//h3[contains(normalize-space(.), '{courseName}')]]//button[contains(normalize-space(.), 'Sign Up') or contains(normalize-space(.), 'Waitlist')]")).FirstOrDefault(e => e.Displayed && (!requireEnabled || e.Enabled)));
+    }
+
     public void WaitForModalToClose()
     {
         _wait.Until(driver =>
         {
             var modals = driver.FindElements(By.CssSelector(".fixed.inset-0"));
             return modals.All(m => !m.Displayed);
+        });
+    }
+
+    private void WaitForSignupModalToClose()
+    {
+        _wait.Until(driver =>
+        {
+            var signupModals = driver.FindElements(By.CssSelector("[data-testid='course-signup-modal']"));
+            if (signupModals.All(m => !m.Displayed))
+            {
+                return true;
+            }
+
+            var errorText = driver.FindElements(By.CssSelector(".bg-red-50, [role='alert']"))
+                .Where(e => e.Displayed)
+                .Select(e => e.Text)
+                .FirstOrDefault(text => !string.IsNullOrWhiteSpace(text));
+            if (!string.IsNullOrWhiteSpace(errorText))
+            {
+                throw new InvalidOperationException($"Course signup failed: {errorText}");
+            }
+
+            return false;
         });
     }
 

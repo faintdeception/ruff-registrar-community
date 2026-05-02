@@ -5,7 +5,6 @@ using StudentRegistrar.Data;
 using StudentRegistrar.Api.Services;
 using StudentRegistrar.Api.Services.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using AutoMapper;
@@ -217,16 +216,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             }
         };
     });
-
-builder.Services.AddAuthorization(options =>
-{
-    // Set TenantMember as the default policy for all [Authorize] attributes
-    // This ensures tenant membership is validated for all authenticated requests
-    options.FallbackPolicy = new AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .AddRequirements(new TenantMembershipRequirement())
-        .Build();
-});
 
 var app = builder.Build();
 

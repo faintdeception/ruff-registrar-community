@@ -24,7 +24,7 @@ public class StudentsController : ControllerBase
         return Ok(students);
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id:guid}")]
     public async Task<ActionResult<StudentDto>> GetStudent(Guid id)
     {
         var student = await _studentService.GetStudentByIdAsync(id);
@@ -41,7 +41,7 @@ public class StudentsController : ControllerBase
         return CreatedAtAction(nameof(GetStudent), new { id = student.Id }, student);
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("{id:guid}")]
     public async Task<ActionResult<StudentDto>> UpdateStudent(Guid id, UpdateStudentDto updateStudentDto)
     {
         var student = await _studentService.UpdateStudentAsync(id, updateStudentDto);
@@ -51,7 +51,7 @@ public class StudentsController : ControllerBase
         return Ok(student);
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteStudent(Guid id)
     {
         var result = await _studentService.DeleteStudentAsync(id);
@@ -62,7 +62,7 @@ public class StudentsController : ControllerBase
     }
 
     // New endpoint for account holder's students
-    [HttpGet("by-account/{accountHolderId}")]
+    [HttpGet("by-account/{accountHolderId:guid}")]
     public async Task<ActionResult<IEnumerable<StudentDto>>> GetStudentsByAccountHolder(Guid accountHolderId)
     {
         var students = await _studentService.GetStudentsByAccountHolderAsync(accountHolderId);

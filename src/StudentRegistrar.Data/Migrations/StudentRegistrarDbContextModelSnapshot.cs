@@ -24,11 +24,9 @@ namespace StudentRegistrar.Data.Migrations
 
             modelBuilder.Entity("StudentRegistrar.Models.AcademicYear", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -284,7 +282,7 @@ namespace StudentRegistrar.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("CourseId")
+                    b.Property<Guid?>("AccountHolderId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
@@ -306,8 +304,9 @@ namespace StudentRegistrar.Data.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
-                    b.Property<bool>("IsPrimary")
-                        .HasColumnType("boolean");
+                    b.Property<string>("KeycloakUserId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
 
                     b.Property<string>("LastName")
                         .IsRequired()
@@ -326,9 +325,13 @@ namespace StudentRegistrar.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CourseId");
+                    b.HasIndex("AccountHolderId");
 
                     b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "Email");
+
+                    b.HasIndex("TenantId", "KeycloakUserId");
 
                     b.ToTable("Educators");
                 });
@@ -401,11 +404,9 @@ namespace StudentRegistrar.Data.Migrations
 
             modelBuilder.Entity("StudentRegistrar.Models.GradeRecord", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Comments")
                         .HasMaxLength(500)
@@ -691,7 +692,7 @@ namespace StudentRegistrar.Data.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
-                    b.Property<string>("StripeSubscriptionId")
+                    b.Property<string>("StripePaymentMethodId")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
@@ -699,7 +700,7 @@ namespace StudentRegistrar.Data.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
-                    b.Property<string>("StripePaymentMethodId")
+                    b.Property<string>("StripeSubscriptionId")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
@@ -831,9 +832,6 @@ namespace StudentRegistrar.Data.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("UserId1")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("ZipCode")
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
@@ -843,9 +841,6 @@ namespace StudentRegistrar.Data.Migrations
                     b.HasIndex("TenantId");
 
                     b.HasIndex("UserId")
-                        .IsUnique();
-
-                    b.HasIndex("UserId1")
                         .IsUnique();
 
                     b.ToTable("UserProfiles");
@@ -888,12 +883,12 @@ namespace StudentRegistrar.Data.Migrations
 
             modelBuilder.Entity("StudentRegistrar.Models.Educator", b =>
                 {
-                    b.HasOne("StudentRegistrar.Models.Course", "Course")
+                    b.HasOne("StudentRegistrar.Models.AccountHolder", "AccountHolder")
                         .WithMany()
-                        .HasForeignKey("CourseId")
+                        .HasForeignKey("AccountHolderId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.Navigation("Course");
+                    b.Navigation("AccountHolder");
                 });
 
             modelBuilder.Entity("StudentRegistrar.Models.Enrollment", b =>
@@ -974,14 +969,10 @@ namespace StudentRegistrar.Data.Migrations
             modelBuilder.Entity("StudentRegistrar.Models.UserProfile", b =>
                 {
                     b.HasOne("StudentRegistrar.Models.User", "User")
-                        .WithOne()
+                        .WithOne("UserProfile")
                         .HasForeignKey("StudentRegistrar.Models.UserProfile", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("StudentRegistrar.Models.User", null)
-                        .WithOne("UserProfile")
-                        .HasForeignKey("StudentRegistrar.Models.UserProfile", "UserId1");
 
                     b.Navigation("User");
                 });

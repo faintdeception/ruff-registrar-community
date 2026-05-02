@@ -29,15 +29,14 @@ public class Educator : ITenantEntity
     [Phone]
     [MaxLength(20)]
     public string? Phone { get; set; }
+
+    public Guid? AccountHolderId { get; set; }
+
+    [MaxLength(255)]
+    public string? KeycloakUserId { get; set; }
     
     // Professional status and information
     public bool IsActive { get; set; } = true;
-    
-    // Optional course assignment - can be null for independent educators
-    public Guid? CourseId { get; set; }
-    
-    // Primary instructor flag - only relevant when assigned to a course
-    public bool IsPrimary { get; set; } = false;
     
     // Flexible data for educator-specific info (bio, qualifications, etc.)
     [Column(TypeName = "jsonb")]
@@ -47,14 +46,11 @@ public class Educator : ITenantEntity
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     
     // Navigation Properties
-    public virtual Course? Course { get; set; }
+    public virtual AccountHolder? AccountHolder { get; set; }
     
     // Computed Properties
     [NotMapped]
     public string FullName => $"{FirstName} {LastName}";
-    
-    [NotMapped]
-    public bool IsAssignedToCourse => CourseId.HasValue;
     
     // Helper methods for JSON fields
     public EducatorInfo GetEducatorInfo()
