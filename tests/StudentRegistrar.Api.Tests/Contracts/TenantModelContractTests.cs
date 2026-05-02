@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using StudentRegistrar.Data;
 using StudentRegistrar.Models;
 using Xunit;
@@ -60,6 +61,52 @@ public class TenantModelContractTests
         shadowForeignKeys.Should().BeEmpty("foreign keys should be explicit model properties in the clean EF baseline");
     }
 
+    [Fact]
+    public async Task TenantScopedQueries_Should_ReturnOnlyCurrentTenantRows_InSaaSMode()
+    {
+        var databaseName = $"TenantIsolationTests-{Guid.NewGuid()}";
+        var databaseRoot = new InMemoryDatabaseRoot();
+        var tenantAId = Guid.NewGuid();
+        var tenantBId = Guid.NewGuid();
+
+        await using (var seedContext = CreateDbContext(databaseName, databaseRoot, new TestTenantProvider(null, shouldApplyTenantFilter: false)))
+        {
+            seedContext.Rooms.AddRange(
+                new Room { TenantId = tenantAId, Name = "Tenant A Room", Capacity = 20 },
+                new Room { TenantId = tenantBId, Name = "Tenant B Room", Capacity = 30 });
+
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using (var tenantAContext = CreateDbContext(databaseName, databaseRoot, new TestTenantProvider(tenantAId, shouldApplyTenantFilter: true)))
+        {
+            var tenantARooms = await tenantAContext.Rooms.Select(room => room.Name).ToArrayAsync();
+
+            tenantARooms.Should().ContainSingle().Which.Should().Be("Tenant A Room");
+        }
+
+        await using (var tenantBContext = CreateDbContext(databaseName, databaseRoot, new TestTenantProvider(tenantBId, shouldApplyTenantFilter: true)))
+        {
+            var tenantBRooms = await tenantBContext.Rooms.Select(room => room.Name).ToArrayAsync();
+
+            tenantBRooms.Should().ContainSingle().Which.Should().Be("Tenant B Room");
+        }
+
+        await using (var missingTenantContext = CreateDbContext(databaseName, databaseRoot, new TestTenantProvider(null, shouldApplyTenantFilter: true)))
+        {
+            var visibleRooms = await missingTenantContext.Rooms.ToArrayAsync();
+
+            visibleRooms.Should().BeEmpty("SaaS requests without tenant context must not see tenant-scoped data");
+        }
+
+        await using (var selfHostedContext = CreateDbContext(databaseName, databaseRoot, new TestTenantProvider(null, shouldApplyTenantFilter: false)))
+        {
+            var visibleRooms = await selfHostedContext.Rooms.Select(room => room.Name).ToArrayAsync();
+
+            visibleRooms.Should().BeEquivalentTo("Tenant A Room", "Tenant B Room");
+        }
+    }
+
     private static StudentRegistrarDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<StudentRegistrarDbContext>()
@@ -67,5 +114,29 @@ public class TenantModelContractTests
             .Options;
 
         return new StudentRegistrarDbContext(options);
+    }
+
+    private static StudentRegistrarDbContext CreateDbContext(
+        string databaseName,
+        InMemoryDatabaseRoot databaseRoot,
+        ITenantProvider tenantProvider)
+    {
+        var options = new DbContextOptionsBuilder<StudentRegistrarDbContext>()
+            .UseInMemoryDatabase(databaseName, databaseRoot)
+            .Options;
+
+        return new StudentRegistrarDbContext(options, tenantProvider);
+    }
+
+    private sealed class TestTenantProvider : ITenantProvider
+    {
+        public TestTenantProvider(Guid? currentTenantId, bool shouldApplyTenantFilter)
+        {
+            CurrentTenantId = currentTenantId;
+            ShouldApplyTenantFilter = shouldApplyTenantFilter;
+        }
+
+        public Guid? CurrentTenantId { get; }
+        public bool ShouldApplyTenantFilter { get; }
     }
 }
