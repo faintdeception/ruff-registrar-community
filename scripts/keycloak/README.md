@@ -79,11 +79,17 @@ Exit codes:
 - >0 other failure
 
 ### Dev / Test Seeding
-After bootstrap (or using existing dev realm):
+After bootstrap (or using an existing dev realm), seed deterministic Keycloak users:
 ```
 ./scripts/keycloak/seed-test-users.sh --keycloak-url http://localhost:8080 --realm student-registrar
 ```
-Creates deterministic users used by automated tests.
+Creates deterministic Keycloak users used by automated tests.
+
+For the browser E2E suite, prefer the testing setup scripts because they create the expected role-specific users (`admin1`, `educator1`, `member1`, and `parenteducator1`). On Windows, the PowerShell script also synchronizes local database rows with live Keycloak user IDs:
+
+```powershell
+./scripts/testing/setup-test-users.ps1 -AdminPassword 'admin123!'
+```
 
 ## Regenerating Realm Template
 1. Make interactive changes in a disposable Keycloak instance.

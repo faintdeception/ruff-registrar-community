@@ -47,7 +47,7 @@ public class AdminTests : BaseTest
         var membersCard = Driver.FindElement(By.CssSelector("[data-testid='members-card']"));
     membersCard.Click();
     WaitForPageLoad();
-    WaitUntil(d => d.Url.Contains("/members") || d.PageSource.Contains("Members Management"));
+    WaitUntil(d => d.Url.Contains("/members") && d.PageSource.Contains("Members Management"));
 
         // Assert - Should be on members page
         Driver.Url.Should().Contain("/members", "Should navigate to members page");

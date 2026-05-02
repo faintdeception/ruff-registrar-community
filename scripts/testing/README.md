@@ -28,6 +28,15 @@ scripts/testing/
 ./scripts/testing/run-e2e-tests.sh --setup-users
 ```
 
+On Windows, prefer the PowerShell setup script before running E2E so Keycloak users and local database rows are synchronized with live Keycloak IDs:
+
+```powershell
+./scripts/testing/setup-test-users.ps1 -AdminPassword 'admin123!'
+$env:SeleniumSettings__Headless='true'
+dotnet test tests/StudentRegistrar.E2E.Tests/StudentRegistrar.E2E.Tests.csproj --logger "console;verbosity=normal" --collect:"XPlat Code Coverage"
+Remove-Item Env:SeleniumSettings__Headless
+```
+
 ### Run Specific Test Suites
 ```bash
 # Run only admin tests
@@ -62,11 +71,11 @@ scripts/testing/
    - If using Aspire: Keycloak starts with the AppHost
    - If using Docker Compose: `docker-compose up keycloak`
 
-3. **Database Seeded or Synced** (optional for realistic scenarios)
+3. **Database Seeded or Synced**
    ```bash
    ./scripts/testing/seed-database.sh
    ```
-   On Windows, `setup-test-users.ps1` also syncs the required E2E `Users` and `AccountHolders` rows with live Keycloak IDs when a local PostgreSQL container is available.
+   On Windows, `setup-test-users.ps1` also syncs the required E2E `Users` and `AccountHolders` rows with live Keycloak IDs when a local PostgreSQL container is available. This sync is required for workflows that authorize an existing member, such as `parenteducator1`.
 
 ## 🧪 Test Users
 
@@ -195,6 +204,17 @@ docker run --rm student-registrar-e2e
 ./scripts/testing/run-e2e-tests.sh --headless --setup-users
 ```
 
+### Windows / PowerShell
+```powershell
+# Setup users and required local database rows
+./scripts/testing/setup-test-users.ps1 -AdminPassword 'admin123!'
+
+# Run the full browser suite headless
+$env:SeleniumSettings__Headless='true'
+dotnet test tests/StudentRegistrar.E2E.Tests/StudentRegistrar.E2E.Tests.csproj --logger "console;verbosity=normal" --collect:"XPlat Code Coverage"
+Remove-Item Env:SeleniumSettings__Headless
+```
+
 ### Debugging
 ```bash
 # Browser visible for debugging
@@ -222,11 +242,11 @@ docker run --rm student-registrar-e2e
 Symptoms: login tests stay on `/login` or Keycloak returns `Realm does not exist`.
 
 **Solution**:
-1. Run `./setup-keycloak.sh` to recreate the realm/client.
+1. Run `./setup-keycloak.sh` to recreate the realm/client, or `./scripts/keycloak/bootstrap-keycloak.sh` plus `./scripts/keycloak/add-spa-client.sh` for the newer fail-fast bootstrap flow.
 2. Update `src/StudentRegistrar.AppHost/appsettings.json` with the new client secret.
 3. Run `./scripts/keycloak/add-spa-client.sh` to ensure the public SPA client exists.
 4. Restart the AppHost.
-5. Run `./scripts/testing/setup-test-users.sh`.
+5. Run `./scripts/testing/setup-test-users.sh`, or on Windows run `./scripts/testing/setup-test-users.ps1 -AdminPassword 'admin123!'` so database rows are synced too.
 
 ### Test Failures
 1. Check application logs: `docker-compose logs frontend`

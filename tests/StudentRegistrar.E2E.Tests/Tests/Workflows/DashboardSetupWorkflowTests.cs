@@ -126,6 +126,8 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
     [Trait("Suite", "SaaSCompatibility")]
     public void Existing_Admin_Should_Authorize_Parent_As_Educator_Who_Can_Create_Priced_Course()
     {
+        EnsureParentEducatorMemberAccountExists();
+
         LoginAsAdmin();
 
         var suffix = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
@@ -275,6 +277,16 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
         var password = Configuration["TestCredentials:ParentEducatorUser:Password"] ?? "ParentEducatorPass123!";
 
         Login(username, password, because);
+    }
+
+    private void EnsureParentEducatorMemberAccountExists()
+    {
+        LoginAsParentEducator("parent educator test user should be able to sign in before authorization");
+        NavigateToUrl($"{BaseUrl.TrimEnd('/')}/account-holder");
+        WaitUntil(d => d.PageSource.Contains("Sarah Johnson") || d.PageSource.Contains("No account holder data found"), 15, 300,
+            "parent educator account holder page did not finish loading");
+        Driver.PageSource.Should().Contain("Sarah Johnson", "the parent educator workflow requires an existing member account holder");
+        Logout();
     }
 
     private void Login(string username, string password, string because)
