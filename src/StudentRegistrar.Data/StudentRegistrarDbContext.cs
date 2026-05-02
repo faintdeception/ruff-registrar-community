@@ -412,7 +412,7 @@ public class StudentRegistrarDbContext : DbContext
             entity.Property(e => e.ProfilePictureUrl).HasMaxLength(500);
 
             entity.HasOne(p => p.User)
-                .WithOne()
+                .WithOne(u => u.UserProfile)
                 .HasForeignKey<UserProfile>(p => p.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
                 

@@ -146,7 +146,7 @@ export interface EducatorInfo {
 }
 
 export interface GradeRecord {
-  id: number;
+  id: string;
   studentId: string;
   student: Student;
   courseId: string;

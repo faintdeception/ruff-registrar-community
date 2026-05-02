@@ -4,7 +4,7 @@ namespace StudentRegistrar.Api.DTOs;
 
 public class GradeRecordDto
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; }
     public Guid StudentId { get; set; }
     public StudentDto Student { get; set; } = null!;
     public Guid CourseId { get; set; }

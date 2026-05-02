@@ -76,7 +76,7 @@ public class GuidContractTests
     {
         var grade = new GradeRecord
         {
-            Id = 42,
+            Id = Guid.NewGuid(),
             StudentId = Guid.NewGuid(),
             CourseId = Guid.NewGuid(),
             GradeDate = DateTime.UtcNow
@@ -122,6 +122,15 @@ public class GuidContractTests
 
         routeTemplates.Should().Contain("{id:guid}");
         routeTemplates.Should().Contain("by-account/{accountHolderId:guid}");
+    }
+
+    [Fact]
+    public void GradesController_Should_Constrain_Grade_Routes_To_Guid_Ids()
+    {
+        var routeTemplates = GetRouteTemplates<GradesController>();
+
+        routeTemplates.Should().Contain("{id:guid}");
+        routeTemplates.Should().NotContain("{id:int}");
     }
 
     private static IReadOnlyCollection<string> GetRouteTemplates<TController>()

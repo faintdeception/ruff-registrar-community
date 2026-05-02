@@ -12,7 +12,7 @@ using StudentRegistrar.Data;
 namespace StudentRegistrar.Data.Migrations
 {
     [DbContext(typeof(StudentRegistrarDbContext))]
-    [Migration("20250727112607_InitialCreate")]
+    [Migration("20260501123010_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -20,18 +20,16 @@ namespace StudentRegistrar.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.0")
+                .HasAnnotation("ProductVersion", "10.0.1")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("StudentRegistrar.Models.AcademicYear", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -52,12 +50,17 @@ namespace StudentRegistrar.Data.Migrations
                     b.Property<DateOnly>("StartDate")
                         .HasColumnType("date");
 
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Name")
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "Name")
                         .IsUnique();
 
                     b.ToTable("AcademicYears");
@@ -125,15 +128,20 @@ namespace StudentRegistrar.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmailAddress")
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "EmailAddress")
                         .IsUnique();
 
-                    b.HasIndex("KeycloakUserId")
+                    b.HasIndex("TenantId", "KeycloakUserId")
                         .IsUnique();
 
                     b.ToTable("AccountHolders");
@@ -184,9 +192,8 @@ namespace StudentRegistrar.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<string>("Room")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                    b.Property<Guid?>("RoomId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("SemesterId")
                         .HasColumnType("uuid");
@@ -194,12 +201,19 @@ namespace StudentRegistrar.Data.Migrations
                     b.Property<TimeSpan?>("StartTime")
                         .HasColumnType("interval");
 
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("RoomId");
+
                     b.HasIndex("SemesterId");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("Courses", (string)null);
                 });
@@ -208,6 +222,9 @@ namespace StudentRegistrar.Data.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AccountHolderId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("CourseId")
@@ -241,12 +258,23 @@ namespace StudentRegistrar.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<string>("StripeAccountId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AccountHolderId");
+
                     b.HasIndex("CourseId");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("CourseInstructors");
                 });
@@ -257,7 +285,7 @@ namespace StudentRegistrar.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("CourseId")
+                    b.Property<Guid?>("AccountHolderId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
@@ -279,8 +307,9 @@ namespace StudentRegistrar.Data.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
-                    b.Property<bool>("IsPrimary")
-                        .HasColumnType("boolean");
+                    b.Property<string>("KeycloakUserId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
 
                     b.Property<string>("LastName")
                         .IsRequired()
@@ -291,12 +320,21 @@ namespace StudentRegistrar.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CourseId");
+                    b.HasIndex("AccountHolderId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "Email");
+
+                    b.HasIndex("TenantId", "KeycloakUserId");
 
                     b.ToTable("Educators");
                 });
@@ -344,6 +382,9 @@ namespace StudentRegistrar.Data.Migrations
                     b.Property<Guid>("StudentId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -356,6 +397,8 @@ namespace StudentRegistrar.Data.Migrations
 
                     b.HasIndex("SemesterId");
 
+                    b.HasIndex("TenantId");
+
                     b.HasIndex("StudentId", "CourseId", "SemesterId")
                         .IsUnique();
 
@@ -364,11 +407,9 @@ namespace StudentRegistrar.Data.Migrations
 
             modelBuilder.Entity("StudentRegistrar.Models.GradeRecord", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Comments")
                         .HasMaxLength(500)
@@ -398,6 +439,9 @@ namespace StudentRegistrar.Data.Migrations
                     b.Property<Guid>("StudentId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -406,6 +450,8 @@ namespace StudentRegistrar.Data.Migrations
                     b.HasIndex("CourseId");
 
                     b.HasIndex("StudentId");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("GradeRecords");
                 });
@@ -446,6 +492,9 @@ namespace StudentRegistrar.Data.Migrations
                     b.Property<int>("PaymentType")
                         .HasColumnType("integer");
 
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("TransactionId")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
@@ -456,7 +505,49 @@ namespace StudentRegistrar.Data.Migrations
 
                     b.HasIndex("EnrollmentId");
 
+                    b.HasIndex("TenantId");
+
                     b.ToTable("Payments");
+                });
+
+            modelBuilder.Entity("StudentRegistrar.Models.Room", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("RoomType")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Rooms");
                 });
 
             modelBuilder.Entity("StudentRegistrar.Models.Semester", b =>
@@ -497,12 +588,17 @@ namespace StudentRegistrar.Data.Migrations
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Code")
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "Code")
                         .IsUnique();
 
                     b.ToTable("Semesters");
@@ -545,6 +641,9 @@ namespace StudentRegistrar.Data.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb");
 
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -552,7 +651,89 @@ namespace StudentRegistrar.Data.Migrations
 
                     b.HasIndex("AccountHolderId");
 
+                    b.HasIndex("TenantId");
+
                     b.ToTable("Students", (string)null);
+                });
+
+            modelBuilder.Entity("StudentRegistrar.Models.Tenant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AdminEmail")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("KeycloakRealm")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("LogoBase64")
+                        .HasMaxLength(700000)
+                        .HasColumnType("character varying(700000)");
+
+                    b.Property<string>("LogoMimeType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("StripeCustomerId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("StripePaymentMethodId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("StripeSetupIntentId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("StripeSubscriptionId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("Subdomain")
+                        .IsRequired()
+                        .HasMaxLength(63)
+                        .HasColumnType("character varying(63)");
+
+                    b.Property<int>("SubscriptionStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SubscriptionTier")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ThemeConfigJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KeycloakRealm")
+                        .IsUnique();
+
+                    b.HasIndex("Subdomain")
+                        .IsUnique();
+
+                    b.ToTable("Tenants");
                 });
 
             modelBuilder.Entity("StudentRegistrar.Models.User", b =>
@@ -592,15 +773,20 @@ namespace StudentRegistrar.Data.Migrations
                     b.Property<int>("Role")
                         .HasColumnType("integer");
 
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Email")
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "Email")
                         .IsUnique();
 
-                    b.HasIndex("KeycloakId")
+                    b.HasIndex("TenantId", "KeycloakId")
                         .IsUnique();
 
                     b.ToTable("Users");
@@ -643,10 +829,10 @@ namespace StudentRegistrar.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("UserId1")
+                    b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("ZipCode")
@@ -655,10 +841,9 @@ namespace StudentRegistrar.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId")
-                        .IsUnique();
+                    b.HasIndex("TenantId");
 
-                    b.HasIndex("UserId1")
+                    b.HasIndex("UserId")
                         .IsUnique();
 
                     b.ToTable("UserProfiles");
@@ -666,33 +851,47 @@ namespace StudentRegistrar.Data.Migrations
 
             modelBuilder.Entity("StudentRegistrar.Models.Course", b =>
                 {
+                    b.HasOne("StudentRegistrar.Models.Room", "Room")
+                        .WithMany("Courses")
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("StudentRegistrar.Models.Semester", "Semester")
                         .WithMany("Courses")
                         .HasForeignKey("SemesterId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Room");
+
                     b.Navigation("Semester");
                 });
 
             modelBuilder.Entity("StudentRegistrar.Models.CourseInstructor", b =>
                 {
+                    b.HasOne("StudentRegistrar.Models.AccountHolder", "AccountHolder")
+                        .WithMany("CourseInstructors")
+                        .HasForeignKey("AccountHolderId");
+
                     b.HasOne("StudentRegistrar.Models.Course", "Course")
                         .WithMany("CourseInstructors")
                         .HasForeignKey("CourseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("AccountHolder");
+
                     b.Navigation("Course");
                 });
 
             modelBuilder.Entity("StudentRegistrar.Models.Educator", b =>
                 {
-                    b.HasOne("StudentRegistrar.Models.Course", "Course")
+                    b.HasOne("StudentRegistrar.Models.AccountHolder", "AccountHolder")
                         .WithMany()
-                        .HasForeignKey("CourseId");
+                        .HasForeignKey("AccountHolderId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
-                    b.Navigation("Course");
+                    b.Navigation("AccountHolder");
                 });
 
             modelBuilder.Entity("StudentRegistrar.Models.Enrollment", b =>
@@ -773,20 +972,18 @@ namespace StudentRegistrar.Data.Migrations
             modelBuilder.Entity("StudentRegistrar.Models.UserProfile", b =>
                 {
                     b.HasOne("StudentRegistrar.Models.User", "User")
-                        .WithOne()
+                        .WithOne("UserProfile")
                         .HasForeignKey("StudentRegistrar.Models.UserProfile", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("StudentRegistrar.Models.User", null)
-                        .WithOne("UserProfile")
-                        .HasForeignKey("StudentRegistrar.Models.UserProfile", "UserId1");
 
                     b.Navigation("User");
                 });
 
             modelBuilder.Entity("StudentRegistrar.Models.AccountHolder", b =>
                 {
+                    b.Navigation("CourseInstructors");
+
                     b.Navigation("Payments");
 
                     b.Navigation("Students");
@@ -802,6 +999,11 @@ namespace StudentRegistrar.Data.Migrations
             modelBuilder.Entity("StudentRegistrar.Models.Enrollment", b =>
                 {
                     b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("StudentRegistrar.Models.Room", b =>
+                {
+                    b.Navigation("Courses");
                 });
 
             modelBuilder.Entity("StudentRegistrar.Models.Semester", b =>
