@@ -246,8 +246,7 @@ public class CoursesPage
 
         if (!string.IsNullOrEmpty(ageGroup))
         {
-            var ageGroupSelect = new SelectElement(AgeGroupSelect);
-            ageGroupSelect.SelectByText(ageGroup);
+            SelectByText(By.Id("ageGroup"), ageGroup);
         }
 
         MaxCapacityInput.Clear();
@@ -455,6 +454,27 @@ public class CoursesPage
         {
             ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", element);
         }
+    }
+
+    private void SelectByText(By locator, string text)
+    {
+        _wait.Until(driver =>
+        {
+            try
+            {
+                var select = new SelectElement(driver.FindElement(locator));
+                select.SelectByText(text);
+                return true;
+            }
+            catch (StaleElementReferenceException)
+            {
+                return false;
+            }
+            catch (NoSuchElementException)
+            {
+                return false;
+            }
+        });
     }
 
     public List<(string Text, string Value)> GetAvailableSemestersWithValues()
