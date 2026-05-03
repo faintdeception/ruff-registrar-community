@@ -44,11 +44,11 @@ builder.Services.AddDbContext<StudentRegistrarDbContext>(options =>
     options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.EnableRetryOnFailure());
 });
 
-// Add enhanced logging for debugging
+// Keep deployed logs lean; local development can stay more talkative.
 builder.Services.AddLogging(config =>
 {
     config.AddConsole();
-    config.SetMinimumLevel(LogLevel.Debug);
+    config.SetMinimumLevel(builder.Environment.IsDevelopment() ? LogLevel.Information : LogLevel.Warning);
 });
 
 // Add services
