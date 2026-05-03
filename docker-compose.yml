@@ -57,6 +57,7 @@ services:
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=studentregistrar;Username=postgres;Password=${POSTGRES_PASSWORD:-changeme-in-production}
       - Keycloak__BaseUrl=http://keycloak:8080
       - Keycloak__Authority=http://keycloak:8080/realms/student-registrar
+      - Keycloak__PublicAuthority=http://localhost:8080
       - Keycloak__Realm=student-registrar
       - Keycloak__AdminUsername=admin
       - Keycloak__AdminPassword=${KEYCLOAK_ADMIN_PASSWORD:-changeme-in-production}

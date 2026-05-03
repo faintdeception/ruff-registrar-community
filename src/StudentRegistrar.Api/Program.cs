@@ -131,7 +131,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             authorityBaseUrl = keycloakUrl;
         }
 
+        var publicAuthorityBaseUrl = builder.Configuration["Keycloak:PublicAuthority"];
+
         authorityBaseUrl = authorityBaseUrl!.TrimEnd('/');
+        publicAuthorityBaseUrl = publicAuthorityBaseUrl?.TrimEnd('/');
         var authority = BuildRealmAuthority(authorityBaseUrl, realm);
 
         options.Authority = authority;
@@ -161,11 +164,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             },
             IssuerValidator = (issuer, _, _) =>
             {
-                var expectedIssuer = ResolveExpectedIssuer(httpContextAccessor.HttpContext, authorityBaseUrl, realm);
+                var validIssuers = ResolveValidIssuers(httpContextAccessor.HttpContext, authorityBaseUrl, publicAuthorityBaseUrl, realm);
 
-                if (!string.Equals(NormalizeIssuer(issuer), NormalizeIssuer(expectedIssuer), StringComparison.OrdinalIgnoreCase))
+                if (!validIssuers.Contains(NormalizeIssuer(issuer), StringComparer.OrdinalIgnoreCase))
                 {
-                    throw new SecurityTokenInvalidIssuerException($"IDX10205: Issuer validation failed. Issuer: '{issuer}'. Expected: '{expectedIssuer}'.");
+                    throw new SecurityTokenInvalidIssuerException($"IDX10205: Issuer validation failed. Issuer: '{issuer}'. Expected one of: '{string.Join("', '", validIssuers)}'.");
                 }
 
                 return issuer;
@@ -310,6 +313,29 @@ static string ResolveExpectedIssuer(HttpContext? httpContext, string authorityBa
     var realm = string.IsNullOrWhiteSpace(tenantRealm) ? defaultRealm : tenantRealm;
 
     return BuildRealmAuthority(authorityBaseUrl, realm);
+}
+
+static IReadOnlyCollection<string> ResolveValidIssuers(
+    HttpContext? httpContext,
+    string authorityBaseUrl,
+    string? publicAuthorityBaseUrl,
+    string defaultRealm)
+{
+    var internalIssuer = ResolveExpectedIssuer(httpContext, authorityBaseUrl, defaultRealm);
+    if (string.IsNullOrWhiteSpace(publicAuthorityBaseUrl))
+    {
+        return new[] { NormalizeIssuer(internalIssuer) };
+    }
+
+    var tenantContextAccessor = httpContext?.RequestServices.GetService<ITenantContextAccessor>();
+    var tenantRealm = tenantContextAccessor?.TenantContext?.Tenant?.KeycloakRealm;
+    var realm = string.IsNullOrWhiteSpace(tenantRealm) ? defaultRealm : tenantRealm;
+    var publicIssuer = BuildRealmAuthority(publicAuthorityBaseUrl, realm);
+
+    return new[] { internalIssuer, publicIssuer }
+        .Select(NormalizeIssuer)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
 }
 
 static string BuildRealmAuthority(string authorityBaseUrl, string realm)
