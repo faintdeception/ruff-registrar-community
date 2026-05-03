@@ -7,34 +7,55 @@ set -e
 
 echo "🌱 Starting database seeding..."
 
+read_setting() {
+    local prompt="$1"
+    local default_value="$2"
+    local variable_name="$3"
+    local required="$4"
+    local value="${!variable_name:-}"
+
+    if [ -n "$value" ]; then
+        echo "$value"
+        return 0
+    fi
+
+    if [ -t 0 ]; then
+        if [ -n "$default_value" ]; then
+            read -p "$prompt [$default_value]: " value
+            value=${value:-$default_value}
+        else
+            read -p "$prompt: " value
+        fi
+    else
+        value="$default_value"
+    fi
+
+    if [ "$required" = "true" ] && [ -z "$value" ]; then
+        echo "Error: $prompt is required." >&2
+        exit 1
+    fi
+
+    echo "$value"
+}
 
 # Prompt for required DB connection details, with sensible defaults
-read -p "Enter DB host [localhost]: " DB_HOST
-DB_HOST=${DB_HOST:-localhost}
+DB_HOST=$(read_setting "Enter DB host" "localhost" "DB_HOST" "false")
 
-read -p "Enter DB port (required): " DB_PORT
-if [ -z "$DB_PORT" ]; then
-  echo "Error: DB port is required."
-  exit 1
+DB_PORT=$(read_setting "Enter DB port" "5432" "DB_PORT" "true")
+
+DB_NAME=$(read_setting "Enter DB name" "studentregistrar" "DB_NAME" "false")
+
+DB_USER=$(read_setting "Enter DB user" "postgres" "DB_USER" "false")
+
+if [ -z "${DB_PASSWORD:-}" ] && [ -n "${POSTGRES_PASSWORD:-}" ]; then
+    DB_PASSWORD="$POSTGRES_PASSWORD"
 fi
+DB_PASSWORD=$(read_setting "Enter DB password" "" "DB_PASSWORD" "true")
 
-read -p "Enter DB name [studentregistrar]: " DB_NAME
-DB_NAME=${DB_NAME:-studentregistrar}
-
-read -p "Enter DB user [postgres]: " DB_USER
-DB_USER=${DB_USER:-postgres}
-
-read -p "Enter DB password (required): " DB_PASSWORD
-if [ -z "$DB_PASSWORD" ]; then
-  echo "Error: DB password is required."
-  exit 1
+if [ -z "${DB_CONTAINER:-}" ] && command -v docker >/dev/null 2>&1; then
+    DB_CONTAINER=$(docker compose ps -q postgres 2>/dev/null || true)
 fi
-
-read -p "Enter DB container name (required): " DB_CONTAINER
-if [ -z "$DB_CONTAINER" ]; then
-  echo "Error: DB container name is required."
-  exit 1
-fi
+DB_CONTAINER=$(read_setting "Enter DB container name" "" "DB_CONTAINER" "true")
 
 # Function to execute SQL
 execute_sql() {
@@ -70,8 +91,15 @@ account_holders_count=$(check_table_data "AccountHolders")
 semesters_count=$(check_table_data "Semesters")
 
 if [ "$account_holders_count" -gt 0 ] || [ "$semesters_count" -gt 0 ]; then
-    read -p "⚠️  Database already contains data. Do you want to clear it and reseed? (y/N): " -n 1 -r
-    echo
+    if [ "${SEED_DATABASE_RESET:-false}" = "true" ]; then
+        REPLY="y"
+    elif [ -t 0 ]; then
+        read -p "⚠️  Database already contains data. Do you want to clear it and reseed? (y/N): " -n 1 -r
+        echo
+    else
+        REPLY="n"
+    fi
+
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo "🗑️  Clearing existing data..."
         execute_sql "TRUNCATE TABLE \"Payments\" CASCADE;"

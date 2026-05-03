@@ -107,6 +107,11 @@ jobs:
           chmod +x ./scripts/testing/setup-test-users.sh
           ./scripts/testing/setup-test-users.sh
 
+      - name: Seed test database
+        run: |
+          chmod +x ./scripts/testing/seed-database.sh
+          DB_PASSWORD="$POSTGRES_PASSWORD" ./scripts/testing/seed-database.sh
+
       - name: Run E2E tests
         run: |
           dotnet test tests/StudentRegistrar.E2E.Tests/ --logger 'console;verbosity=normal'

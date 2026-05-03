@@ -939,7 +939,7 @@ public class AdminTests : BaseTest
         
     loginPage.Login(username, password);
     WaitForPageLoad();
-    WaitForUrlContains("/");
+    WaitUntil(d => !d.Url.Contains("/login", StringComparison.OrdinalIgnoreCase) && new HomePage(d).IsLoggedIn(), 20);
 
         var homePage = new HomePage(Driver);
         homePage.IsLoggedIn().Should().BeTrue("Admin login should succeed");

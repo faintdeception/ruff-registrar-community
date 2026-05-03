@@ -69,6 +69,11 @@ interface CreateMemberForm {
   };
 }
 
+interface ApiErrorResponse {
+  message?: string;
+  debug?: string;
+}
+
 const MembersPage: React.FC = () => {
   const { user } = useAuth();
   const router = useRouter();
@@ -134,7 +139,7 @@ const MembersPage: React.FC = () => {
       const response = await apiClient.get('/api/AccountHolders');
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await readApiError(response);
         throw new Error(errorData.message || 'Failed to fetch members');
       }
 
@@ -157,8 +162,12 @@ const MembersPage: React.FC = () => {
       const response = await apiClient.post('/api/AccountHolders', newMember);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create member');
+        const errorData = await readApiError(response);
+        const details = [errorData.message, errorData.debug]
+          .filter((value): value is string => Boolean(value && value.trim()))
+          .join(' | ');
+
+        throw new Error(details || 'Failed to create member');
       }
 
       const data: CreateMemberResponse = await response.json();
@@ -684,4 +693,30 @@ export default function Members() {
       <MembersPage />
     </ProtectedRoute>
   );
+}
+
+async function readApiError(response: Response): Promise<ApiErrorResponse> {
+  const contentType = response.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    try {
+      return await response.json();
+    } catch {
+      return {
+        message: `Backend error: ${response.status} ${response.statusText}`
+      };
+    }
+  }
+
+  try {
+    const text = await response.text();
+    return {
+      message: `Backend error: ${response.status} ${response.statusText}`,
+      debug: text.slice(0, 200)
+    };
+  } catch {
+    return {
+      message: `Backend error: ${response.status} ${response.statusText}`
+    };
+  }
 }
