@@ -7,6 +7,8 @@ public class CoursesPage
 {
     private readonly IWebDriver _driver;
     private readonly WebDriverWait _wait;
+    private static readonly By CreateCourseButtonLocator = By.CssSelector("[data-testid='add-course-btn'], [data-testid='add-first-course-btn']");
+    private static readonly By CourseNameInputLocator = By.CssSelector("[data-testid='course-name-input']");
     private static readonly By SaveCourseButtonLocator = By.XPath("//button[@type='submit' and contains(text(), 'Create Course')]");
     private static readonly By CancelCourseButtonLocator = By.XPath("//button[contains(text(), 'Cancel')]");
 
@@ -19,9 +21,8 @@ public class CoursesPage
 
     // Page elements
     private IWebElement SemesterSelect => _wait.Until(d => d.FindElement(By.CssSelector("[data-testid='semester-select']")));
-    private IWebElement CreateCourseButton => _driver.FindElement(By.XPath("//button[contains(text(), 'Add Course') or contains(text(), 'Add First Course')]"));
-    private IWebElement CourseModal => _driver.FindElement(By.CssSelector(".fixed.inset-0"));
-    private IWebElement CourseNameInput => _driver.FindElement(By.Id("name"));
+    private IWebElement CreateCourseButton => _driver.FindElement(CreateCourseButtonLocator);
+    private IWebElement CourseNameInput => _driver.FindElement(CourseNameInputLocator);
     private IWebElement CourseCodeInput => _driver.FindElement(By.Id("code"));
     private IWebElement AgeGroupSelect => _driver.FindElement(By.Id("ageGroup"));
     private IWebElement MaxCapacityInput => _driver.FindElement(By.Id("maxCapacity"));
@@ -117,7 +118,7 @@ public class CoursesPage
 
     public void ClickCreateCourse()
     {
-    SafeClick(CreateCourseButton);
+    SafeClick(CreateCourseButtonLocator);
         WaitForModalToOpen();
     }
 
@@ -131,11 +132,7 @@ public class CoursesPage
 
     public void WaitForModalToOpen()
     {
-        _wait.Until(driver =>
-        {
-            var modals = driver.FindElements(By.CssSelector(".fixed.inset-0"));
-            return modals.Any(m => m.Displayed);
-        });
+        _wait.Until(_ => IsCreateFormVisible());
     }
 
     public bool IsCourseFeeVisible(string courseName, string expectedFee)
@@ -344,30 +341,12 @@ public class CoursesPage
 
     public bool CanSeeCreateButton()
     {
-        try
-        {
-            return CreateCourseButton.Displayed;
-        }
-        catch (NoSuchElementException)
-        {
-            return false;
-        }
+        return IsElementDisplayed(CreateCourseButtonLocator);
     }
 
     public bool IsCreateFormVisible()
     {
-        try
-        {
-            return CourseModal.Displayed && CourseNameInput.Displayed;
-        }
-        catch (NoSuchElementException)
-        {
-            return false;
-        }
-        catch (StaleElementReferenceException)
-        {
-            return false;
-        }
+        return IsElementDisplayed(CourseNameInputLocator) && IsElementDisplayed(SaveCourseButtonLocator);
     }
 
     public bool IsCourseVisible(string courseName)
@@ -473,6 +452,18 @@ public class CoursesPage
                 return false;
             }
         });
+    }
+
+    private bool IsElementDisplayed(By locator)
+    {
+        try
+        {
+            return _driver.FindElements(locator).Any(element => element.Displayed);
+        }
+        catch (StaleElementReferenceException)
+        {
+            return false;
+        }
     }
 
     private void SelectByText(By locator, string text)
