@@ -199,11 +199,9 @@ public class CoursesPage
 
     public void WaitForModalToClose()
     {
-        _wait.Until(driver =>
-        {
-            var modals = driver.FindElements(By.CssSelector(".fixed.inset-0"));
-            return modals.All(m => !m.Displayed);
-        });
+        var closeWait = new WebDriverWait(_driver, TimeSpan.FromSeconds(20));
+        closeWait.IgnoreExceptionTypes(typeof(NoSuchElementException), typeof(StaleElementReferenceException));
+        closeWait.Until(_ => !IsCreateFormVisible());
     }
 
     private void WaitForSignupModalToClose()
