@@ -7,6 +7,8 @@ public class CoursesPage
 {
     private readonly IWebDriver _driver;
     private readonly WebDriverWait _wait;
+    private static readonly By SaveCourseButtonLocator = By.XPath("//button[@type='submit' and contains(text(), 'Create Course')]");
+    private static readonly By CancelCourseButtonLocator = By.XPath("//button[contains(text(), 'Cancel')]");
 
     public CoursesPage(IWebDriver driver)
     {
@@ -29,8 +31,8 @@ public class CoursesPage
     private IWebElement StartTimeInput => _driver.FindElement(By.Id("startTime"));
     private IWebElement EndTimeInput => _driver.FindElement(By.Id("endTime"));
     private IWebElement DescriptionInput => _driver.FindElement(By.Id("description"));
-    private IWebElement SaveCourseButton => _driver.FindElement(By.XPath("//button[@type='submit' and contains(text(), 'Create Course')]"));
-    private IWebElement CancelCourseButton => _driver.FindElement(By.XPath("//button[contains(text(), 'Cancel')]"));
+    private IWebElement SaveCourseButton => _driver.FindElement(SaveCourseButtonLocator);
+    private IWebElement CancelCourseButton => _driver.FindElement(CancelCourseButtonLocator);
 
     // Navigation
     public void NavigateToCourses()
@@ -320,7 +322,7 @@ public class CoursesPage
 
     public void SaveCourse(bool waitForClose = true)
     {
-        SafeClick(SaveCourseButton);
+        SafeClick(SaveCourseButtonLocator);
         if (waitForClose)
         {
             WaitForModalToClose();
@@ -329,7 +331,7 @@ public class CoursesPage
 
     public void CancelCreate()
     {
-    SafeClick(CancelCourseButton);
+    SafeClick(CancelCourseButtonLocator);
         WaitForModalToClose();
     }
 
@@ -454,6 +456,23 @@ public class CoursesPage
         {
             ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", element);
         }
+    }
+
+    private void SafeClick(By locator)
+    {
+        _wait.Until(driver =>
+        {
+            try
+            {
+                var element = driver.FindElement(locator);
+                SafeClick(element);
+                return true;
+            }
+            catch (StaleElementReferenceException)
+            {
+                return false;
+            }
+        });
     }
 
     private void SelectByText(By locator, string text)
