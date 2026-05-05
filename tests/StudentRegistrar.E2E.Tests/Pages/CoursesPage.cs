@@ -9,6 +9,15 @@ public class CoursesPage
     private readonly WebDriverWait _wait;
     private static readonly By CreateCourseButtonLocator = By.CssSelector("[data-testid='add-course-btn'], [data-testid='add-first-course-btn']");
     private static readonly By CourseNameInputLocator = By.CssSelector("[data-testid='course-name-input']");
+    private static readonly By CourseCodeInputLocator = By.CssSelector("[data-testid='course-code-input']");
+    private static readonly By AgeGroupSelectLocator = By.CssSelector("[data-testid='course-age-group-select']");
+    private static readonly By MaxCapacityInputLocator = By.CssSelector("[data-testid='course-max-capacity-input']");
+    private static readonly By RoomSelectLocator = By.CssSelector("[data-testid='course-room-select']");
+    private static readonly By FeeInputLocator = By.CssSelector("[data-testid='course-fee-input']");
+    private static readonly By PeriodCodeInputLocator = By.CssSelector("[data-testid='course-period-code-input']");
+    private static readonly By StartTimeInputLocator = By.CssSelector("[data-testid='course-start-time-input']");
+    private static readonly By EndTimeInputLocator = By.CssSelector("[data-testid='course-end-time-input']");
+    private static readonly By DescriptionInputLocator = By.CssSelector("[data-testid='course-description-input']");
     private static readonly By SaveCourseButtonLocator = By.XPath("//button[@type='submit' and contains(text(), 'Create Course')]");
     private static readonly By CancelCourseButtonLocator = By.XPath("//button[contains(text(), 'Cancel')]");
 
@@ -22,16 +31,6 @@ public class CoursesPage
     // Page elements
     private IWebElement SemesterSelect => _wait.Until(d => d.FindElement(By.CssSelector("[data-testid='semester-select']")));
     private IWebElement CreateCourseButton => _driver.FindElement(CreateCourseButtonLocator);
-    private IWebElement CourseNameInput => _driver.FindElement(CourseNameInputLocator);
-    private IWebElement CourseCodeInput => _driver.FindElement(By.Id("code"));
-    private IWebElement AgeGroupSelect => _driver.FindElement(By.Id("ageGroup"));
-    private IWebElement MaxCapacityInput => _driver.FindElement(By.Id("maxCapacity"));
-    private IWebElement RoomInput => _driver.FindElement(By.Id("roomId"));
-    private IWebElement FeeInput => _driver.FindElement(By.Id("fee"));
-    private IWebElement PeriodCodeInput => _driver.FindElement(By.Id("periodCode"));
-    private IWebElement StartTimeInput => _driver.FindElement(By.Id("startTime"));
-    private IWebElement EndTimeInput => _driver.FindElement(By.Id("endTime"));
-    private IWebElement DescriptionInput => _driver.FindElement(By.Id("description"));
     private IWebElement SaveCourseButton => _driver.FindElement(SaveCourseButtonLocator);
     private IWebElement CancelCourseButton => _driver.FindElement(CancelCourseButtonLocator);
 
@@ -133,6 +132,10 @@ public class CoursesPage
     public void WaitForModalToOpen()
     {
         _wait.Until(_ => IsCreateFormVisible());
+        WaitForInteractable(CourseNameInputLocator);
+        WaitForInteractable(CourseCodeInputLocator);
+        WaitForInteractable(MaxCapacityInputLocator);
+        WaitForInteractable(FeeInputLocator);
     }
 
     public bool IsCourseFeeVisible(string courseName, string expectedFee)
@@ -232,26 +235,23 @@ public class CoursesPage
                               string periodCode = "", string startTime = "", 
                               string endTime = "", string description = "")
     {
-        CourseNameInput.Clear();
-        CourseNameInput.SendKeys(name);
+        SetInputValue(CourseNameInputLocator, name);
 
         if (!string.IsNullOrEmpty(code))
         {
-            CourseCodeInput.Clear();
-            CourseCodeInput.SendKeys(code);
+            SetInputValue(CourseCodeInputLocator, code);
         }
 
         if (!string.IsNullOrEmpty(ageGroup))
         {
-            SelectByText(By.Id("ageGroup"), ageGroup);
+            SelectByText(AgeGroupSelectLocator, ageGroup);
         }
 
-        MaxCapacityInput.Clear();
-        MaxCapacityInput.SendKeys(maxCapacity.ToString());
+        SetInputValue(MaxCapacityInputLocator, maxCapacity.ToString());
 
         if (!string.IsNullOrEmpty(room))
         {
-            var roomSelect = new SelectElement(RoomInput);
+            var roomSelect = new SelectElement(WaitForInteractable(RoomSelectLocator));
             try
             {
                 // Try to select by text that contains the room name
@@ -287,31 +287,26 @@ public class CoursesPage
             }
         }
 
-        FeeInput.Clear();
-        FeeInput.SendKeys(fee.ToString());
+        SetInputValue(FeeInputLocator, fee.ToString());
 
         if (!string.IsNullOrEmpty(periodCode))
         {
-            PeriodCodeInput.Clear();
-            PeriodCodeInput.SendKeys(periodCode);
+            SetInputValue(PeriodCodeInputLocator, periodCode);
         }
 
         if (!string.IsNullOrEmpty(startTime))
         {
-            StartTimeInput.Clear();
-            StartTimeInput.SendKeys(startTime);
+            SetInputValue(StartTimeInputLocator, startTime);
         }
 
         if (!string.IsNullOrEmpty(endTime))
         {
-            EndTimeInput.Clear();
-            EndTimeInput.SendKeys(endTime);
+            SetInputValue(EndTimeInputLocator, endTime);
         }
 
         if (!string.IsNullOrEmpty(description))
         {
-            DescriptionInput.Clear();
-            DescriptionInput.SendKeys(description);
+            SetInputValue(DescriptionInputLocator, description);
         }
     }
 
@@ -470,15 +465,65 @@ public class CoursesPage
         {
             try
             {
-                var select = new SelectElement(driver.FindElement(locator));
+                var element = driver.FindElement(locator);
+                ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].scrollIntoView({block: 'center'});", element);
+                if (!element.Displayed || !element.Enabled)
+                {
+                    return false;
+                }
+
+                var select = new SelectElement(element);
                 select.SelectByText(text);
                 return true;
+            }
+            catch (ElementNotInteractableException)
+            {
+                return false;
             }
             catch (StaleElementReferenceException)
             {
                 return false;
             }
             catch (NoSuchElementException)
+            {
+                return false;
+            }
+        });
+    }
+
+    private IWebElement WaitForInteractable(By locator)
+    {
+        return _wait.Until(driver =>
+        {
+            try
+            {
+                var element = driver.FindElement(locator);
+                ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].scrollIntoView({block: 'center'});", element);
+                return element.Displayed && element.Enabled ? element : null;
+            }
+            catch (StaleElementReferenceException)
+            {
+                return null;
+            }
+        });
+    }
+
+    private void SetInputValue(By locator, string value)
+    {
+        _wait.Until(driver =>
+        {
+            try
+            {
+                var element = WaitForInteractable(locator);
+                element.Clear();
+                element.SendKeys(value);
+                return true;
+            }
+            catch (ElementNotInteractableException)
+            {
+                return false;
+            }
+            catch (StaleElementReferenceException)
             {
                 return false;
             }
@@ -522,7 +567,7 @@ public class CoursesPage
     {
         try
         {
-            var roomSelect = new SelectElement(RoomInput);
+            var roomSelect = new SelectElement(WaitForInteractable(RoomSelectLocator));
             return roomSelect.Options
                 .Where(option => !string.IsNullOrWhiteSpace(option.Text) && 
                                option.Text != "Select a room..." &&
