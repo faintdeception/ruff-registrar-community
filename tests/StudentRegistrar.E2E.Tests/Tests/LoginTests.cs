@@ -15,13 +15,13 @@ public class LoginTests : BaseTest
         NavigateToHome();
         WaitForPageLoad();
 
-        // Assert - Home page should redirect to login when not authenticated
+        // Assert - Home page should redirect to the app login entry page when not authenticated.
         Driver.Url.Should().Contain("/login", "Unauthenticated users should be redirected to login page");
-        Driver.PageSource.Should().Contain("username", "Should show username field for login");
-        Driver.PageSource.Should().Contain("password", "Should show password field for login");
+        Driver.PageSource.Should().Contain("Sign in with Keycloak", "the app login page should direct users to the hosted Keycloak login form");
+        Driver.PageSource.Should().Contain("Credentials are entered directly with Keycloak", "the login page should explain that authentication happens on the hosted provider");
         
         var loginPage = new LoginPage(Driver);
-        loginPage.IsOnLoginPage().Should().BeTrue("Should display the login form on home page");
+        loginPage.IsOnLoginPage().Should().BeTrue("Should display the login entry page on home page");
     }
 
     [Fact]
@@ -40,13 +40,15 @@ public class LoginTests : BaseTest
     // Wait for error message to appear
     WaitUntil(d => d.PageSource.Contains("Login Error") || d.PageSource.Contains("Invalid user credentials"), 10);
 
-        // Assert - Should show error message and stay on login page
-        Driver.Url.Should().Contain("/login", "Should remain on login page after invalid credentials");
+        // Assert - Should show an auth error and avoid redirecting into the app.
+        Driver.Url.Should().NotStartWith(BaseUrl, "invalid credentials should not result in an authenticated app session");
         
-        var errorDisplayed = Driver.PageSource.Contains("Login Error") && 
-                           Driver.PageSource.Contains("Invalid user credentials");
+        var errorDisplayed = Driver.PageSource.Contains("Login Error") ||
+                           Driver.PageSource.Contains("Invalid user credentials") ||
+                           Driver.PageSource.Contains("Invalid username or password") ||
+                           Driver.PageSource.Contains("username or password", StringComparison.OrdinalIgnoreCase);
         
-        errorDisplayed.Should().BeTrue("Should display 'Login Error' and 'Invalid user credentials' messages");
+        errorDisplayed.Should().BeTrue("Should display an authentication error after invalid credentials");
     }
 
     [Fact]
