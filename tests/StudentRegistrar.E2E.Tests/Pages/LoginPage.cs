@@ -14,10 +14,11 @@ public class LoginPage
         _wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
     }
 
-    // Page elements - Updated for your application's login form
+    // Page elements - supports both the app login entry page and the hosted Keycloak form.
     public IWebElement UsernameField => _wait.Until(d => d.FindElement(By.Id("username")));
     public IWebElement PasswordField => _driver.FindElement(By.Id("password"));
     public IWebElement LoginButton => _driver.FindElement(By.CssSelector("button[type='submit'], input[type='submit'], .login-button"));
+    public IWebElement KeycloakEntryButton => _wait.Until(d => d.FindElement(By.XPath("//button[normalize-space()='Sign in with Keycloak']")));
     
     // Error message elements
     public IWebElement LoginErrorHeading => _driver.FindElement(By.XPath("//*[contains(text(), 'Login Error')]"));
@@ -26,12 +27,14 @@ public class LoginPage
     // Page actions
     public void EnterUsername(string username)
     {
+        EnsureHostedLoginFormVisible();
         UsernameField.Clear();
         UsernameField.SendKeys(username);
     }
 
     public void EnterPassword(string password)
     {
+        EnsureHostedLoginFormVisible();
         PasswordField.Clear();
         PasswordField.SendKeys(password);
     }
@@ -43,6 +46,7 @@ public class LoginPage
 
     public void Login(string username, string password)
     {
+        EnsureHostedLoginFormVisible();
         EnterUsername(username);
         EnterPassword(password);
         ClickLogin();
@@ -53,10 +57,13 @@ public class LoginPage
     {
         try
         {
-            // Check if we're on the login URL and have login form elements
-            return _driver.Url.Contains("/login") && 
-                   UsernameField.Displayed && 
-                   PasswordField.Displayed;
+            if (_driver.Url.Contains("/login") && _driver.FindElements(By.XPath("//button[normalize-space()='Sign in with Keycloak']")).Any())
+            {
+                return true;
+            }
+
+            return _driver.FindElements(By.Id("username")).Any() &&
+                   _driver.FindElements(By.Id("password")).Any();
         }
         catch (NoSuchElementException)
         {
@@ -111,5 +118,21 @@ public class LoginPage
         {
             return string.Empty;
         }
+    }
+
+    private void EnsureHostedLoginFormVisible()
+    {
+        if (_driver.FindElements(By.Id("username")).Any())
+        {
+            return;
+        }
+
+        if (_driver.Url.Contains("/login", StringComparison.OrdinalIgnoreCase) &&
+            _driver.FindElements(By.XPath("//button[normalize-space()='Sign in with Keycloak']")).Any())
+        {
+            KeycloakEntryButton.Click();
+        }
+
+        _wait.Until(d => d.FindElements(By.Id("username")).Any() && d.FindElements(By.Id("password")).Any());
     }
 }
