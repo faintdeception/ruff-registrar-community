@@ -1,3 +1,4 @@
+import Keycloak from 'keycloak-js';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { getKeycloakConfig } from './runtime-env';
@@ -13,7 +14,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username?: string, password?: string) => Promise<void>;
   logout: () => void;
   refreshToken: () => Promise<string | null>;
   isLoading: boolean;
@@ -21,6 +22,20 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+type KeycloakTokenClaims = {
+  sub?: string;
+  preferred_username?: string;
+  email?: string;
+  given_name?: string;
+  family_name?: string;
+  realm_access?: {
+    roles?: string[];
+  };
+};
+
+let keycloakClient: Keycloak | null = null;
+let keycloakInitPromise: Promise<boolean> | null = null;
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -32,171 +47,156 @@ export const useAuth = () => {
 
 const getKeycloak = () => getKeycloakConfig();
 
+const getRedirectUri = (path = '/'): string => {
+  if (typeof window === 'undefined') {
+    return path;
+  }
+
+  return new URL(path, window.location.origin).toString();
+};
+
+const getKeycloakClient = (): Keycloak => {
+  if (!keycloakClient) {
+    const config = getKeycloak();
+    keycloakClient = new Keycloak({
+      url: config.url,
+      realm: config.realm,
+      clientId: config.clientId,
+    });
+  }
+
+  return keycloakClient;
+};
+
+const mapUserFromToken = (client: Keycloak): User | null => {
+  const claims = client.tokenParsed as KeycloakTokenClaims | undefined;
+  if (!claims?.sub) {
+    return null;
+  }
+
+  return {
+    id: claims.sub,
+    username: claims.preferred_username ?? '',
+    email: claims.email ?? '',
+    firstName: claims.given_name ?? '',
+    lastName: claims.family_name ?? '',
+    roles: claims.realm_access?.roles ?? [],
+  };
+};
+
+const ensureKeycloakInitialized = async (): Promise<Keycloak> => {
+  const client = getKeycloakClient();
+  if (!keycloakInitPromise) {
+    keycloakInitPromise = client.init({
+      onLoad: 'check-sso',
+      pkceMethod: 'S256',
+      checkLoginIframe: false,
+      silentCheckSsoRedirectUri: getRedirectUri('/silent-check-sso.html'),
+    });
+  }
+
+  await keycloakInitPromise;
+  return client;
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      // Check if token is expired before using it
-      if (isTokenExpired(token)) {
-        // Try to refresh the token
-        refreshToken().then((newToken) => {
-          if (newToken) {
-            fetchUserInfo(newToken);
-          } else {
-            // Refresh failed, logout
-            logout();
-          }
-        });
-      } else {
-        // Token is still valid, use it
-        fetchUserInfo(token);
-      }
-    } else {
-      setIsLoading(false);
-    }
-  }, []);
+    let cancelled = false;
 
-  const isTokenExpired = (token: string): boolean => {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const currentTime = Math.floor(Date.now() / 1000);
-      // Add 5 minute buffer before actual expiration
-      return payload.exp <= (currentTime + 300);
-    } catch (error) {
-      console.error('Error checking token expiration:', error);
-      return true; // Assume expired if we can't parse it
-    }
-  };
+    const initializeAuth = async () => {
+      try {
+        const client = await ensureKeycloakInitialized();
+        if (cancelled) {
+          return;
+        }
+
+        setUser(mapUserFromToken(client));
+
+        client.onAuthSuccess = () => {
+          setUser(mapUserFromToken(client));
+          if (router.pathname === '/login') {
+            void router.replace('/');
+          }
+        };
+
+        client.onAuthLogout = () => {
+          setUser(null);
+        };
+
+        client.onAuthRefreshSuccess = () => {
+          setUser(mapUserFromToken(client));
+        };
+
+        client.onTokenExpired = () => {
+          void client.updateToken(300)
+            .then(() => {
+              setUser(mapUserFromToken(client));
+            })
+            .catch(() => {
+              setUser(null);
+            });
+        };
+      } catch (error) {
+        console.error('Error initializing Keycloak authentication:', error);
+        if (!cancelled) {
+          setUser(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void initializeAuth();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   const refreshToken = async (): Promise<string | null> => {
     try {
-      const storedRefreshToken = localStorage.getItem('refreshToken');
-      if (!storedRefreshToken) {
+      const client = await ensureKeycloakInitialized();
+      if (!client.authenticated) {
         return null;
       }
 
-      const keycloakConfig = getKeycloak();
-      const tokenResponse = await fetch(
-        `${keycloakConfig.url}/realms/${keycloakConfig.realm}/protocol/openid-connect/token`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            grant_type: 'refresh_token',
-            client_id: keycloakConfig.clientId,
-            refresh_token: storedRefreshToken,
-          }),
-        }
-      );
-
-      if (!tokenResponse.ok) {
-        // Refresh token is invalid/expired
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
+      const refreshed = await client.updateToken(300);
+      if (!refreshed && !client.token) {
         return null;
       }
 
-      const tokenData = await tokenResponse.json();
-      const newAccessToken = tokenData.access_token;
-      const newRefreshToken = tokenData.refresh_token;
-
-      // Store new tokens
-      localStorage.setItem('accessToken', newAccessToken);
-      if (newRefreshToken) {
-        localStorage.setItem('refreshToken', newRefreshToken);
-      }
-
-      return newAccessToken;
+      setUser(mapUserFromToken(client));
+      return client.token ?? null;
     } catch (error) {
       console.error('Error refreshing token:', error);
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
+      setUser(null);
       return null;
     }
   };
 
-  const fetchUserInfo = async (token: string) => {
-    try {
-      // Parse JWT token to extract user info
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      
-      // Extract user information from Keycloak token
-      const userData = {
-        id: payload.sub,
-        username: payload.preferred_username,
-        email: payload.email,
-        firstName: payload.given_name,
-        lastName: payload.family_name,
-        roles: payload.realm_access?.roles || [],
-      };
-      
-      setUser(userData);
-    } catch (error) {
-      console.error('Error parsing token:', error);
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const login = async (username: string, password: string) => {
-    try {
-      const keycloakConfig = getKeycloak();
-      const tokenResponse = await fetch(
-        `${keycloakConfig.url}/realms/${keycloakConfig.realm}/protocol/openid-connect/token`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            grant_type: 'password',
-            client_id: keycloakConfig.clientId,
-            username,
-            password,
-          }),
-        }
-      );
-
-      if (!tokenResponse.ok) {
-        const error = await tokenResponse.json();
-        throw new Error(error.error_description || 'Login failed');
-      }
-
-      const tokenData = await tokenResponse.json();
-      const accessToken = tokenData.access_token;
-      const refreshTokenValue = tokenData.refresh_token;
-
-      // Store tokens
-      localStorage.setItem('accessToken', accessToken);
-      if (refreshTokenValue) {
-        localStorage.setItem('refreshToken', refreshTokenValue);
-      }
-
-      // Get user info
-      await fetchUserInfo(accessToken);
-
-      // Redirect to dashboard
-      router.push('/');
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
-    }
+  const login = async () => {
+    const client = await ensureKeycloakInitialized();
+    await client.login({
+      redirectUri: getRedirectUri('/'),
+      scope: 'openid profile email',
+    });
   };
 
   const logout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+    const client = keycloakClient;
     setUser(null);
-    router.push('/login');
+    if (client) {
+      void client.logout({ redirectUri: getRedirectUri('/login') });
+      return;
+    }
+
+    void router.push('/login');
   };
 
   const value = {
@@ -209,4 +209,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+export const getAccessToken = async (): Promise<string | null> => {
+  try {
+    const client = await ensureKeycloakInitialized();
+    if (!client.authenticated) {
+      return null;
+    }
+
+    await client.updateToken(300);
+    return client.token ?? null;
+  } catch {
+    return null;
+  }
+};
+
+export const getCurrentAccessToken = (): string | null => {
+  return keycloakClient?.authenticated ? keycloakClient.token ?? null : null;
+};
+
+export const isAuthenticated = (): boolean => {
+  return Boolean(keycloakClient?.authenticated && keycloakClient.token);
 };

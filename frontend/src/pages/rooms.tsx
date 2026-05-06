@@ -152,11 +152,6 @@ export default function RoomsPage() {
         throw new Error('Capacity must be between 1 and 1000');
       }
 
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
       let response;
       if (editingRoom) {
         response = await apiClient.put(`/api/rooms/${editingRoom.id}`, formData);
@@ -185,11 +180,6 @@ export default function RoomsPage() {
     }
 
     try {
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
       const response = await apiClient.delete(`/api/rooms/${roomId}`);
 
       if (!response.ok) {

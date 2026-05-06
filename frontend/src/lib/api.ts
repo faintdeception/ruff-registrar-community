@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { getApiBaseUrl, getKeycloakConfig } from './runtime-env';
+import { getApiBaseUrl } from './runtime-env';
+import { getAccessToken, getCurrentAccessToken } from './auth';
 
 interface RetryableAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
@@ -35,8 +36,8 @@ const processQueue = (error: unknown, token: string | null = null) => {
 
 // Add request interceptor to include auth token
 api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('accessToken');
+  async (config) => {
+    const token = getCurrentAccessToken() ?? await getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -70,41 +71,9 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) {
-          throw new Error('No refresh token available');
-        }
-
-        // Refresh the token
-        const keycloakConfig = getKeycloakConfig();
-
-        const tokenResponse = await fetch(
-          `${keycloakConfig.url}/realms/${keycloakConfig.realm}/protocol/openid-connect/token`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-              grant_type: 'refresh_token',
-              client_id: keycloakConfig.clientId,
-              refresh_token: refreshToken,
-            }),
-          }
-        );
-
-        if (!tokenResponse.ok) {
+        const newAccessToken = await getAccessToken();
+        if (!newAccessToken) {
           throw new Error('Token refresh failed');
-        }
-
-        const tokenData = await tokenResponse.json();
-        const newAccessToken = tokenData.access_token;
-        const newRefreshToken = tokenData.refresh_token;
-
-        // Store new tokens
-        localStorage.setItem('accessToken', newAccessToken);
-        if (newRefreshToken) {
-          localStorage.setItem('refreshToken', newRefreshToken);
         }
 
         // Update the authorization header and retry the original request
@@ -115,10 +84,6 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        
-        // Refresh failed, logout user
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
         window.location.href = '/login';
         
         return Promise.reject(refreshError);

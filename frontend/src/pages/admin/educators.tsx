@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { EducatorDto, EducatorInfo } from '@/types';
 import { getApiBaseUrl } from '@/lib/runtime-env';
+import { getAccessToken } from '@/lib/auth';
 
 interface CreateEducatorFormData {
   firstName: string;
@@ -36,20 +37,7 @@ const AdminEducatorsPage = () => {
     }
   });
 
-  useEffect(() => {
-    // Get token from localStorage
-    const storedToken = localStorage.getItem('accessToken');
-    if (!storedToken) {
-      router.push('/login');
-      return;
-    }
-    setToken(storedToken);
-    
-    // Load initial data
-    loadInstructors(storedToken);
-  }, []);
-
-  const loadInstructors = async (authToken: string) => {
+  const loadInstructors = useCallback(async (authToken: string) => {
     try {
       const response = await fetch(`${apiBaseUrl}/api/Educators`, {
         headers: {
@@ -70,7 +58,32 @@ const AdminEducatorsPage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [apiBaseUrl]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const initialize = async () => {
+      const runtimeToken = await getAccessToken();
+      if (!runtimeToken) {
+        void router.push('/login');
+        return;
+      }
+
+      if (cancelled) {
+        return;
+      }
+
+      setToken(runtimeToken);
+      await loadInstructors(runtimeToken);
+    };
+
+    void initialize();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadInstructors, router]);
 
   const handleAddInstructor = async (e: React.FormEvent) => {
     e.preventDefault();

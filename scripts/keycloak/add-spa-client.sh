@@ -101,11 +101,13 @@ CLIENT_PAYLOAD=$(jq -n --arg clientId "$CLIENT_ID" \
   publicClient: true,
   protocol: "openid-connect",
   standardFlowEnabled: true,
-  directAccessGrantsEnabled: true,
+  directAccessGrantsEnabled: false,
   serviceAccountsEnabled: false,
   redirectUris: $redirectUris,
   webOrigins: $webOrigins,
-  attributes: {}
+  attributes: {
+    "pkce.code.challenge.method": "S256"
+  }
 }')
 
 if [[ -z "$CLIENT_UUID" || "$CLIENT_UUID" == null ]]; then

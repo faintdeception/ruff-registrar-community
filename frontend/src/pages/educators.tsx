@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import apiClient from '@/lib/api-client';
@@ -28,20 +27,12 @@ const EducatorsPage = () => {
   const [inviteMessage, setInviteMessage] = useState<string | null>(null);
   const [inviteCredentials, setInviteCredentials] = useState<UserCredentials | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const router = useRouter();
-
   const [newEducator, setNewEducator] = useState<InviteEducatorDto>(emptyEducatorInvite);
 
   const isAdmin = user?.roles?.includes('Administrator');
 
   const fetchEducators = useCallback(async () => {
     try {
-      const accessToken = localStorage.getItem('accessToken');
-      if (!accessToken) {
-        router.push('/login');
-        return;
-      }
-
       const response = await apiClient.get('/api/Educators');
       
       if (response.ok) {
@@ -56,7 +47,7 @@ const EducatorsPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [router]);
+  }, []);
 
   const fetchAccountHolders = useCallback(async () => {
     try {
@@ -110,12 +101,6 @@ const EducatorsPage = () => {
     e.preventDefault();
     
     try {
-      const accessToken = localStorage.getItem('accessToken');
-      if (!accessToken) {
-        router.push('/login');
-        return;
-      }
-
       setInviteCredentials(null);
       setInviteMessage(null);
       setError(null);
@@ -148,12 +133,6 @@ const EducatorsPage = () => {
     if (!isAdmin) return;
     
     try {
-      const accessToken = localStorage.getItem('accessToken');
-      if (!accessToken) {
-        router.push('/login');
-        return;
-      }
-
       const endpoint = currentStatus ? 'deactivate' : 'activate';
       const response = await apiClient.post(`/api/Educators/${id}/${endpoint}`);
 

@@ -71,11 +71,6 @@ export default function SemestersPage() {
   const fetchSemesters = async () => {
     try {
       setLoading(true);
-      
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
 
       const response = await apiClient.get('/api/semesters');
 
@@ -161,11 +156,6 @@ export default function SemestersPage() {
         registrationEndDate: regEndDate.toISOString()
       };
 
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
       let response;
       if (editingSemester) {
         response = await apiClient.put(`/api/semesters/${editingSemester.id}`, submitData);
@@ -198,11 +188,6 @@ export default function SemestersPage() {
     }
 
     try {
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
       const response = await apiClient.delete(`/api/semesters/${semesterId}`);
 
       if (!response.ok) {

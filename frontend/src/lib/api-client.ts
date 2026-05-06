@@ -1,4 +1,5 @@
-import { getApiBaseUrl, getKeycloakConfig } from './runtime-env';
+import { getApiBaseUrl } from './runtime-env';
+import { getAccessToken, getCurrentAccessToken } from './auth';
 
 interface ApiClientOptions extends RequestInit {
   headers?: Record<string, string>;
@@ -9,13 +10,11 @@ class ApiClient {
   
   async request(url: string, options: ApiClientOptions = {}): Promise<Response> {
     const requestUrl = resolveApiUrl(url);
-    let token = localStorage.getItem('accessToken');
-    
-    // Check if token is expired
-    if (token && this.isTokenExpired(token)) {
+    let token = getCurrentAccessToken();
+
+    if (!token) {
       token = await this.refreshTokenIfNeeded();
       if (!token) {
-        // Redirect to login if refresh failed
         window.location.href = '/login';
         throw new Error('Authentication failed');
       }
@@ -40,18 +39,15 @@ class ApiClient {
         headers,
       });
       
-      // If we get a 401, try to refresh the token once
       if (response.status === 401 && token) {
         const newToken = await this.refreshTokenIfNeeded();
         if (newToken) {
-          // Retry the request with the new token
           headers['Authorization'] = `Bearer ${newToken}`;
           return fetch(requestUrl, {
             ...options,
             headers,
           });
         } else {
-          // Refresh failed, redirect to login
           window.location.href = '/login';
           throw new Error('Authentication failed');
         }
@@ -60,18 +56,6 @@ class ApiClient {
       return response;
     } catch (error) {
       throw error;
-    }
-  }
-  
-  private isTokenExpired(token: string): boolean {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const currentTime = Math.floor(Date.now() / 1000);
-      // Add 5 minute buffer before actual expiration
-      return payload.exp <= (currentTime + 300);
-    } catch (error) {
-      console.error('Error checking token expiration:', error);
-      return true; // Assume expired if we can't parse it
     }
   }
   
@@ -89,50 +73,9 @@ class ApiClient {
   
   private async performTokenRefresh(): Promise<string | null> {
     try {
-      const refreshToken = localStorage.getItem('refreshToken');
-      if (!refreshToken) {
-        return null;
-      }
-
-      const keycloakConfig = getKeycloakConfig();
-
-      const tokenResponse = await fetch(
-        `${keycloakConfig.url}/realms/${keycloakConfig.realm}/protocol/openid-connect/token`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            grant_type: 'refresh_token',
-            client_id: keycloakConfig.clientId,
-            refresh_token: refreshToken,
-          }),
-        }
-      );
-
-      if (!tokenResponse.ok) {
-        // Refresh token is invalid/expired
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        return null;
-      }
-
-      const tokenData = await tokenResponse.json();
-      const newAccessToken = tokenData.access_token;
-      const newRefreshToken = tokenData.refresh_token;
-
-      // Store new tokens
-      localStorage.setItem('accessToken', newAccessToken);
-      if (newRefreshToken) {
-        localStorage.setItem('refreshToken', newRefreshToken);
-      }
-
-      return newAccessToken;
+      return await getAccessToken();
     } catch (error) {
       console.error('Error refreshing token:', error);
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
       return null;
     }
   }
