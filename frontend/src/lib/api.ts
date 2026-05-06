@@ -53,8 +53,9 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as RetryableAxiosRequestConfig | undefined;
+    const hadAuthorizationHeader = Boolean(originalRequest?.headers?.Authorization);
 
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && hadAuthorizationHeader) {
       if (isRefreshing) {
         // If we're already refreshing, queue this request
         return new Promise((resolve, reject) => {

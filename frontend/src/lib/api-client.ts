@@ -10,15 +10,7 @@ class ApiClient {
   
   async request(url: string, options: ApiClientOptions = {}): Promise<Response> {
     const requestUrl = resolveApiUrl(url);
-    let token = getCurrentAccessToken();
-
-    if (!token) {
-      token = await this.refreshTokenIfNeeded();
-      if (!token) {
-        window.location.href = '/login';
-        throw new Error('Authentication failed');
-      }
-    }
+    const token = getCurrentAccessToken() ?? await this.refreshTokenIfNeeded();
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
