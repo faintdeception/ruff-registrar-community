@@ -51,10 +51,33 @@ public class AccountHolderPage
             _driver.PageSource.Contains(courseName, StringComparison.OrdinalIgnoreCase);
     }
 
+    public string GetEnrollmentState(string courseName)
+    {
+        return GetEnrollmentValue(courseName, "state");
+    }
+
+    public string GetEnrollmentPaymentStatus(string courseName)
+    {
+        return GetEnrollmentValue(courseName, "payment");
+    }
+
+    public string GetEnrollmentSummary(string courseName)
+    {
+        return GetEnrollmentValue(courseName, "summary");
+    }
+
     private void Fill(IWebElement element, string value)
     {
         element.Clear();
         element.SendKeys(value);
+    }
+
+    private string GetEnrollmentValue(string courseName, string suffix)
+    {
+        var slug = string.Join("-", courseName.Split(' ', StringSplitOptions.RemoveEmptyEntries)).ToLowerInvariant();
+        var selector = $"[data-testid='student-enrollment-{suffix}-{slug}']";
+        var element = _wait.Until(d => d.FindElements(By.CssSelector(selector)).FirstOrDefault(e => e.Displayed));
+        return element?.Text.Trim() ?? string.Empty;
     }
 
     private IWebElement FindFirstVisible(params By[] locators)

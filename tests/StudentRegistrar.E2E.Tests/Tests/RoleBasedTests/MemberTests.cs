@@ -63,6 +63,38 @@ public class MemberTests : BaseTest
         Driver.PageSource.Should().ContainEquivalentOf("course");
     }
 
+    [Fact]
+    public void Member_Should_Add_Student_And_Enroll_In_Course()
+    {
+        LoginAsMember();
+
+        var uniqueSuffix = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+        var studentFirstName = $"Mvp{uniqueSuffix}";
+        var studentLastName = "Student";
+        var studentFullName = $"{studentFirstName} {studentLastName}";
+
+        var navigationPage = new NavigationPage(Driver);
+        navigationPage.ClickAccount();
+        WaitForPageLoad();
+
+        var accountHolderPage = new AccountHolderPage(Driver);
+        accountHolderPage.AddStudent(studentFirstName, studentLastName, "4");
+        accountHolderPage.IsStudentVisible(studentFirstName, studentLastName).Should().BeTrue("Member should be able to add a student before enrolling");
+
+        navigationPage.ClickCourses();
+        WaitForPageLoad();
+
+        var coursesPage = new CoursesPage(Driver);
+        var courseName = coursesPage.GetFirstAvailableSignupCourseName();
+        coursesPage.SignUpStudentForCourse(courseName, studentFullName);
+
+        navigationPage.ClickAccount();
+        WaitForPageLoad();
+        WaitUntil(_ => accountHolderPage.IsEnrollmentVisible(courseName), timeoutSeconds: 15, failureMessage: $"Enrollment for course '{courseName}' was not visible on the member account page");
+
+        accountHolderPage.IsEnrollmentVisible(courseName).Should().BeTrue("The newly enrolled course should appear for the member's student");
+    }
+
     // [Fact]
     // public void Member_Should_Manage_Enrollments()
     // {

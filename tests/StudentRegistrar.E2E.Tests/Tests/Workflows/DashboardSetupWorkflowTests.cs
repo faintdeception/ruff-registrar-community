@@ -241,6 +241,9 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
         accountPage.NavigateToAccount(BaseUrl);
         WaitUntil(_ => accountPage.IsEnrollmentVisible(courseName), 15, 300, "The signed-up course did not appear on the member account.");
         accountPage.IsEnrollmentVisible(courseName).Should().BeTrue("the new enrollment should be reflected on the member account page");
+        accountPage.GetEnrollmentState(courseName).Should().Be("Active", "the member account should show the enrollment as active after a successful signup");
+        accountPage.GetEnrollmentPaymentStatus(courseName).Should().Be("Paid", "the member account should surface the payment state after a paid signup");
+        accountPage.GetEnrollmentSummary(courseName).Should().Contain("Paid in full", "the member account should show that the course fee was fully paid");
     }
 
     private void LoginAsAdmin()

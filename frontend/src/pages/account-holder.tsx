@@ -130,9 +130,70 @@ const AccountHolderPage: React.FC = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  const formatEnrollmentStatus = (enrollment: Enrollment) => {
-    const paidLabel = enrollment.paymentStatus === 'Paid' ? 'Paid' : enrollment.paymentStatus;
-    return `${enrollment.enrollmentType} - ${paidLabel}`;
+  const formatStatusLabel = (value: string) => {
+    return value.replace(/([a-z])([A-Z])/g, '$1 $2');
+  };
+
+  const getEnrollmentLabel = (enrollment: Enrollment) => {
+    switch (enrollment.enrollmentType) {
+      case 'Enrolled':
+        return 'Active';
+      case 'Waitlisted':
+        return 'Waitlisted';
+      default:
+        return formatStatusLabel(enrollment.enrollmentType);
+    }
+  };
+
+  const getEnrollmentBadgeClassName = (enrollmentType: string) => {
+    switch (enrollmentType) {
+      case 'Enrolled':
+        return 'bg-green-100 text-green-800';
+      case 'Waitlisted':
+        return 'bg-amber-100 text-amber-800';
+      case 'Cancelled':
+        return 'bg-gray-200 text-gray-700';
+      default:
+        return 'bg-slate-100 text-slate-700';
+    }
+  };
+
+  const getPaymentBadgeClassName = (paymentStatus: string) => {
+    switch (paymentStatus) {
+      case 'Paid':
+        return 'bg-green-100 text-green-800';
+      case 'Partial':
+        return 'bg-amber-100 text-amber-800';
+      case 'Pending':
+        return 'bg-red-100 text-red-700';
+      case 'Refunded':
+        return 'bg-slate-200 text-slate-700';
+      default:
+        return 'bg-slate-100 text-slate-700';
+    }
+  };
+
+  const getEnrollmentPaymentSummary = (enrollment: Enrollment) => {
+    if (enrollment.enrollmentType === 'Waitlisted') {
+      const positionLabel = enrollment.waitlistPosition
+        ? `Waitlist position #${enrollment.waitlistPosition}. `
+        : '';
+      return `${positionLabel}No payment due until a seat opens.`;
+    }
+
+    if (enrollment.feeAmount <= 0) {
+      return 'No payment due for this enrollment.';
+    }
+
+    if (enrollment.amountPaid >= enrollment.feeAmount) {
+      return `Paid in full: ${formatCurrency(enrollment.amountPaid)} of ${formatCurrency(enrollment.feeAmount)}.`;
+    }
+
+    if (enrollment.amountPaid > 0) {
+      return `Balance due: ${formatCurrency(enrollment.feeAmount - enrollment.amountPaid)}. ${formatCurrency(enrollment.amountPaid)} of ${formatCurrency(enrollment.feeAmount)} paid.`;
+    }
+
+    return `Payment pending: ${formatCurrency(enrollment.feeAmount)} due.`;
   };
 
   const handleAddStudent = async (e: React.FormEvent) => {
@@ -671,12 +732,23 @@ const AccountHolderPage: React.FC = () => {
                                   <p className="text-xs text-gray-500">{enrollment.semesterName}</p>
                                 </div>
                                 <div className="mt-2 text-sm text-gray-700 sm:mt-0 sm:text-right">
-                                  <p>{formatEnrollmentStatus(enrollment)}</p>
-                                  {enrollment.feeAmount > 0 && (
-                                    <p className="text-xs text-gray-500">
-                                      {formatCurrency(enrollment.amountPaid)} / {formatCurrency(enrollment.feeAmount)} paid
-                                    </p>
-                                  )}
+                                  <div className="flex flex-wrap justify-end gap-2">
+                                    <span
+                                      data-testid={`student-enrollment-state-${enrollment.courseName.replace(/\s+/g, '-').toLowerCase()}`}
+                                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getEnrollmentBadgeClassName(enrollment.enrollmentType)}`}
+                                    >
+                                      {getEnrollmentLabel(enrollment)}
+                                    </span>
+                                    <span
+                                      data-testid={`student-enrollment-payment-${enrollment.courseName.replace(/\s+/g, '-').toLowerCase()}`}
+                                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getPaymentBadgeClassName(enrollment.paymentStatus)}`}
+                                    >
+                                      {formatStatusLabel(enrollment.paymentStatus)}
+                                    </span>
+                                  </div>
+                                  <p className="mt-2 text-xs text-gray-500" data-testid={`student-enrollment-summary-${enrollment.courseName.replace(/\s+/g, '-').toLowerCase()}`}>
+                                    {getEnrollmentPaymentSummary(enrollment)}
+                                  </p>
                                 </div>
                               </div>
                             ))}

@@ -187,6 +187,45 @@ public class CoursesPage
         ConfirmSignup();
     }
 
+    public string GetFirstAvailableSignupCourseName()
+    {
+        return _wait.Until(d =>
+        {
+            var buttons = d.FindElements(By.CssSelector("[data-testid^='course-signup-']"))
+                .Where(button => button.Displayed && button.Enabled)
+                .Where(button =>
+                {
+                    var text = button.Text.Trim();
+                    return !string.Equals(text, "Signed Up", StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(text, "Add Student", StringComparison.OrdinalIgnoreCase);
+                })
+                .ToList();
+
+            foreach (var button in buttons)
+            {
+                try
+                {
+                    var courseTitle = button.FindElement(By.XPath("./ancestor::div[contains(@class,'bg-white')][1]//h3"));
+                    var courseName = courseTitle.Text.Trim();
+                    if (!string.IsNullOrWhiteSpace(courseName))
+                    {
+                        return courseName;
+                    }
+                }
+                catch (NoSuchElementException)
+                {
+                    // Continue searching until we find a card with a visible title.
+                }
+                catch (StaleElementReferenceException)
+                {
+                    return null;
+                }
+            }
+
+            return null;
+        }) ?? throw new NoSuchElementException("Could not find an available course signup button.");
+    }
+
     private static string ToSlug(string value)
     {
         return string.Join("-", value.Split(' ', StringSplitOptions.RemoveEmptyEntries)).ToLowerInvariant();
