@@ -5,6 +5,7 @@ using StudentRegistrar.Data;
 using StudentRegistrar.Api.Services;
 using StudentRegistrar.Api.Services.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using AutoMapper;
@@ -23,6 +24,12 @@ var allowUntrustedKeycloakCertificates =
 // Add service defaults & Aspire components
 builder.AddServiceDefaults();
 builder.Services.AddSingleton<IHttpContextAccessor>(httpContextAccessor);
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // Add tenant services for multi-tenancy support
 builder.Services.AddTenantServices();
@@ -139,7 +146,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Authority = authority;
         options.Audience = clientId;
-        options.RequireHttpsMetadata = false; // Only for development
+        options.RequireHttpsMetadata = !allowUntrustedKeycloakCertificates;
 
         if (allowUntrustedKeycloakCertificates)
         {
@@ -222,6 +229,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 var app = builder.Build();
 
+ApiSecurityConfigurationValidator.Validate(app.Configuration, app.Environment);
+
 {
     var configuredOrigins = app.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
         ?? Array.Empty<string>();
@@ -235,6 +244,10 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+}
+else
+{
+    app.UseHsts();
 }
 
 var runMigrations = app.Configuration.GetValue<bool?>("Database:RunMigrations") ?? app.Environment.IsDevelopment();
@@ -291,6 +304,8 @@ if (app.Environment.IsProduction())
     app.UseHttpsRedirection();
 }
 
+app.UseForwardedHeaders();
+app.UseMiddleware<ApiSecurityHeadersMiddleware>();
 app.UseRouting();
 app.UseCors("AllowFrontend");
 
