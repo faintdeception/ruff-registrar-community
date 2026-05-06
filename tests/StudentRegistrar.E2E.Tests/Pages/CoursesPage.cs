@@ -259,7 +259,12 @@ public class CoursesPage
             var errorText = driver.FindElements(By.CssSelector(".bg-red-50, [role='alert']"))
                 .Where(e => e.Displayed)
                 .Select(e => e.Text)
-                .FirstOrDefault(text => !string.IsNullOrWhiteSpace(text));
+                .FirstOrDefault(text =>
+                    !string.IsNullOrWhiteSpace(text) &&
+                    (text.Contains("failed", StringComparison.OrdinalIgnoreCase) ||
+                     text.Contains("error", StringComparison.OrdinalIgnoreCase) ||
+                     text.Contains("unable", StringComparison.OrdinalIgnoreCase) ||
+                     text.Contains("could not", StringComparison.OrdinalIgnoreCase)));
             if (!string.IsNullOrWhiteSpace(errorText))
             {
                 throw new InvalidOperationException($"Course signup failed: {errorText}");

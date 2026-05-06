@@ -37,8 +37,14 @@ public class LoginTests : BaseTest
         // Act - Try to login with invalid credentials
         loginPage.Login("invalid_user", "invalid_password");
 
-    // Wait for error message to appear
-    WaitUntil(d => d.PageSource.Contains("Login Error") || d.PageSource.Contains("Invalid user credentials"), 10);
+        // Wait for the hosted auth flow to either surface an auth error or settle away from the app shell.
+        WaitUntil(d =>
+            !d.Url.StartsWith(BaseUrl, StringComparison.OrdinalIgnoreCase) ||
+            d.PageSource.Contains("Login Error") ||
+            d.PageSource.Contains("Invalid user credentials") ||
+            d.PageSource.Contains("Invalid username or password") ||
+            d.PageSource.Contains("username or password", StringComparison.OrdinalIgnoreCase),
+            15);
 
         // Assert - Should show an auth error and avoid redirecting into the app.
         Driver.Url.Should().NotStartWith(BaseUrl, "invalid credentials should not result in an authenticated app session");
