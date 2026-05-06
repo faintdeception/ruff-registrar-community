@@ -309,6 +309,10 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
 
     private void Logout()
     {
-        ((OpenQA.Selenium.IJavaScriptExecutor)Driver).ExecuteScript("window.localStorage.clear(); window.sessionStorage.clear();");
+        var homePage = new HomePage(Driver);
+        homePage.HasLogoutButton().Should().BeTrue("workflow logout expects an authenticated session with a visible logout control");
+        homePage.ClickLogout();
+        WaitForPageLoad();
+        WaitForUrlContains("/login");
     }
 }
