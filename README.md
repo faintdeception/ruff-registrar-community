@@ -71,7 +71,7 @@ docker-compose up -d
 #   - Username: admin
 #   - Password: set KEYCLOAK_ADMIN_PASSWORD (see docker-compose.yml)
 
-# Bootstrap Keycloak realm + roles + test users
+# Bootstrap Keycloak realm + roles + test users (local dev only — does not apply cloud hardening)
 ./setup-keycloak.sh
 
 # Create the public SPA client used by the frontend
@@ -115,6 +115,9 @@ The setup script will:
    ```bash
    ./setup-keycloak.sh
    ```
+   > **Local dev only.** This script sets up Keycloak for Aspire/docker-compose and does not apply
+   > cloud-level hardening (password policy, PKCE, brute-force protection). For cloud deployments
+   > use `scripts/keycloak/bootstrap-keycloak.sh` + `scripts/keycloak/harden-realm.sh` instead.
 3. Configure the public SPA client (required for frontend login):
    ```bash
    ./scripts/keycloak/add-spa-client.sh

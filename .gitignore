@@ -441,3 +441,5 @@ src/StudentRegistrar.AppHost/appsettings.*.json
 *.key
 *.pem
 secrets.json
+scripts/keycloak/stg-admin-password.txt
+scripts/keycloak/prd-admin-password.txt

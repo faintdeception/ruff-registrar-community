@@ -242,7 +242,7 @@ Remove-Item Env:SeleniumSettings__Headless
 Symptoms: login tests stay on `/login` or Keycloak returns `Realm does not exist`.
 
 **Solution**:
-1. Run `./setup-keycloak.sh` to recreate the realm/client, or `./scripts/keycloak/bootstrap-keycloak.sh` plus `./scripts/keycloak/add-spa-client.sh` for the newer fail-fast bootstrap flow.
+1. Run `./scripts/keycloak/bootstrap-keycloak.sh` to recreate the realm/client, then `./scripts/keycloak/add-spa-client.sh` to add the public SPA client. (`./setup-keycloak.sh` is a legacy local-dev helper that should no longer be used — it does not apply password policy or PKCE hardening.)
 2. Update `src/StudentRegistrar.AppHost/appsettings.json` with the new client secret.
 3. Run `./scripts/keycloak/add-spa-client.sh` to ensure the public SPA client exists.
 4. Restart the AppHost.

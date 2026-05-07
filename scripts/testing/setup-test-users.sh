@@ -2,7 +2,8 @@
 
 # Setup Test Users for E2E Testing
 # This script creates the required test users in Keycloak for role-based E2E testing
-# Run this AFTER setup-keycloak.sh has been executed
+# Run this AFTER the Keycloak realm has been bootstrapped (setup-keycloak.sh for local dev,
+# or bootstrap-keycloak.sh + harden-realm.sh for cloud environments)
 
 set -e
 
@@ -14,7 +15,7 @@ KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8080}"
 ADMIN_USER="${KEYCLOAK_ADMIN_USER:-admin}"
 REALM_NAME="${KEYCLOAK_REALM:-student-registrar}"
 
-# Function to check if command succeeded (copied from setup-keycloak.sh)
+# Function to check if command succeeded
 check_api_response() {
     local response="$1"
     local description="$2"
@@ -27,19 +28,18 @@ check_api_response() {
     return 0
 }
 
-# Prompt for admin password (same as setup-keycloak.sh)
+# Prompt for admin password
 if [ -n "${KEYCLOAK_ADMIN_PASSWORD:-}" ]; then
     ADMIN_PASSWORD="$KEYCLOAK_ADMIN_PASSWORD"
     echo "🔑 Using KEYCLOAK_ADMIN_PASSWORD from environment"
 else
     echo "📋 Enter your Keycloak admin password:"
-    echo "   (The same password you used for setup-keycloak.sh)"
     echo ""
     read -s -p "Enter Keycloak admin password: " ADMIN_PASSWORD
     echo ""
 fi
 
-# Get admin token (using the same method as setup-keycloak.sh)
+# Get admin token via admin-cli against master realm
 echo "🔑 Getting admin access token..."
 TOKEN_RESPONSE=$(curl -s -X POST "${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token" \
     -H "Content-Type: application/x-www-form-urlencoded" \
@@ -57,7 +57,7 @@ fi
 
 echo "✅ Admin token obtained successfully"
 
-# Create test users (following setup-keycloak.sh pattern)
+# Create test users
 echo "👥 Creating test users..."
 
 # Create admin1 test user

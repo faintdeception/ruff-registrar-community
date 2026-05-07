@@ -131,7 +131,7 @@ APP_ADMIN_USERNAME="$INIT_APP_ADMIN_USERNAME"
 APP_ADMIN_EMAIL="$INIT_APP_ADMIN_EMAIL"
 APP_ADMIN_PASSWORD="$INIT_APP_ADMIN_TEMP_PASS"
 
-USER_PAYLOAD=$(jq -n --arg u "$APP_ADMIN_USERNAME" --arg e "$APP_ADMIN_EMAIL" '{username:$u, email:$e, enabled:true, emailVerified:false, firstName:"Admin", lastName:"User"}')
+USER_PAYLOAD=$(jq -n --arg u "$APP_ADMIN_USERNAME" --arg e "$APP_ADMIN_EMAIL" '{username:$u, email:$e, enabled:true, emailVerified:true, firstName:"Admin", lastName:"User"}')
 CREATE_USER_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d "$USER_PAYLOAD" "${KEYCLOAK_URL}/admin/realms/${REALM}/users")
 if [[ "$CREATE_USER_STATUS" != 201 ]]; then

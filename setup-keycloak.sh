@@ -1,6 +1,11 @@
 #!/bin/bash
 
 # setup-keycloak.sh - Set up Keycloak realm and roles for Student Registrar
+#
+# SCOPE: LOCAL DEVELOPMENT (Aspire / docker-compose) ONLY.
+# For cloud environments (STG, PRD) use scripts/keycloak/bootstrap-keycloak.sh +
+# scripts/keycloak/harden-realm.sh instead, which apply the hardened realm template.
+# This script does NOT enforce password policy or brute-force protection.
 
 set -e
 
@@ -181,7 +186,7 @@ curl -s -X POST "${KEYCLOAK_URL}/admin/realms/$REALM_NAME/clients" \
         \"publicClient\": false,
         \"bearerOnly\": false,
         \"standardFlowEnabled\": true,
-        \"directAccessGrantsEnabled\": true,
+        "directAccessGrantsEnabled": false,
         \"serviceAccountsEnabled\": true,
         \"redirectUris\": [\"http://localhost:3000/*\", \"http://localhost:3001/*\"],
         \"webOrigins\": [\"http://localhost:3000\", \"http://localhost:3001\"],

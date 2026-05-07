@@ -1,11 +1,36 @@
 {
   "realm": "student-registrar",
   "enabled": true,
+
+  "sslRequired": "external",
+
   "loginWithEmailAllowed": true,
   "registrationAllowed": false,
   "rememberMe": true,
-  "verifyEmail": false,
+  "verifyEmail": true,
   "resetPasswordAllowed": true,
+
+  "passwordPolicy": "length(12) and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1) and notUsername(undefined) and passwordHistory(3)",
+
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "offlineSessionIdleTimeout": 2592000,
+  "offlineSessionMaxLifespanEnabled": true,
+  "offlineSessionMaxLifespan": 5184000,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanLogin": 1800,
+  "accessCodeLifespanUserAction": 300,
+
   "roles": {
     "realm": [
       { "name": "Administrator", "description": "Administrator role" },
@@ -20,7 +45,7 @@
       "publicClient": false,
       "protocol": "openid-connect",
       "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": true,
+      "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,
       "redirectUris": ["http://localhost:3000/*", "http://localhost:3001/*"],
       "webOrigins": ["http://localhost:3000", "http://localhost:3001"],

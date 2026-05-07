@@ -65,12 +65,15 @@ dotnet ef migrations add InitialCreate --project src/StudentRegistrar.Data --sta
 ### Keycloak Configuration
 
 ```bash
-# Bootstrap Keycloak realm, roles, and test users
+# Bootstrap Keycloak realm, roles, and test users (local Aspire/docker-compose dev only)
 ./setup-keycloak.sh
 
 # Configure SPA client for frontend authentication
 ./scripts/keycloak/add-spa-client.sh
 ```
+
+> For cloud environments (STG/PRD), use `scripts/keycloak/bootstrap-keycloak.sh` +
+> `scripts/keycloak/harden-realm.sh` instead of `setup-keycloak.sh`.
 
 ## Database Management
 
