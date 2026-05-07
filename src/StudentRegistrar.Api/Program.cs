@@ -65,7 +65,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddMemoryCache();
 
 // Add AutoMapper
-builder.Services.AddAutoMapper(typeof(MappingProfile));
+builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
 
 // Add repository services
 builder.Services.AddScoped<StudentRegistrar.Data.Repositories.IStudentRepository, StudentRegistrar.Data.Repositories.StudentRepository>();
