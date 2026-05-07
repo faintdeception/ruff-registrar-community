@@ -86,7 +86,11 @@ public class CourseServiceV2Tests
             .ReturnsAsync(course);
 
         _enrollmentRepository
-            .Setup(r => r.HasEnrollmentAsync(studentId, courseId, null))
+            .Setup(r => r.HasEnrollmentAsync(studentId, courseId, EnrollmentType.Enrolled))
+            .ReturnsAsync(false);
+
+        _enrollmentRepository
+            .Setup(r => r.HasEnrollmentAsync(studentId, courseId, EnrollmentType.Waitlisted))
             .ReturnsAsync(false);
 
         _enrollmentRepository
@@ -153,7 +157,98 @@ public class CourseServiceV2Tests
     }
 
     [Fact]
-            public async Task AddInstructorAsync_Should_Grant_Educator_Role_And_Create_Educator_When_Instructor_Is_AccountHolder()
+    public async Task EnrollStudentAsync_Should_Block_ReEnrollment_When_Already_Enrolled()
+    {
+        var keycloakUserId = "keycloak-parent-3";
+        var studentId = Guid.NewGuid();
+        var courseId = Guid.NewGuid();
+        var accountHolder = new AccountHolder
+        {
+            Id = Guid.NewGuid(),
+            KeycloakUserId = keycloakUserId,
+            FirstName = "Pat", LastName = "Parent",
+            EmailAddress = "pat@example.com",
+            Students = new List<Student> { new() { Id = studentId, FirstName = "Sam", LastName = "Student" } }
+        };
+        _accountHolderRepository.Setup(r => r.GetByKeycloakUserIdAsync(keycloakUserId)).ReturnsAsync(accountHolder);
+        _courseRepository.Setup(r => r.GetByIdAsync(courseId)).ReturnsAsync(new Course
+        {
+            Id = courseId, SemesterId = Guid.NewGuid(), Name = "Art", MaxCapacity = 12, Enrollments = new List<Enrollment>()
+        });
+        _enrollmentRepository.Setup(r => r.HasEnrollmentAsync(studentId, courseId, EnrollmentType.Enrolled)).ReturnsAsync(true);
+
+        var act = () => _service.EnrollStudentAsync(courseId, new CreateCourseEnrollmentDto { StudentId = studentId }, keycloakUserId);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already signed up*");
+        _enrollmentRepository.Verify(r => r.CreateAsync(It.IsAny<Enrollment>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task EnrollStudentAsync_Should_Block_ReEnrollment_When_On_Waitlist()
+    {
+        var keycloakUserId = "keycloak-parent-4";
+        var studentId = Guid.NewGuid();
+        var courseId = Guid.NewGuid();
+        var accountHolder = new AccountHolder
+        {
+            Id = Guid.NewGuid(),
+            KeycloakUserId = keycloakUserId,
+            FirstName = "Pat", LastName = "Parent",
+            EmailAddress = "pat@example.com",
+            Students = new List<Student> { new() { Id = studentId, FirstName = "Sam", LastName = "Student" } }
+        };
+        _accountHolderRepository.Setup(r => r.GetByKeycloakUserIdAsync(keycloakUserId)).ReturnsAsync(accountHolder);
+        _courseRepository.Setup(r => r.GetByIdAsync(courseId)).ReturnsAsync(new Course
+        {
+            Id = courseId, SemesterId = Guid.NewGuid(), Name = "Art", MaxCapacity = 12, Enrollments = new List<Enrollment>()
+        });
+        _enrollmentRepository.Setup(r => r.HasEnrollmentAsync(studentId, courseId, EnrollmentType.Enrolled)).ReturnsAsync(false);
+        _enrollmentRepository.Setup(r => r.HasEnrollmentAsync(studentId, courseId, EnrollmentType.Waitlisted)).ReturnsAsync(true);
+
+        var act = () => _service.EnrollStudentAsync(courseId, new CreateCourseEnrollmentDto { StudentId = studentId }, keycloakUserId);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already signed up*");
+        _enrollmentRepository.Verify(r => r.CreateAsync(It.IsAny<Enrollment>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task EnrollStudentAsync_Should_Allow_ReEnrollment_After_Withdrawal()
+    {
+        var keycloakUserId = "keycloak-parent-5";
+        var studentId = Guid.NewGuid();
+        var courseId = Guid.NewGuid();
+        var semesterId = Guid.NewGuid();
+        var accountHolder = new AccountHolder
+        {
+            Id = Guid.NewGuid(),
+            KeycloakUserId = keycloakUserId,
+            FirstName = "Pat", LastName = "Parent",
+            EmailAddress = "pat@example.com",
+            Students = new List<Student> { new() { Id = studentId, FirstName = "Sam", LastName = "Student" } }
+        };
+        _accountHolderRepository.Setup(r => r.GetByKeycloakUserIdAsync(keycloakUserId)).ReturnsAsync(accountHolder);
+        _courseRepository.Setup(r => r.GetByIdAsync(courseId)).ReturnsAsync(new Course
+        {
+            Id = courseId, SemesterId = semesterId, Name = "Art", MaxCapacity = 12, Fee = 0m, Enrollments = new List<Enrollment>()
+        });
+        // Both active-status checks return false — student previously withdrew
+        _enrollmentRepository.Setup(r => r.HasEnrollmentAsync(studentId, courseId, EnrollmentType.Enrolled)).ReturnsAsync(false);
+        _enrollmentRepository.Setup(r => r.HasEnrollmentAsync(studentId, courseId, EnrollmentType.Waitlisted)).ReturnsAsync(false);
+        _enrollmentRepository.Setup(r => r.CreateAsync(It.IsAny<Enrollment>())).ReturnsAsync((Enrollment e) => e);
+        _enrollmentRepository.Setup(r => r.UpdateAsync(It.IsAny<Enrollment>())).ReturnsAsync((Enrollment e) => e);
+        _paymentRepository.Setup(r => r.CreateAsync(It.IsAny<Payment>())).ReturnsAsync((Payment p) => p);
+
+        var result = await _service.EnrollStudentAsync(courseId, new CreateCourseEnrollmentDto { StudentId = studentId }, keycloakUserId);
+
+        result.StudentId.Should().Be(studentId.ToString());
+        result.EnrollmentType.Should().Be(nameof(EnrollmentType.Enrolled));
+        _enrollmentRepository.Verify(r => r.CreateAsync(It.IsAny<Enrollment>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task AddInstructorAsync_Should_Grant_Educator_Role_And_Create_Educator_When_Instructor_Is_AccountHolder()
     {
         var courseId = Guid.NewGuid();
         var accountHolderId = Guid.NewGuid();
