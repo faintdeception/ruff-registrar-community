@@ -122,6 +122,10 @@ public class SemestersController : ControllerBase
 
             return NoContent();
         }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ex.Message);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting semester {Id}", id);

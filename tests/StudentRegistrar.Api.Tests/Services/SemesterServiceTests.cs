@@ -191,9 +191,12 @@ public class SemesterServiceTests
     // -------------------------------------------------------------------------
 
     [Fact]
-    public async Task DeleteSemesterAsync_Exists_ReturnsTrue()
+    public async Task DeleteSemesterAsync_Exists_NoCourses_ReturnsTrue()
     {
         var id = Guid.NewGuid();
+        var semester = MakeSemester(id);
+        // Courses collection is empty by default
+        _semesterRepository.Setup(r => r.GetByIdAsync(id)).ReturnsAsync(semester);
         _semesterRepository.Setup(r => r.DeleteAsync(id)).ReturnsAsync(true);
 
         var result = await _service.DeleteSemesterAsync(id);
@@ -202,9 +205,23 @@ public class SemesterServiceTests
     }
 
     [Fact]
+    public async Task DeleteSemesterAsync_HasCourses_ThrowsInvalidOperationException()
+    {
+        var id = Guid.NewGuid();
+        var semester = MakeSemester(id);
+        semester.Courses.Add(new Course { Id = Guid.NewGuid(), SemesterId = id });
+        _semesterRepository.Setup(r => r.GetByIdAsync(id)).ReturnsAsync(semester);
+
+        await _service.Invoking(s => s.DeleteSemesterAsync(id))
+            .Should().ThrowAsync<InvalidOperationException>();
+
+        _semesterRepository.Verify(r => r.DeleteAsync(It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
     public async Task DeleteSemesterAsync_NotFound_ReturnsFalse()
     {
-        _semesterRepository.Setup(r => r.DeleteAsync(It.IsAny<Guid>())).ReturnsAsync(false);
+        _semesterRepository.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((Semester?)null);
 
         var result = await _service.DeleteSemesterAsync(Guid.NewGuid());
 

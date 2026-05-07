@@ -58,11 +58,18 @@ public class StudentsController : ControllerBase
     [Authorize(Roles = "Administrator")]
     public async Task<IActionResult> DeleteStudent(Guid id)
     {
-        var result = await _studentService.DeleteStudentAsync(id);
-        if (!result)
-            return NotFound();
+        try
+        {
+            var result = await _studentService.DeleteStudentAsync(id);
+            if (!result)
+                return NotFound();
 
-        return NoContent();
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ex.Message);
+        }
     }
 
     // New endpoint for account holder's students

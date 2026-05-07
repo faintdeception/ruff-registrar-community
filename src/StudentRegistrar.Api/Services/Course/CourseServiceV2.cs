@@ -101,7 +101,9 @@ public class CourseServiceV2 : ICourseServiceV2
         var course = await _courseRepository.GetByIdAsync(courseId)
             ?? throw new KeyNotFoundException("Course not found.");
 
-        if (await _enrollmentRepository.HasEnrollmentAsync(student.Id, course.Id))
+        var hasActiveEnrollment = await _enrollmentRepository.HasEnrollmentAsync(student.Id, course.Id, EnrollmentType.Enrolled)
+            || await _enrollmentRepository.HasEnrollmentAsync(student.Id, course.Id, EnrollmentType.Waitlisted);
+        if (hasActiveEnrollment)
         {
             throw new InvalidOperationException("This student is already signed up for this course.");
         }

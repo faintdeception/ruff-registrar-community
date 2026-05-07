@@ -18,7 +18,7 @@ public class GradeRecordDto
     public DateTime UpdatedAt { get; set; }
 }
 
-public class CreateGradeRecordDto
+public class CreateGradeRecordDto : IValidatableObject
 {
     [Required]
     public Guid StudentId { get; set; }
@@ -40,4 +40,12 @@ public class CreateGradeRecordDto
     
     [Required]
     public DateTime GradeDate { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (LetterGrade == null && NumericGrade == null && GradePoints == null)
+            yield return new ValidationResult(
+                "At least one of LetterGrade, NumericGrade, or GradePoints must be provided.",
+                new[] { nameof(LetterGrade), nameof(NumericGrade), nameof(GradePoints) });
+    }
 }

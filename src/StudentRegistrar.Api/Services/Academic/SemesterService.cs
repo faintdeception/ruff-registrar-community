@@ -54,6 +54,13 @@ public class SemesterService : ISemesterService
 
     public async Task<bool> DeleteSemesterAsync(Guid id)
     {
+        var semester = await _semesterRepository.GetByIdAsync(id);
+        if (semester == null)
+            return false;
+
+        if (semester.Courses.Count > 0)
+            throw new InvalidOperationException("Cannot delete a semester that has courses assigned to it.");
+
         return await _semesterRepository.DeleteAsync(id);
     }
 }

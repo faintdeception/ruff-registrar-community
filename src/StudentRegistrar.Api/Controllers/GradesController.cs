@@ -26,6 +26,7 @@ public class GradesController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<GradeRecordDto>> GetGrade(Guid id)
     {
         var grade = await _gradeService.GetGradeByIdAsync(id);

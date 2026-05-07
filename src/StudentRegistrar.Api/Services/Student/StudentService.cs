@@ -56,6 +56,10 @@ public class StudentService : IStudentService
 
     public async Task<bool> DeleteStudentAsync(Guid id)
     {
+        var enrollments = await _enrollmentRepository.GetByStudentAsync(id);
+        if (enrollments.Any(e => e.EnrollmentType == EnrollmentType.Enrolled || e.EnrollmentType == EnrollmentType.Waitlisted))
+            throw new InvalidOperationException("Cannot delete a student with active enrollments.");
+
         return await _studentRepository.DeleteAsync(id);
     }
 

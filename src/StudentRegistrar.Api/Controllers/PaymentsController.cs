@@ -30,6 +30,7 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<PaymentDto>> GetPayment(Guid id)
     {
         var payment = await _paymentService.GetPaymentByIdAsync(id);
@@ -40,6 +41,7 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpGet("account-holder/{accountHolderId:guid}")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<IEnumerable<PaymentDto>>> GetPaymentsByAccountHolder(Guid accountHolderId)
     {
         var payments = await _paymentService.GetPaymentsByAccountHolderAsync(accountHolderId);
@@ -47,6 +49,7 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpGet("enrollment/{enrollmentId:guid}")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<IEnumerable<PaymentDto>>> GetPaymentsByEnrollment(Guid enrollmentId)
     {
         var payments = await _paymentService.GetPaymentsByEnrollmentAsync(enrollmentId);
@@ -54,6 +57,7 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpGet("type/{paymentType}")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<IEnumerable<PaymentDto>>> GetPaymentsByType(PaymentType paymentType)
     {
         var payments = await _paymentService.GetPaymentsByTypeAsync(paymentType);
@@ -61,6 +65,7 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpGet("account-holder/{accountHolderId:guid}/history")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<IEnumerable<PaymentDto>>> GetPaymentHistory(
         Guid accountHolderId, 
         [FromQuery] DateTime? fromDate = null, 
@@ -71,6 +76,7 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpGet("account-holder/{accountHolderId:guid}/total")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<decimal>> GetTotalPaidByAccountHolder(
         Guid accountHolderId, 
         [FromQuery] PaymentType? type = null)
@@ -80,6 +86,7 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpGet("enrollment/{enrollmentId:guid}/total")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<decimal>> GetTotalPaidByEnrollment(Guid enrollmentId)
     {
         var total = await _paymentService.GetTotalPaidByEnrollmentAsync(enrollmentId);
