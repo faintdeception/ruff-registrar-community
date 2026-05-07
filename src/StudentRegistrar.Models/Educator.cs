@@ -38,6 +38,12 @@ public class Educator : ITenantEntity
     // Professional status and information
     public bool IsActive { get; set; } = true;
     
+    /// <summary>
+    /// Soft-delete flag. Set to true when the educator is deleted but has grade history
+    /// that must be preserved for transcript purposes. Hard-deleted educators have no row.
+    /// </summary>
+    public bool IsDeleted { get; set; } = false;
+    
     // Flexible data for educator-specific info (bio, qualifications, etc.)
     [Column(TypeName = "jsonb")]
     public string EducatorInfoJson { get; set; } = "{}";

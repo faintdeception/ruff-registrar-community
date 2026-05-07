@@ -21,6 +21,12 @@ public class CourseInstructor : ITenantEntity
     public Guid? AccountHolderId { get; set; }
     
     /// <summary>
+    /// Optional link to the Educator record for this instructor. Used to track
+    /// grade history when an educator is soft-deleted.
+    /// </summary>
+    public Guid? EducatorId { get; set; }
+    
+    /// <summary>
     /// Stripe Connect account ID for receiving course payments.
     /// Only used in SaaS mode for paid courses.
     /// </summary>
@@ -55,6 +61,7 @@ public class CourseInstructor : ITenantEntity
     // Navigation Properties
     public virtual Course Course { get; set; } = null!;
     public virtual AccountHolder? AccountHolder { get; set; }
+    public virtual Educator? Educator { get; set; }
     
     // Computed Properties
     [NotMapped]

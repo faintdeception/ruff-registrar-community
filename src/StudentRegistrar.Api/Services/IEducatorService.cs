@@ -2,6 +2,13 @@ using StudentRegistrar.Api.DTOs;
 
 namespace StudentRegistrar.Api.Services;
 
+public enum DeleteEducatorResult
+{
+    NotFound,
+    HardDeleted,
+    SoftDeleted
+}
+
 // Educator profile and authorization service. Course assignments are managed through CourseInstructor.
 public interface IEducatorService
 {
@@ -10,7 +17,7 @@ public interface IEducatorService
     Task<EducatorDto> CreateEducatorAsync(CreateEducatorDto createDto);
     Task<InviteEducatorResponse> InviteEducatorAsync(InviteEducatorDto inviteDto);
     Task<EducatorDto?> UpdateEducatorAsync(Guid id, UpdateEducatorDto updateDto);
-    Task<bool> DeleteEducatorAsync(Guid id);
+    Task<DeleteEducatorResult> DeleteEducatorAsync(Guid id);
     Task<bool> DeactivateEducatorAsync(Guid id);
     Task<bool> ActivateEducatorAsync(Guid id);
 }

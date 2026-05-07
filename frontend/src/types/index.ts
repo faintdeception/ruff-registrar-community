@@ -83,6 +83,7 @@ export interface EducatorDto {
   email?: string;
   phone?: string;
   isActive: boolean;
+  isDeleted: boolean;
   createdAt: string;
   updatedAt: string;
   educatorInfo: EducatorInfo;

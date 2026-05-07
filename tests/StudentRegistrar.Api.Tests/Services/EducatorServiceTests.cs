@@ -14,6 +14,7 @@ public class EducatorServiceTests
     private readonly Mock<IEducatorRepository> _educatorRepository = new();
     private readonly Mock<IAccountHolderRepository> _accountHolderRepository = new();
     private readonly Mock<IKeycloakService> _keycloakService = new();
+    private readonly Mock<IGradeRepository> _gradeRepository = new();
     private readonly EducatorService _service;
 
     public EducatorServiceTests()
@@ -23,6 +24,7 @@ public class EducatorServiceTests
             _educatorRepository.Object,
             _accountHolderRepository.Object,
             _keycloakService.Object,
+            _gradeRepository.Object,
             mapperConfig.CreateMapper());
     }
 
@@ -263,5 +265,63 @@ public class EducatorServiceTests
         _keycloakService.Verify(s => s.UpdateUserRoleAsync(keycloakUserId, UserRole.Educator), Times.Once);
         _educatorRepository.Verify(r => r.CreateAsync(It.IsAny<Educator>()), Times.Never);
         _educatorRepository.Verify(r => r.UpdateAsync(existingEducator), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteEducatorAsync_Should_HardDelete_When_No_Grade_History()
+    {
+        var educatorId = Guid.NewGuid();
+
+        _gradeRepository
+            .Setup(r => r.HasGradesByEducatorIdAsync(educatorId))
+            .ReturnsAsync(false);
+
+        _educatorRepository
+            .Setup(r => r.DeleteAsync(educatorId))
+            .ReturnsAsync(true);
+
+        var result = await _service.DeleteEducatorAsync(educatorId);
+
+        result.Should().Be(DeleteEducatorResult.HardDeleted);
+        _educatorRepository.Verify(r => r.DeleteAsync(educatorId), Times.Once);
+        _educatorRepository.Verify(r => r.SoftDeleteAsync(It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteEducatorAsync_Should_SoftDelete_When_Grade_History_Exists()
+    {
+        var educatorId = Guid.NewGuid();
+
+        _gradeRepository
+            .Setup(r => r.HasGradesByEducatorIdAsync(educatorId))
+            .ReturnsAsync(true);
+
+        _educatorRepository
+            .Setup(r => r.SoftDeleteAsync(educatorId))
+            .ReturnsAsync(true);
+
+        var result = await _service.DeleteEducatorAsync(educatorId);
+
+        result.Should().Be(DeleteEducatorResult.SoftDeleted);
+        _educatorRepository.Verify(r => r.SoftDeleteAsync(educatorId), Times.Once);
+        _educatorRepository.Verify(r => r.DeleteAsync(It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteEducatorAsync_Should_Return_NotFound_When_Educator_Does_Not_Exist()
+    {
+        var educatorId = Guid.NewGuid();
+
+        _gradeRepository
+            .Setup(r => r.HasGradesByEducatorIdAsync(educatorId))
+            .ReturnsAsync(false);
+
+        _educatorRepository
+            .Setup(r => r.DeleteAsync(educatorId))
+            .ReturnsAsync(false);
+
+        var result = await _service.DeleteEducatorAsync(educatorId);
+
+        result.Should().Be(DeleteEducatorResult.NotFound);
     }
 }

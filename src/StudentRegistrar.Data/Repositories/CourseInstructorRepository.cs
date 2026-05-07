@@ -40,6 +40,17 @@ public class CourseInstructorRepository : ICourseInstructorRepository
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<CourseInstructor>> GetByEducatorIdAsync(Guid educatorId)
+    {
+        return await _context.CourseInstructors
+            .Include(ci => ci.Course)
+                .ThenInclude(c => c.Semester)
+            .Where(ci => ci.EducatorId == educatorId)
+            .OrderByDescending(ci => ci.Course.Semester.StartDate)
+            .ThenBy(ci => ci.Course.Code)
+            .ToListAsync();
+    }
+
     public async Task<IEnumerable<CourseInstructor>> GetAllAsync()
     {
         return await _context.CourseInstructors

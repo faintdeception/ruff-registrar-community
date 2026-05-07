@@ -137,11 +137,14 @@ public class EducatorsController : ControllerBase
                 return Forbid("Only administrators can delete educators");
             }
 
-            var deleted = await _educatorService.DeleteEducatorAsync(id);
-            if (!deleted)
-                return NotFound();
-
-            return NoContent();
+            var result = await _educatorService.DeleteEducatorAsync(id);
+            return result switch
+            {
+                DeleteEducatorResult.NotFound => NotFound(),
+                DeleteEducatorResult.SoftDeleted => Ok(new { softDeleted = true }),
+                DeleteEducatorResult.HardDeleted => NoContent(),
+                _ => StatusCode(500, "Unexpected delete result")
+            };
         }
         catch (Exception ex)
         {

@@ -11,6 +11,7 @@ public interface IEducatorRepository
     Task<Educator> CreateAsync(Educator educator);
     Task<Educator> UpdateAsync(Educator educator);
     Task<bool> DeleteAsync(Guid id);
+    Task<bool> SoftDeleteAsync(Guid id);
     Task<bool> DeactivateAsync(Guid id);
     Task<bool> ActivateAsync(Guid id);
 }

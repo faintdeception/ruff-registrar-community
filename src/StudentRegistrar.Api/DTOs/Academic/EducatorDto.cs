@@ -14,6 +14,7 @@ public class EducatorDto
     public string? Email { get; set; }
     public string? Phone { get; set; }
     public bool IsActive { get; set; }
+    public bool IsDeleted { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public EducatorInfo EducatorInfo { get; set; } = new();

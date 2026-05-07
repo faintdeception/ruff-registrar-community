@@ -156,4 +156,17 @@ public class EducatorsControllerTests
         var actionResult = result.Result;
         actionResult.Should().BeOfType<ForbidResult>();
     }
+
+    [Fact]
+    public async Task DeleteEducator_Should_ReturnForbid_WhenNotAdmin()
+    {
+        // Arrange - no JWT token set, GetUserRole returns null/empty
+        var educatorId = Guid.NewGuid();
+
+        // Act
+        var result = await _controller.DeleteEducator(educatorId);
+
+        // Assert
+        result.Should().BeOfType<ForbidResult>();
+    }
 }

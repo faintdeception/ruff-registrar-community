@@ -46,6 +46,17 @@ public class GradeRepository : IGradeRepository
             .ToListAsync();
     }
 
+    public async Task<bool> HasGradesByEducatorIdAsync(Guid educatorId)
+    {
+        return await _context.CourseInstructors
+            .Where(ci => ci.EducatorId == educatorId)
+            .Join(_context.GradeRecords,
+                ci => ci.CourseId,
+                gr => gr.CourseId,
+                (ci, gr) => gr)
+            .AnyAsync();
+    }
+
     public async Task<GradeRecord> CreateAsync(GradeRecord grade)
     {
         _context.GradeRecords.Add(grade);

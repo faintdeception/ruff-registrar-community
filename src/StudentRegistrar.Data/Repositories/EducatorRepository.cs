@@ -57,6 +57,18 @@ public class EducatorRepository : IEducatorRepository
         return true;
     }
 
+    public async Task<bool> SoftDeleteAsync(Guid id)
+    {
+        var educator = await _context.Educators.FindAsync(id);
+        if (educator == null)
+            return false;
+
+        educator.IsDeleted = true;
+        educator.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
     public async Task<bool> DeactivateAsync(Guid id)
     {
         var educator = await _context.Educators.FindAsync(id);
