@@ -1,4 +1,5 @@
 using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
 using AutoMapper;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
@@ -16,8 +17,11 @@ public class GuidContractTests
 
     public GuidContractTests()
     {
-        var mapperConfig = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>());
-        _mapper = mapperConfig.CreateMapper();
+        _mapper = new ServiceCollection()
+            .AddLogging()
+            .AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>())
+            .BuildServiceProvider()
+            .GetRequiredService<IMapper>();
     }
 
     [Fact]

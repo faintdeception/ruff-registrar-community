@@ -1,4 +1,5 @@
 using AutoMapper;
+using Microsoft.Extensions.DependencyInjection;
 using FluentAssertions;
 using Moq;
 using StudentRegistrar.Api.DTOs;
@@ -17,11 +18,15 @@ public class AccountHolderServiceTests
 
     public AccountHolderServiceTests()
     {
-        var mapperConfig = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>());
-        _service = new AccountHolderService(
-            _accountHolderRepository.Object,
-            _studentRepository.Object,
-            mapperConfig.CreateMapper());
+            var mapper = new ServiceCollection()
+                .AddLogging()
+                .AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>())
+                .BuildServiceProvider()
+                .GetRequiredService<IMapper>();
+            _service = new AccountHolderService(
+                _accountHolderRepository.Object,
+                _studentRepository.Object,
+                mapper);
     }
 
     [Fact]

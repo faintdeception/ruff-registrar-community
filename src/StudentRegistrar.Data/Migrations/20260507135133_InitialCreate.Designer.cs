@@ -12,7 +12,7 @@ using StudentRegistrar.Data;
 namespace StudentRegistrar.Data.Migrations
 {
     [DbContext(typeof(StudentRegistrarDbContext))]
-    [Migration("20260501123010_InitialCreate")]
+    [Migration("20260507135133_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -20,7 +20,7 @@ namespace StudentRegistrar.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.1")
+                .HasAnnotation("ProductVersion", "10.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -233,6 +233,9 @@ namespace StudentRegistrar.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("EducatorId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Email")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
@@ -274,6 +277,8 @@ namespace StudentRegistrar.Data.Migrations
 
                     b.HasIndex("CourseId");
 
+                    b.HasIndex("EducatorId");
+
                     b.HasIndex("TenantId");
 
                     b.ToTable("CourseInstructors");
@@ -305,6 +310,9 @@ namespace StudentRegistrar.Data.Migrations
                         .HasColumnType("character varying(100)");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
                     b.Property<string>("KeycloakUserId")
@@ -879,9 +887,15 @@ namespace StudentRegistrar.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("StudentRegistrar.Models.Educator", "Educator")
+                        .WithMany()
+                        .HasForeignKey("EducatorId");
+
                     b.Navigation("AccountHolder");
 
                     b.Navigation("Course");
+
+                    b.Navigation("Educator");
                 });
 
             modelBuilder.Entity("StudentRegistrar.Models.Educator", b =>

@@ -6,6 +6,7 @@ using StudentRegistrar.Api.Services;
 using StudentRegistrar.Data.Repositories;
 using StudentRegistrar.Models;
 using Xunit;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace StudentRegistrar.Api.Tests.Services;
 
@@ -23,7 +24,11 @@ public class CourseServiceV2Tests
 
     public CourseServiceV2Tests()
     {
-        var mapperConfig = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>());
+        var mapper = new ServiceCollection()
+            .AddLogging()
+            .AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>())
+            .BuildServiceProvider()
+            .GetRequiredService<IMapper>();
         _service = new CourseServiceV2(
             _courseRepository.Object,
             _courseInstructorRepository.Object,
@@ -33,7 +38,7 @@ public class CourseServiceV2Tests
             _educatorRepository.Object,
             _roomRepository.Object,
             _keycloakService.Object,
-            mapperConfig.CreateMapper());
+            mapper);
     }
 
     [Fact]

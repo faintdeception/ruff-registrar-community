@@ -156,6 +156,7 @@ namespace StudentRegistrar.Data.Migrations
                     AccountHolderId = table.Column<Guid>(type: "uuid", nullable: true),
                     KeycloakUserId = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false),
                     EducatorInfoJson = table.Column<string>(type: "jsonb", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
@@ -272,6 +273,7 @@ namespace StudentRegistrar.Data.Migrations
                     TenantId = table.Column<Guid>(type: "uuid", nullable: false),
                     CourseId = table.Column<Guid>(type: "uuid", nullable: false),
                     AccountHolderId = table.Column<Guid>(type: "uuid", nullable: true),
+                    EducatorId = table.Column<Guid>(type: "uuid", nullable: true),
                     StripeAccountId = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
                     FirstName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     LastName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
@@ -296,6 +298,11 @@ namespace StudentRegistrar.Data.Migrations
                         principalTable: "Courses",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_CourseInstructors_Educators_EducatorId",
+                        column: x => x.EducatorId,
+                        principalTable: "Educators",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -445,6 +452,11 @@ namespace StudentRegistrar.Data.Migrations
                 name: "IX_CourseInstructors_CourseId",
                 table: "CourseInstructors",
                 column: "CourseId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CourseInstructors_EducatorId",
+                table: "CourseInstructors",
+                column: "EducatorId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_CourseInstructors_TenantId",
@@ -620,9 +632,6 @@ namespace StudentRegistrar.Data.Migrations
                 name: "CourseInstructors");
 
             migrationBuilder.DropTable(
-                name: "Educators");
-
-            migrationBuilder.DropTable(
                 name: "GradeRecords");
 
             migrationBuilder.DropTable(
@@ -633,6 +642,9 @@ namespace StudentRegistrar.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "UserProfiles");
+
+            migrationBuilder.DropTable(
+                name: "Educators");
 
             migrationBuilder.DropTable(
                 name: "Enrollments");
