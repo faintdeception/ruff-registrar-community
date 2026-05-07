@@ -259,6 +259,36 @@ public class MappingProfile : Profile
                 dest.LastEdit = DateTime.UtcNow;
             });
             
+        CreateMap<UpdateAccountHolderDto, AccountHolder>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.TenantId, opt => opt.Ignore())
+            .ForMember(dest => dest.KeycloakUserId, opt => opt.Ignore())
+            .ForMember(dest => dest.MemberSince, opt => opt.Ignore())
+            .ForMember(dest => dest.MembershipDuesOwed, opt => opt.Ignore())
+            .ForMember(dest => dest.MembershipDuesReceived, opt => opt.Ignore())
+            .ForMember(dest => dest.LastLogin, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.LastEdit, opt => opt.Ignore())
+            .ForMember(dest => dest.Students, opt => opt.Ignore())
+            .ForMember(dest => dest.Payments, opt => opt.Ignore())
+            .ForMember(dest => dest.CourseInstructors, opt => opt.Ignore())
+            .ForMember(dest => dest.AddressJson, opt => opt.Ignore())
+            .ForMember(dest => dest.EmergencyContactJson, opt => opt.Ignore())
+            .AfterMap((src, dest, context) =>
+            {
+                if (src.AddressJson != null)
+                {
+                    var address = context.Mapper.Map<StudentRegistrar.Models.Address>(src.AddressJson);
+                    dest.SetAddress(address);
+                }
+                if (src.EmergencyContactJson != null)
+                {
+                    var contact = context.Mapper.Map<StudentRegistrar.Models.EmergencyContact>(src.EmergencyContactJson);
+                    dest.SetEmergencyContact(contact);
+                }
+                dest.LastEdit = DateTime.UtcNow;
+            });
+
         CreateMap<Student, StudentDetailDto>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id.ToString()))
             .ForMember(dest => dest.StudentInfoJson, opt => opt.MapFrom(src => src.GetStudentInfo()))

@@ -72,4 +72,138 @@ public class AccountHolderServiceTests
         result.Should().BeNull();
         _accountHolderRepository.Verify(r => r.UpdateAsync(It.IsAny<AccountHolder>()), Times.Never);
     }
+
+    // -------------------------------------------------------------------------
+    // GetAllAccountHoldersAsync
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetAllAccountHoldersAsync_ReturnsMappedDtos()
+    {
+        var holders = new List<AccountHolder>
+        {
+            new() { Id = Guid.NewGuid(), TenantId = Guid.NewGuid(), FirstName = "Jane", LastName = "Doe", EmailAddress = "jane@example.com", KeycloakUserId = "kc-1", AddressJson = "{}", EmergencyContactJson = "{}" },
+            new() { Id = Guid.NewGuid(), TenantId = Guid.NewGuid(), FirstName = "Bob", LastName = "Smith", EmailAddress = "bob@example.com", KeycloakUserId = "kc-2", AddressJson = "{}", EmergencyContactJson = "{}" }
+        };
+        _accountHolderRepository.Setup(r => r.GetAllAsync()).ReturnsAsync(holders);
+
+        var result = await _service.GetAllAccountHoldersAsync();
+
+        result.Should().HaveCount(2);
+    }
+
+    // -------------------------------------------------------------------------
+    // GetAccountHolderByUserIdAsync
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetAccountHolderByUserIdAsync_WhenFound_ReturnsDto()
+    {
+        var holder = new AccountHolder { Id = Guid.NewGuid(), TenantId = Guid.NewGuid(), FirstName = "Jane", LastName = "Doe", EmailAddress = "jane@example.com", KeycloakUserId = "kc-abc", AddressJson = "{}", EmergencyContactJson = "{}" };
+        _accountHolderRepository.Setup(r => r.GetByKeycloakUserIdAsync("kc-abc")).ReturnsAsync(holder);
+
+        var result = await _service.GetAccountHolderByUserIdAsync("kc-abc");
+
+        result.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GetAccountHolderByUserIdAsync_WhenNotFound_ReturnsNull()
+    {
+        _accountHolderRepository.Setup(r => r.GetByKeycloakUserIdAsync(It.IsAny<string>())).ReturnsAsync((AccountHolder?)null);
+
+        var result = await _service.GetAccountHolderByUserIdAsync("kc-missing");
+
+        result.Should().BeNull();
+    }
+
+    // -------------------------------------------------------------------------
+    // GetAccountHolderByIdAsync
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetAccountHolderByIdAsync_WhenFound_ReturnsDto()
+    {
+        var id = Guid.NewGuid();
+        var holder = new AccountHolder { Id = id, TenantId = Guid.NewGuid(), FirstName = "Jane", LastName = "Doe", EmailAddress = "jane@example.com", KeycloakUserId = "kc-1", AddressJson = "{}", EmergencyContactJson = "{}" };
+        _accountHolderRepository.Setup(r => r.GetByIdAsync(id)).ReturnsAsync(holder);
+
+        var result = await _service.GetAccountHolderByIdAsync(id);
+
+        result.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GetAccountHolderByIdAsync_WhenNotFound_ReturnsNull()
+    {
+        _accountHolderRepository.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((AccountHolder?)null);
+
+        var result = await _service.GetAccountHolderByIdAsync(Guid.NewGuid());
+
+        result.Should().BeNull();
+    }
+
+    // -------------------------------------------------------------------------
+    // CreateAccountHolderAsync (with keycloakUserId)
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task CreateAccountHolderAsync_WithKeycloakId_SetsKeycloakIdOnEntity()
+    {
+        const string keycloakId = "kc-brand-new";
+        var dto = new CreateAccountHolderDto { FirstName = "New", LastName = "Member", EmailAddress = "new@example.com" };
+        var created = new AccountHolder { Id = Guid.NewGuid(), TenantId = Guid.NewGuid(), FirstName = "New", LastName = "Member", EmailAddress = "new@example.com", KeycloakUserId = keycloakId, AddressJson = "{}", EmergencyContactJson = "{}" };
+        _accountHolderRepository.Setup(r => r.CreateAsync(It.IsAny<AccountHolder>())).ReturnsAsync(created);
+
+        var result = await _service.CreateAccountHolderAsync(dto, keycloakId);
+
+        result.Should().NotBeNull();
+        _accountHolderRepository.Verify(
+            r => r.CreateAsync(It.Is<AccountHolder>(h => h.KeycloakUserId == keycloakId)),
+            Times.Once);
+    }
+
+    // -------------------------------------------------------------------------
+    // UpdateAccountHolderAsync
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task UpdateAccountHolderAsync_WhenFound_ReturnsUpdatedDto()
+    {
+        var id = Guid.NewGuid();
+        var existing = new AccountHolder { Id = id, TenantId = Guid.NewGuid(), FirstName = "Jane", LastName = "Doe", EmailAddress = "jane@example.com", KeycloakUserId = "kc-1", AddressJson = "{}", EmergencyContactJson = "{}" };
+        var updated = new AccountHolder { Id = id, TenantId = Guid.NewGuid(), FirstName = "Janet", LastName = "Doe", EmailAddress = "jane@example.com", KeycloakUserId = "kc-1", AddressJson = "{}", EmergencyContactJson = "{}" };
+        _accountHolderRepository.Setup(r => r.GetByIdAsync(id)).ReturnsAsync(existing);
+        _accountHolderRepository.Setup(r => r.UpdateAsync(It.IsAny<AccountHolder>())).ReturnsAsync(updated);
+
+        var result = await _service.UpdateAccountHolderAsync(id, new UpdateAccountHolderDto { FirstName = "Janet" });
+
+        result.Should().NotBeNull();
+        _accountHolderRepository.Verify(r => r.UpdateAsync(It.IsAny<AccountHolder>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateAccountHolderAsync_WhenNotFound_ReturnsNull()
+    {
+        _accountHolderRepository.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((AccountHolder?)null);
+
+        var result = await _service.UpdateAccountHolderAsync(Guid.NewGuid(), new UpdateAccountHolderDto());
+
+        result.Should().BeNull();
+        _accountHolderRepository.Verify(r => r.UpdateAsync(It.IsAny<AccountHolder>()), Times.Never);
+    }
+
+    // -------------------------------------------------------------------------
+    // RemoveStudentFromAccountAsync
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task RemoveStudentFromAccountAsync_WhenStudentNotFound_ReturnsFalse()
+    {
+        _studentRepository.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((Student?)null);
+
+        var result = await _service.RemoveStudentFromAccountAsync(Guid.NewGuid(), Guid.NewGuid());
+
+        result.Should().BeFalse();
+    }
 }
