@@ -47,6 +47,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<CourseDto>> CreateCourse(CreateCourseDto createCourseDto)
     {
         var course = await _courseService.CreateCourseAsync(createCourseDto);
@@ -79,6 +80,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<CourseDto>> UpdateCourse(Guid id, UpdateCourseDto updateCourseDto)
     {
         var course = await _courseService.UpdateCourseAsync(id, updateCourseDto);
@@ -89,6 +91,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Administrator")]
     public async Task<IActionResult> DeleteCourse(Guid id)
     {
         var result = await _courseService.DeleteCourseAsync(id);
@@ -107,6 +110,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpPost("{courseId:guid}/instructors")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<CourseInstructorDto>> AddInstructor(Guid courseId, CreateCourseInstructorDto createInstructorDto)
     {
         if (createInstructorDto.CourseId != courseId)
@@ -119,6 +123,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpPut("{courseId:guid}/instructors/{instructorId:guid}")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<CourseInstructorDto>> UpdateInstructor(
         Guid courseId, 
         Guid instructorId, 
@@ -132,6 +137,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpDelete("{courseId:guid}/instructors/{instructorId:guid}")]
+    [Authorize(Roles = "Administrator")]
     public async Task<IActionResult> RemoveInstructor(Guid courseId, Guid instructorId)
     {
         var result = await _courseService.RemoveInstructorAsync(instructorId);
@@ -143,6 +149,7 @@ public class CoursesController : ControllerBase
 
     // Endpoint to get available members who can be instructors
     [HttpGet("available-members")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<IEnumerable<AccountHolderDto>>> GetAvailableMembers()
     {
         var members = await _courseService.GetAvailableMembersAsync();

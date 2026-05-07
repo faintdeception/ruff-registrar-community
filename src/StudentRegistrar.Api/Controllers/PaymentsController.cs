@@ -22,6 +22,7 @@ public class PaymentsController : ControllerBase
 
     // Modern Guid-based endpoints
     [HttpGet]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<IEnumerable<PaymentDto>>> GetPayments()
     {
         var payments = await _paymentService.GetAllPaymentsAsync();
@@ -86,6 +87,7 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<PaymentDto>> CreatePayment(CreatePaymentDto createPaymentDto)
     {
         try
@@ -101,6 +103,7 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<PaymentDto>> UpdatePayment(Guid id, UpdatePaymentDto updatePaymentDto)
     {
         var payment = await _paymentService.UpdatePaymentAsync(id, updatePaymentDto);
@@ -111,6 +114,7 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Administrator")]
     public async Task<IActionResult> DeletePayment(Guid id)
     {
         var result = await _paymentService.DeletePaymentAsync(id);

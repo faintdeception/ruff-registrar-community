@@ -18,6 +18,7 @@ public class StudentsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<IEnumerable<StudentDto>>> GetStudents()
     {
         var students = await _studentService.GetAllStudentsAsync();
@@ -35,6 +36,7 @@ public class StudentsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<StudentDto>> CreateStudent(CreateStudentDto createStudentDto)
     {
         var student = await _studentService.CreateStudentAsync(createStudentDto);
@@ -42,6 +44,7 @@ public class StudentsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<StudentDto>> UpdateStudent(Guid id, UpdateStudentDto updateStudentDto)
     {
         var student = await _studentService.UpdateStudentAsync(id, updateStudentDto);
@@ -52,6 +55,7 @@ public class StudentsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Administrator")]
     public async Task<IActionResult> DeleteStudent(Guid id)
     {
         var result = await _studentService.DeleteStudentAsync(id);

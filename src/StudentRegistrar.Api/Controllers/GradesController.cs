@@ -18,6 +18,7 @@ public class GradesController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<IEnumerable<GradeRecordDto>>> GetGrades()
     {
         var grades = await _gradeService.GetAllGradesAsync();
@@ -35,6 +36,7 @@ public class GradesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<GradeRecordDto>> CreateGrade(CreateGradeRecordDto createGradeDto)
     {
         var grade = await _gradeService.CreateGradeAsync(createGradeDto);
@@ -42,6 +44,7 @@ public class GradesController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<GradeRecordDto>> UpdateGrade(Guid id, CreateGradeRecordDto updateGradeDto)
     {
         var grade = await _gradeService.UpdateGradeAsync(id, updateGradeDto);
@@ -52,6 +55,7 @@ public class GradesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Administrator")]
     public async Task<IActionResult> DeleteGrade(Guid id)
     {
         var result = await _gradeService.DeleteGradeAsync(id);
@@ -63,6 +67,7 @@ public class GradesController : ControllerBase
 
     // Enhanced endpoints for filtering
     [HttpGet("student/{studentId:guid}")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<IEnumerable<GradeRecordDto>>> GetGradesByStudent(Guid studentId)
     {
         var grades = await _gradeService.GetGradesByStudentAsync(studentId);
@@ -70,6 +75,7 @@ public class GradesController : ControllerBase
     }
 
     [HttpGet("course/{courseId:guid}")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<IEnumerable<GradeRecordDto>>> GetGradesByCourse(Guid courseId)
     {
         var grades = await _gradeService.GetGradesByCourseAsync(courseId);
