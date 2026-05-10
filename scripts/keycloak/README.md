@@ -10,7 +10,9 @@ This directory contains scripts and assets to bootstrap a new Keycloak instance 
 
 ## Components
 - `bootstrap-keycloak.sh` – Creates realm, roles, application client, and prompts for the first Administrator user (no test users). Designed to run exactly once.
+- `bootstrap-keycloak.ps1` – PowerShell equivalent of bootstrap-keycloak.sh for Windows-first local/dev workflows.
 - `seed-test-users.sh` – Adds development / test users (Administrator, Educator, Member variants) – NOT for production.
+- `seed-test-users.ps1` – PowerShell equivalent of seed-test-users.sh for Windows-first local/dev workflows.
 - `realm-student-registrar.template.json` – Minimal sanitized realm definition used as a baseline. Dynamic values (hostnames, client redirect URIs) are applied by bootstrap script.
 - `add-spa-client.sh` – Adds/updates the public SPA client used by the frontend.
 
@@ -40,6 +42,11 @@ You can also provide the same values via `REDIRECT_URIS` and `WEB_ORIGINS` env v
 ```
 ./scripts/keycloak/bootstrap-keycloak.sh --keycloak-url http://keycloak:8080 \
   --admin-username admin --realm student-registrar
+```
+
+PowerShell:
+```powershell
+./scripts/keycloak/bootstrap-keycloak.ps1 -KeycloakUrl http://localhost:8080 -AdminUsername admin -Realm student-registrar
 ```
 Prompts:
 1. Master (Keycloak) admin password
@@ -84,6 +91,19 @@ After bootstrap (or using an existing dev realm), seed deterministic Keycloak us
 ./scripts/keycloak/seed-test-users.sh --keycloak-url http://localhost:8080 --realm student-registrar
 ```
 Creates deterministic Keycloak users used by automated tests.
+
+PowerShell:
+```powershell
+./scripts/keycloak/seed-test-users.ps1 -KeycloakUrl http://localhost:8080 -Realm student-registrar
+```
+
+Seeded system users:
+- `scoopadmin / ChangeThis123!` → `Administrator`
+- `scoopmember / MemberPass123!` → `Member`
+- `scoopeducator / EducatorPass123!` → `Educator`
+
+WSL note:
+- If Windows hosts the local Keycloak instance and WSL cannot reach `http://localhost:8080`, `seed-test-users.sh` now attempts to resolve the Windows host IP automatically and reuse the same command.
 
 For the browser E2E suite, prefer the testing setup scripts because they create the expected role-specific users (`admin1`, `educator1`, `member1`, and `parenteducator1`). On Windows, the PowerShell script also synchronizes local database rows with live Keycloak user IDs:
 

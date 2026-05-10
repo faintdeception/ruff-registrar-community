@@ -41,6 +41,11 @@ fi
 
 # Get admin token via admin-cli against master realm
 echo "🔑 Getting admin access token..."
+if ! curl -sf --connect-timeout 5 "${KEYCLOAK_URL}/realms/master/.well-known/openid-configuration" -o /dev/null; then
+    echo "❌ Cannot reach Keycloak at ${KEYCLOAK_URL}. Is the Aspire stack running?"
+    exit 1
+fi
+
 TOKEN_RESPONSE=$(curl -s -X POST "${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     --data-urlencode "username=${ADMIN_USER}" \
@@ -48,10 +53,11 @@ TOKEN_RESPONSE=$(curl -s -X POST "${KEYCLOAK_URL}/realms/master/protocol/openid-
     -d "grant_type=password" \
     -d "client_id=admin-cli")
 
-TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token')
+TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty')
 
-if [ "$TOKEN" == "null" ] || [ -z "$TOKEN" ]; then
-    echo "❌ Failed to get admin token. Please check your password and try again."
+if [ -z "$TOKEN" ]; then
+    echo "❌ Failed to get admin token. Check your password and that the '${REALM_NAME}' realm is bootstrapped."
+    echo "Response: $TOKEN_RESPONSE"
     exit 1
 fi
 
@@ -360,7 +366,7 @@ echo "  👤 member1 (MemberPass123!) - Role: Member [TEST ONLY]"
 echo "  👤 parenteducator1 (ParentEducatorPass123!) - Role: Member promoted during parent educator workflow [TEST ONLY]"
 echo ""
 echo "🔧 System admin account (separate from tests):"
-echo "  👨‍💼 scoopadmin (changethis123!) - Role: Administrator [SYSTEM ACCOUNT]"
+echo "  👨‍💼 scoopadmin (ChangeThis123!) - Role: Administrator [SYSTEM ACCOUNT]"
 echo ""
 echo "⚠️  SECURITY NOTE: admin1/educator1/member1 are for E2E testing only!"
 echo "   Use scoopadmin for actual system administration and data seeding."

@@ -89,8 +89,8 @@ Configured in `appsettings.json`:
 {
   "TestCredentials": {
     "AdminUser": {
-      "Username": "scoopadmin",
-      "Password": "changethis123!"
+      "Username": "admin1",
+      "Password": "AdminPass123!"
     },
     "EducatorUser": {
       "Username": "educator1", 

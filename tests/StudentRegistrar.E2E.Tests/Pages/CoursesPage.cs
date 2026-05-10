@@ -125,7 +125,24 @@ public class CoursesPage
     {
         ClickCreateCourse();
         FillCourseForm(name, code, ageGroup, maxCapacity, fee: fee, periodCode: periodCode, description: description);
-        SaveCourse();
+        SaveCourse(waitForClose: false);
+
+        _wait.Until(d =>
+        {
+            if (IsCourseVisible(name) || !IsCreateFormVisible())
+            {
+                return true;
+            }
+
+            var errorMessage = GetErrorMessage();
+            if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                throw new InvalidOperationException($"Course creation failed: {errorMessage}");
+            }
+
+            return false;
+        });
+
         _wait.Until(d => IsCourseVisible(name));
     }
 
@@ -192,6 +209,7 @@ public class CoursesPage
         return _wait.Until(d =>
         {
             var buttons = d.FindElements(By.CssSelector("[data-testid^='course-signup-']"))
+                .Concat(d.FindElements(By.XPath("//button[contains(normalize-space(.), 'Pay & Sign Up') or contains(normalize-space(.), 'Pay and Sign Up') or contains(normalize-space(.), 'Sign Up') or contains(normalize-space(.), 'Join Waitlist')]")))
                 .Where(button => button.Displayed && button.Enabled)
                 .Where(button =>
                 {
@@ -199,6 +217,7 @@ public class CoursesPage
                     return !string.Equals(text, "Signed Up", StringComparison.OrdinalIgnoreCase)
                         && !string.Equals(text, "Add Student", StringComparison.OrdinalIgnoreCase);
                 })
+                .Distinct()
                 .ToList();
 
             foreach (var button in buttons)
@@ -293,9 +312,10 @@ public class CoursesPage
 
         SetInputValue(MaxCapacityInputLocator, maxCapacity.ToString());
 
+        var roomSelect = new SelectElement(WaitForInteractable(RoomSelectLocator));
+
         if (!string.IsNullOrEmpty(room))
         {
-            var roomSelect = new SelectElement(WaitForInteractable(RoomSelectLocator));
             try
             {
                 // Try to select by text that contains the room name
@@ -329,6 +349,15 @@ public class CoursesPage
                     Console.WriteLine($"Room '{room}' not found in dropdown options");
                 }
             }
+        }
+        else
+        {
+            var defaultOption = roomSelect.Options
+                .FirstOrDefault(opt => !string.IsNullOrWhiteSpace(opt.Text) &&
+                                       opt.Text != "Select a room..." &&
+                                       !string.IsNullOrWhiteSpace(opt.GetDomAttribute("value")));
+
+            defaultOption?.Click();
         }
 
         SetInputValue(FeeInputLocator, fee.ToString());

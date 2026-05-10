@@ -83,7 +83,7 @@ The following test users are created by `setup-test-users.sh` and `setup-test-us
 
 | Username        | Password                 | Role     | Purpose                                      |
 |-----------------|--------------------------|----------|----------------------------------------------|
-| scoopadmin      | changethis123!           | Admin    | Full system access (existing)                |
+| scoopadmin      | ChangeThis123!           | Admin    | Full system access (existing)                |
 | admin1          | AdminPass123!            | Admin    | E2E administrator workflows                   |
 | educator1       | EducatorPass123!         | Educator | Teaching + family management                 |
 | member1         | MemberPass123!           | Member   | Stable member-only baseline                  |

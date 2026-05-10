@@ -264,7 +264,7 @@ if [ "$CLIENT_UUID" != "null" ] && [ -n "$CLIENT_UUID" ]; then
     
     # Create scoopadmin user if not exists
     SCOOPADMIN_USERNAME="scoopadmin"
-    SCOOPADMIN_PASSWORD="changethis123!"
+    SCOOPADMIN_PASSWORD="ChangeThis123!"
 
     # Check if user exists
     USER_EXISTS=$(curl -s -X GET "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/users?username=${SCOOPADMIN_USERNAME}" \
@@ -341,7 +341,7 @@ if [ "$CLIENT_UUID" != "null" ] && [ -n "$CLIENT_UUID" ]; then
     
     # Create scoopmember user
     SCOOPMEMBER_USERNAME="scoopmember"
-    SCOOPMEMBER_PASSWORD="changethis123"
+    SCOOPMEMBER_PASSWORD="ChangeThisMember123!"
     
     echo "👤 Checking if user $SCOOPMEMBER_USERNAME exists..."
     MEMBER_USER_EXISTS=$(curl -s -X GET "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/users?username=${SCOOPMEMBER_USERNAME}" \
@@ -418,7 +418,7 @@ if [ "$CLIENT_UUID" != "null" ] && [ -n "$CLIENT_UUID" ]; then
     
     # Create scoopinstructor user
     SCOOPINSTRUCTOR_USERNAME="scoopinstructor"
-    SCOOPINSTRUCTOR_PASSWORD="changethis123"
+    SCOOPINSTRUCTOR_PASSWORD="ChangeThisInstructor123!"
     
     echo "👤 Checking if user $SCOOPINSTRUCTOR_USERNAME exists..."
     INSTRUCTOR_USER_EXISTS=$(curl -s -X GET "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/users?username=${SCOOPINSTRUCTOR_USERNAME}" \

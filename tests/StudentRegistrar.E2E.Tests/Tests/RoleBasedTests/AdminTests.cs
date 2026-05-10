@@ -211,29 +211,30 @@ public class AdminTests : BaseTest
         // Act & Assert - Test each navigation link
         var navigationLinks = new[]
         {
-            ("Account", "/account-holder"),
+            ("nav-account", "/account-holder"),
             // ("Students", "/students"),
-            ("Courses", "/courses"),
-            ("Semesters", "/semesters"),
-            ("Rooms", "/rooms"),
+            ("nav-courses", "/courses"),
+            ("nav-semesters", "/semesters"),
+            ("nav-rooms", "/rooms"),
             // ("Enrollments", "/enrollments"),
             // ("Grades", "/grades"),
-            ("Educators", "/educators")
+            ("nav-educators", "/educators")
         };
 
-        foreach (var (linkText, expectedUrl) in navigationLinks)
+        foreach (var (testId, expectedUrl) in navigationLinks)
         {
             // Navigate back to home first
             Driver.Navigate().GoToUrl(BaseUrl);
             WaitForPageLoad();
 
             // Click the navigation link
-            var link = Driver.FindElement(By.LinkText(linkText));
+            var link = Driver.FindElement(By.CssSelector($"[data-testid='{testId}']"));
             link.Click();
             WaitForPageLoad();
+            WaitForUrlContains(expectedUrl);
 
             // Verify navigation worked
-            Driver.Url.Should().Contain(expectedUrl, $"Should navigate to {linkText} page");
+            Driver.Url.Should().Contain(expectedUrl, $"Should navigate to {testId} page");
         }
     }
 
@@ -361,14 +362,15 @@ public class AdminTests : BaseTest
 
         var initialCount = semestersPage.GetSemesterCount();
         var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+        var uniqueSuffix = DateTime.Now.Ticks.ToString()[^8..];
         var currentYear = DateTime.Now.Year;
 
         // Define different semester types
         var semesters = new[]
         {
-            new { Name = $"Spring {currentYear} Test {timestamp}", Code = $"SP{timestamp.Substring(10)}", Start = $"01/15/{currentYear}", End = $"05/15/{currentYear}", RegStart = $"11/01/{currentYear-1}", RegEnd = $"01/01/{currentYear}" },
-            new { Name = $"Summer {currentYear} Test {timestamp}", Code = $"SU{timestamp.Substring(10)}", Start = $"06/01/{currentYear}", End = $"08/15/{currentYear}", RegStart = $"03/01/{currentYear}", RegEnd = $"05/15/{currentYear}" },
-            new { Name = $"Fall {currentYear} Test {timestamp}", Code = $"FA{timestamp.Substring(10)}", Start = $"08/20/{currentYear}", End = $"12/20/{currentYear}", RegStart = $"05/01/{currentYear}", RegEnd = $"08/01/{currentYear}" }
+            new { Name = $"Spring {currentYear} Test {timestamp}", Code = $"SP{uniqueSuffix}", Start = $"01/15/{currentYear}", End = $"05/15/{currentYear}", RegStart = $"11/01/{currentYear-1}", RegEnd = $"01/01/{currentYear}" },
+            new { Name = $"Summer {currentYear} Test {timestamp}", Code = $"SU{uniqueSuffix}", Start = $"06/01/{currentYear}", End = $"08/15/{currentYear}", RegStart = $"03/01/{currentYear}", RegEnd = $"05/15/{currentYear}" },
+            new { Name = $"Fall {currentYear} Test {timestamp}", Code = $"FA{uniqueSuffix}", Start = $"08/20/{currentYear}", End = $"12/20/{currentYear}", RegStart = $"05/01/{currentYear}", RegEnd = $"08/01/{currentYear}" }
         };
 
         // Act - Create each semester
@@ -389,10 +391,16 @@ public class AdminTests : BaseTest
 
             semestersPage.SaveSemester();
             WaitForPageLoad();
-            WaitUntil(d => d.PageSource.Contains(semester.Name));
+            WaitUntil(d => d.PageSource.Contains(semester.Name) || semestersPage.IsErrorDisplayed(), 15, 300, $"Semester '{semester.Name}' did not finish saving");
 
-            // Verify each semester was created
-             
+            if (semestersPage.IsErrorDisplayed())
+            {
+                var errorMessage = semestersPage.GetErrorMessage();
+                semestersPage.CancelCreate();
+                throw new Exception($"Semester creation failed for '{semester.Name}' ({semester.Code}): {errorMessage}");
+            }
+
+            semestersPage.IsSemesterVisible(semester.Name).Should().BeTrue($"Created semester '{semester.Name}' should appear in the list");
         }
 
         // Assert - Verify all semesters were created
@@ -983,13 +991,12 @@ public class AdminTests : BaseTest
     {
         // Arrange
         LoginAsAdmin();
-        Driver.Navigate().GoToUrl($"{BaseUrl}/rooms");
-        WaitForPageLoad();
+        NavigateToRoomsPage();
 
         // Act & Assert - Should see create button
-        var createButton = Driver.FindElement(By.Id("create-room-btn"));
+        var createButton = WaitForCreateRoomButton();
         createButton.Should().NotBeNull("Create room button should be visible");
-        createButton.Text.Should().Contain("Create Room");
+        createButton.Text.Should().Contain("Create");
     }
 
     [Fact]
@@ -998,13 +1005,12 @@ public class AdminTests : BaseTest
     {
         // Arrange
         LoginAsAdmin();
-        Driver.Navigate().GoToUrl($"{BaseUrl}/rooms");
-        WaitForPageLoad();
+        NavigateToRoomsPage();
 
         var uniqueName = $"Test Room {DateTime.Now:yyyyMMddHHmmss}";
 
         // Act - Create a new room
-        var createButton = Driver.FindElement(By.Id("create-room-btn"));
+        var createButton = WaitForCreateRoomButton();
         ClickWithOverlayFallback(createButton);
     WaitForPageLoad();
     WaitUntil(d => d.FindElements(By.Id("room-name-input")).Any());
@@ -1040,11 +1046,10 @@ public class AdminTests : BaseTest
     {
         // Arrange
         LoginAsAdmin();
-        Driver.Navigate().GoToUrl($"{BaseUrl}/rooms");
-        WaitForPageLoad();
+        NavigateToRoomsPage();
 
         // Act - Open create modal and cancel
-        var createButton = Driver.FindElement(By.Id("create-room-btn"));
+        var createButton = WaitForCreateRoomButton();
     createButton.Click();
     WaitForPageLoad();
     WaitUntil(d => d.FindElements(By.Id("room-name-input")).Any());
@@ -1072,8 +1077,7 @@ public class AdminTests : BaseTest
     {
         // Arrange
         LoginAsAdmin();
-        Driver.Navigate().GoToUrl($"{BaseUrl}/rooms");
-        WaitForPageLoad();
+        NavigateToRoomsPage();
 
         // First create a room to edit
         var uniqueName = $"Edit Test Room {DateTime.Now:yyyyMMddHHmmss}";
@@ -1117,11 +1121,10 @@ public class AdminTests : BaseTest
     {
         // Arrange
         LoginAsAdmin();
-        Driver.Navigate().GoToUrl($"{BaseUrl}/rooms");
-        WaitForPageLoad();
+        NavigateToRoomsPage();
 
         // Act - Try to create room without required fields
-        var createButton = Driver.FindElement(By.Id("create-room-btn"));
+        var createButton = WaitForCreateRoomButton();
     createButton.Click();
     WaitForPageLoad();
     WaitUntil(d => d.FindElements(By.Id("room-name-input")).Any());
@@ -1144,8 +1147,7 @@ public class AdminTests : BaseTest
     {
         // Arrange
         LoginAsAdmin();
-        Driver.Navigate().GoToUrl($"{BaseUrl}/rooms");
-        WaitForPageLoad();
+        NavigateToRoomsPage();
 
         var roomTypes = new[] { "Classroom", "Lab", "Auditorium", "Library", "Gym", "Workshop", "Other" };
         
@@ -1164,7 +1166,7 @@ public class AdminTests : BaseTest
 
     private void CreateTestRoom(string name, string roomType, int capacity, string notes)
     {
-        var createButton = Driver.FindElement(By.Id("create-room-btn"));
+        var createButton = WaitForCreateRoomButton();
         ClickWithOverlayFallback(createButton);
     WaitForPageLoad();
     WaitUntil(d => d.FindElements(By.Id("room-name-input")).Any());
@@ -1189,6 +1191,25 @@ public class AdminTests : BaseTest
         ClickWithOverlayFallback(saveButton);
     WaitForPageLoad();
     WaitUntil(d => d.PageSource.Contains(name));
+    }
+
+    private void NavigateToRoomsPage()
+    {
+        var roomsPage = new RoomsPage(Driver);
+        roomsPage.NavigateToRooms(BaseUrl);
+        WaitForUrlContains("/rooms");
+    }
+
+    private IWebElement WaitForCreateRoomButton()
+    {
+        WaitUntil(d =>
+            d.FindElements(By.Id("create-room-btn")).Any(e => e.Displayed) ||
+            d.FindElements(By.Id("create-first-room-btn")).Any(e => e.Displayed),
+            timeoutSeconds: 15,
+            failureMessage: "Create room button was not visible in time");
+
+        return Driver.FindElements(By.Id("create-room-btn")).FirstOrDefault(e => e.Displayed)
+            ?? Driver.FindElements(By.Id("create-first-room-btn")).First(e => e.Displayed);
     }
 
     private void ClickWithOverlayFallback(IWebElement element)

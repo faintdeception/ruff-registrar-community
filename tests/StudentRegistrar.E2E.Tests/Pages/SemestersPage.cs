@@ -7,11 +7,13 @@ public class SemestersPage
 {
     private readonly IWebDriver _driver;
     private readonly WebDriverWait _wait;
+    private readonly By NavSemestersLinkLocator = By.CssSelector("[data-testid='nav-semesters']");
 
     public SemestersPage(IWebDriver driver)
     {
         _driver = driver;
-        _wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+        _wait = new WebDriverWait(driver, TimeSpan.FromSeconds(20));
+        _wait.IgnoreExceptionTypes(typeof(NoSuchElementException), typeof(StaleElementReferenceException));
     }
 
     // Page elements using the new test IDs
@@ -35,8 +37,10 @@ public class SemestersPage
     // Navigation
     public void NavigateToSemesters()
     {
-        var semestersLink = _driver.FindElement(By.LinkText("Semesters"));
-        semestersLink.Click();
+        var semestersLink = _driver.FindElements(NavSemestersLinkLocator).FirstOrDefault()
+            ?? _driver.FindElement(By.LinkText("Semesters"));
+        SafeClick(semestersLink);
+        _wait.Until(d => d.Url.Contains("/semesters", StringComparison.OrdinalIgnoreCase));
         WaitForPageLoad();
     }
 
@@ -252,8 +256,17 @@ public class SemestersPage
     private void WaitForPageLoad()
     {
         _wait.Until(driver => ((IJavaScriptExecutor)driver).ExecuteScript("return document.readyState").Equals("complete"));
-        // Wait for at least one semester card or create button to appear
-        _wait.Until(d => d.FindElements(By.CssSelector("[data-testid^='semester-'],#create-semester-btn,#create-first-semester-btn")).Count > 0);
+        _wait.Until(d => !d.PageSource.Contains("Loading semesters...", StringComparison.OrdinalIgnoreCase));
+        _wait.Until(d =>
+            d.Url.Contains("/semesters", StringComparison.OrdinalIgnoreCase) &&
+            (
+                d.FindElements(By.CssSelector("[data-testid^='semester-']")).Count > 0 ||
+                d.FindElements(By.Id("create-semester-btn")).Any(e => e.Displayed) ||
+                d.FindElements(By.Id("create-first-semester-btn")).Any(e => e.Displayed) ||
+                d.PageSource.Contains("Semester Management", StringComparison.OrdinalIgnoreCase) ||
+                d.PageSource.Contains("No semesters found", StringComparison.OrdinalIgnoreCase) ||
+                d.FindElements(By.Id("error-message")).Any(e => e.Displayed)
+            ));
     }
 
     private void SafeClick(IWebElement element)

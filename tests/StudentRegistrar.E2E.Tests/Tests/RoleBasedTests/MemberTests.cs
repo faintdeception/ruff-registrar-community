@@ -41,6 +41,7 @@ public class MemberTests : BaseTest
         var navigationPage = new NavigationPage(Driver);
         navigationPage.ClickAccount();
         WaitForPageLoad();
+        WaitForUrlContains("/account");
 
         // Assert - Should access family management
         Driver.Url.Should().Contain("/account", "Should navigate to account page");
@@ -57,6 +58,7 @@ public class MemberTests : BaseTest
         var navigationPage = new NavigationPage(Driver);
         navigationPage.ClickCourses();
         WaitForPageLoad();
+        WaitForUrlContains("/courses");
 
         // Assert - Should view available courses
         Driver.Url.Should().Contain("/courses", "Should navigate to courses page");
@@ -66,9 +68,42 @@ public class MemberTests : BaseTest
     [Fact]
     public void Member_Should_Add_Student_And_Enroll_In_Course()
     {
+        var uniqueSuffix = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+        var semesterName = $"Member Signup Semester {uniqueSuffix}";
+        var semesterCode = $"MS{uniqueSuffix[^6..]}";
+        var courseName = $"Member Signup Course {uniqueSuffix}";
+
+        LoginAsAdmin();
+
+        var semestersPage = new SemestersPage(Driver);
+        semestersPage.NavigateToSemesters();
+        semestersPage.ClickCreateSemester();
+        semestersPage.FillSemesterForm(
+            name: semesterName,
+            code: semesterCode,
+            startDate: new DateTime(2029, 8, 20),
+            endDate: new DateTime(2029, 12, 15),
+            regStartDate: new DateTime(2029, 6, 15),
+            regEndDate: new DateTime(2029, 8, 10),
+            isActive: true);
+        semestersPage.SaveSemester();
+        WaitUntil(_ => semestersPage.IsSemesterVisible(semesterName), 15, 300, $"Semester '{semesterName}' was not visible after creation.");
+
+        var coursesPage = new CoursesPage(Driver);
+        coursesPage.NavigateToCourses(BaseUrl);
+        coursesPage.SelectSemester(semesterName);
+        coursesPage.CreateCourse(
+            courseName,
+            $"MSC{uniqueSuffix[^4..]}",
+            "All Ages",
+            12,
+            45.00m,
+            "MW 10:00",
+            "Deterministic member enrollment course.");
+
+        Logout();
         LoginAsMember();
 
-        var uniqueSuffix = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
         var studentFirstName = $"Mvp{uniqueSuffix}";
         var studentLastName = "Student";
         var studentFullName = $"{studentFirstName} {studentLastName}";
@@ -76,6 +111,7 @@ public class MemberTests : BaseTest
         var navigationPage = new NavigationPage(Driver);
         navigationPage.ClickAccount();
         WaitForPageLoad();
+        WaitForUrlContains("/account");
 
         var accountHolderPage = new AccountHolderPage(Driver);
         accountHolderPage.AddStudent(studentFirstName, studentLastName, "4");
@@ -83,13 +119,14 @@ public class MemberTests : BaseTest
 
         navigationPage.ClickCourses();
         WaitForPageLoad();
+        WaitForUrlContains("/courses");
 
-        var coursesPage = new CoursesPage(Driver);
-        var courseName = coursesPage.GetFirstAvailableSignupCourseName();
+        coursesPage.SelectSemester(semesterName);
         coursesPage.SignUpStudentForCourse(courseName, studentFullName);
 
         navigationPage.ClickAccount();
         WaitForPageLoad();
+        WaitForUrlContains("/account");
         WaitUntil(_ => accountHolderPage.IsEnrollmentVisible(courseName), timeoutSeconds: 15, failureMessage: $"Enrollment for course '{courseName}' was not visible on the member account page");
 
         accountHolderPage.IsEnrollmentVisible(courseName).Should().BeTrue("The newly enrolled course should appear for the member's student");
@@ -167,11 +204,13 @@ public class MemberTests : BaseTest
         // 1. Family Management
         navigationPage.ClickAccount();
         WaitForPageLoad();
+        WaitForUrlContains("/account");
         Driver.Url.Should().Contain("/account", "Should navigate to account page");
         
         // 2. Course Browsing
         navigationPage.ClickCourses();
         WaitForPageLoad();
+        WaitForUrlContains("/courses");
         Driver.Url.Should().Contain("/courses", "Should navigate to courses page");
         
         // 3. Enrollment Management (for children)
@@ -187,6 +226,7 @@ public class MemberTests : BaseTest
         // 5. Educator Contact/Viewing
         navigationPage.ClickEducators();
         WaitForPageLoad();
+        WaitForUrlContains("/educators");
         Driver.Url.Should().Contain("/educators", "Should navigate to educators page");
 
         // Verify NO access to admin features using robust navigation page
@@ -235,6 +275,33 @@ public class MemberTests : BaseTest
 
     var homePage = new HomePage(Driver);
     homePage.IsLoggedIn().Should().BeTrue("Member login should succeed");
+    }
+
+    private void LoginAsAdmin()
+    {
+        NavigateToHome();
+        WaitForPageLoad();
+        WaitForUrlContains("/login");
+
+        var loginPage = new LoginPage(Driver);
+        var username = Configuration["TestCredentials:AdminUser:Username"] ?? "admin1";
+        var password = Configuration["TestCredentials:AdminUser:Password"] ?? "AdminPass123!";
+
+        loginPage.Login(username, password);
+        WaitForPageLoad();
+        WaitForUrlContains("/");
+
+        var homePage = new HomePage(Driver);
+        homePage.IsLoggedIn().Should().BeTrue("Admin login should succeed for member workflow setup");
+    }
+
+    private void Logout()
+    {
+        var homePage = new HomePage(Driver);
+        homePage.HasLogoutButton().Should().BeTrue("Logout requires an authenticated session");
+        homePage.ClickLogout();
+        WaitForPageLoad();
+        WaitForUrlContains("/login");
     }
 
     private void VerifyCanAccessPage(string linkText, string expectedUrlPart)

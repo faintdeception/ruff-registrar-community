@@ -64,7 +64,7 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         navigationPage.ClickSettingsButton();
         WaitForPageLoad();
         navigationPage.ClickSettingsMenuItem("profile");
-        WaitForPageLoad();
+        WaitForUrlContains("/settings/profile");
 
         // Assert - Should be on profile settings page
         Driver.Url.Should().Contain("/settings/profile", 
@@ -88,7 +88,7 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         navigationPage.ClickSettingsButton();
         WaitForPageLoad();
         navigationPage.ClickSettingsMenuItem("manage-members");
-        WaitForPageLoad();
+        WaitForUrlContains("/settings/manage-members");
 
         // Assert - Should be on manage members page
         Driver.Url.Should().Contain("/settings/manage-members", 
@@ -112,7 +112,7 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         navigationPage.ClickSettingsButton();
         WaitForPageLoad();
         navigationPage.ClickSettingsMenuItem("system");
-        WaitForPageLoad();
+        WaitForUrlContains("/settings/system");
 
         // Assert - Should be on system settings page
         Driver.Url.Should().Contain("/settings/system", 
@@ -179,7 +179,7 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         navigationPage.ClickSettingsButton();
         WaitForPageLoad();
         navigationPage.ClickSettingsMenuItem("profile");
-        WaitForPageLoad();
+        WaitForUrlContains("/settings/profile");
 
         // Assert - Should be on profile settings page
         Driver.Url.Should().Contain("/settings/profile", 
@@ -312,7 +312,7 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         navigationPage.ClickSettingsButton();
         WaitForPageLoad();
         navigationPage.ClickSettingsMenuItem("profile");
-        WaitForPageLoad();
+        WaitForUrlContains("/settings/profile");
 
         // Assert - Should be on profile settings page
         Driver.Url.Should().Contain("/settings/profile", 

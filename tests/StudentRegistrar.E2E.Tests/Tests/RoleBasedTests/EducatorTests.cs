@@ -57,6 +57,7 @@ public class EducatorTests : BaseTest
         var navigationPage = new NavigationPage(Driver);
         navigationPage.ClickCourses();
         WaitForPageLoad();
+        WaitForUrlContains("/courses");
 
         // Assert - Should access courses (to create/manage their own)
         Driver.Url.Should().Contain("/courses", "Should navigate to courses page");
@@ -124,11 +125,13 @@ public class EducatorTests : BaseTest
         // 1. Family Management
         navigationPage.ClickAccount();
         WaitForPageLoad();
+        WaitForUrlContains("/account");
         Driver.Url.Should().Contain("/account", "Should navigate to account page");
         
         // 2. Course Management (create own courses)
         navigationPage.ClickCourses();
         WaitForPageLoad();
+        WaitForUrlContains("/courses");
         Driver.Url.Should().Contain("/courses", "Should navigate to courses page");
         
         // 3. Enrollment Management (own courses + children)
@@ -144,6 +147,7 @@ public class EducatorTests : BaseTest
         // 5. Educator Section
         navigationPage.ClickEducators();
         WaitForPageLoad();
+        WaitForUrlContains("/educators");
         Driver.Url.Should().Contain("/educators", "Should navigate to educators page");
 
         // Final verification - ensure proper role context

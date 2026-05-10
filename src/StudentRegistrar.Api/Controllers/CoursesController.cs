@@ -47,7 +47,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Administrator")]
+    [Authorize(Roles = "Administrator,Educator")]
     public async Task<ActionResult<CourseDto>> CreateCourse(CreateCourseDto createCourseDto)
     {
         var course = await _courseService.CreateCourseAsync(createCourseDto);

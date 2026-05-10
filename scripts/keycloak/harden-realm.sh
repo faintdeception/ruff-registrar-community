@@ -154,7 +154,6 @@ else
     "${KEYCLOAK_URL}/admin/realms/${REALM}/clients/${SPA_UUID}")
 
   PKCE_METHOD=$(echo "$SPA_CLIENT" | jq -r '.attributes["pkce.code.challenge.method"] // "NOT SET"')
-
   if [[ "$PKCE_METHOD" == "S256" ]]; then
     echo "✅ PKCE S256 already enforced on SPA client"
   else

@@ -200,7 +200,7 @@ if (builder.ExecutionContext.IsRunMode)
 
     // Configure the frontend to use Keycloak directly (matches frontend auth implementation)
     frontendDev
-        .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_URL", "http://localhost:8080")
+        .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_URL", keycloak.GetEndpoint("http"))
         .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_REALM", keycloakRealm)
         .WithEnvironment("NEXT_PUBLIC_KEYCLOAK_CLIENT_ID", keycloakPublicClientId);
 }

@@ -30,6 +30,14 @@ public class LoginTests : BaseTest
         // Arrange
         NavigateToHome();
         WaitForPageLoad();
+
+        var homePage = new HomePage(Driver);
+        if (homePage.HasLogoutButton())
+        {
+            homePage.ClickLogout();
+            WaitForPageLoad();
+            WaitForUrlContains("/login");
+        }
         
         var loginPage = new LoginPage(Driver);
         loginPage.IsOnLoginPage().Should().BeTrue("Should be on login page");
