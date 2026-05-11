@@ -19,7 +19,7 @@ public class Semester : ITenantEntity
     public string Name { get; set; } = string.Empty;
     
     [MaxLength(50)]
-    public string Code { get; set; } = string.Empty;
+    public string? Code { get; set; }
     
     [Required]
     public DateTime StartDate { get; set; }
@@ -27,8 +27,8 @@ public class Semester : ITenantEntity
     [Required]
     public DateTime EndDate { get; set; }
     
-    public DateTime RegistrationStartDate { get; set; }
-    public DateTime RegistrationEndDate { get; set; }
+    public DateTime? RegistrationStartDate { get; set; }
+    public DateTime? RegistrationEndDate { get; set; }
     
     public bool IsActive { get; set; } = true;
     
@@ -46,8 +46,10 @@ public class Semester : ITenantEntity
     // Computed Properties
     [NotMapped]
     public bool IsRegistrationOpen => 
-        RegistrationStartDate <= DateTime.UtcNow && 
-        RegistrationEndDate > DateTime.UtcNow;
+        RegistrationStartDate.HasValue &&
+        RegistrationEndDate.HasValue &&
+        RegistrationStartDate.Value <= DateTime.UtcNow && 
+        RegistrationEndDate.Value > DateTime.UtcNow;
     
     // Helper methods for JSON fields
     public PeriodConfiguration GetPeriodConfiguration()

@@ -146,11 +146,11 @@ public class StudentRegistrarDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.TenantId).IsRequired();
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Code).HasMaxLength(50);
+            entity.Property(e => e.Code).HasMaxLength(50).IsRequired(false);
             entity.Property(e => e.StartDate).IsRequired();
             entity.Property(e => e.EndDate).IsRequired();
-            entity.Property(e => e.RegistrationStartDate).IsRequired();
-            entity.Property(e => e.RegistrationEndDate).IsRequired();
+            entity.Property(e => e.RegistrationStartDate).IsRequired(false);
+            entity.Property(e => e.RegistrationEndDate).IsRequired(false);
             entity.Property(e => e.PeriodConfigJson).HasColumnType("jsonb");
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();

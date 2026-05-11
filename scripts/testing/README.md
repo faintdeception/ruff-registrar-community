@@ -9,6 +9,7 @@ scripts/testing/
 ├── run-e2e-tests.sh       # 🎯 Main E2E testing script (recommended)
 ├── setup-test-users.sh    # 👥 Creates test users in Keycloak
 ├── setup-test-users.ps1   # 👥 Windows/PowerShell test user setup
+├── verify-api-migrations.ps1 # 🧪 Standalone API migration verification
 ├── test-e2e-only.sh       # 🔧 Simple E2E test runner
 ├── seed-database.sh       # 🌱 Seeds database with test data
 └── Dockerfile             # 🐳 Docker container for E2E tests
@@ -60,6 +61,16 @@ Remove-Item Env:SeleniumSettings__Headless
 # Windows/PowerShell: create or reset test users directly
 ./scripts/testing/setup-test-users.ps1 -KeycloakUrl http://localhost:8080 -AdminPassword 'admin123!'
 ```
+
+### Verify API Migrations Without Launch Profile
+```powershell
+./scripts/testing/verify-api-migrations.ps1 `
+   -StudentRegistrarConnectionString 'Host=127.0.0.1;Port=59432;Database=studentregistrar_migrationverify;Username=postgres;Password=postgres123' `
+   -KeycloakUrl 'http://127.0.0.1:59454' `
+   -KeycloakAuthority 'http://127.0.0.1:59454'
+```
+
+This PowerShell helper starts the API with `--no-launch-profile`, forces an isolated `BaseOutputPath`, waits for successful startup, and then stops the process. Use it when you want to prove that automatic EF migrations still apply cleanly on a fresh database without colliding with an already-running local stack.
 
 ## 📋 Prerequisites
 
@@ -154,6 +165,20 @@ Tests are organized by user roles to reflect real-world usage:
 
 When `-KeycloakUrl` is omitted, the PowerShell script tries `http://localhost:8080` first and then falls back to the mapped Aspire Keycloak Docker port when available.
 When `-DbContainer` is omitted, it auto-detects the mapped Aspire PostgreSQL container. Use `-SkipDatabaseSync` to update only Keycloak.
+
+### `verify-api-migrations.ps1`
+**Purpose**: Verifies standalone API startup and automatic EF migration application against an explicit connection string.
+**Features**:
+- Starts the API with `--no-launch-profile` so launch-settings HTTPS bindings do not interfere
+- Uses an isolated `BaseOutputPath` so a running local API does not lock build outputs
+- Accepts explicit Keycloak and PostgreSQL endpoints for fresh-database checks
+- Stops the temporary API process automatically once startup is confirmed
+
+```powershell
+./scripts/testing/verify-api-migrations.ps1 `
+   -StudentRegistrarConnectionString 'Host=127.0.0.1;Port=59432;Database=studentregistrar_migrationverify;Username=postgres;Password=postgres123' `
+   -KeycloakUrl 'http://127.0.0.1:59454'
+```
 
 ### `test-e2e-only.sh`
 **Purpose**: Simple E2E test runner (assumes app is running)

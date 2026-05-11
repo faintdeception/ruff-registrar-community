@@ -16,11 +16,11 @@ import {
 interface Semester {
   id: string;
   name: string;
-  code: string;
+  code: string | null;
   startDate: string;
   endDate: string;
-  registrationStartDate: string;
-  registrationEndDate: string;
+  registrationStartDate: string | null;
+  registrationEndDate: string | null;
   isActive: boolean;
   courseCount: number;
   createdAt: string;
@@ -112,8 +112,8 @@ export default function SemestersPage() {
       code: semester.code || '',
       startDate: semester.startDate.split('T')[0],
       endDate: semester.endDate.split('T')[0],
-      registrationStartDate: semester.registrationStartDate.split('T')[0],
-      registrationEndDate: semester.registrationEndDate.split('T')[0],
+      registrationStartDate: splitDateOrEmpty(semester.registrationStartDate),
+      registrationEndDate: splitDateOrEmpty(semester.registrationEndDate),
       isActive: semester.isActive
     });
     setEditingSemester(semester);
@@ -135,25 +135,34 @@ export default function SemestersPage() {
       // Validate dates
       const startDate = new Date(formData.startDate);
       const endDate = new Date(formData.endDate);
-      const regStartDate = new Date(formData.registrationStartDate);
-      const regEndDate = new Date(formData.registrationEndDate);
+      const regStartDate = parseOptionalDate(formData.registrationStartDate);
+      const regEndDate = parseOptionalDate(formData.registrationEndDate);
 
       if (endDate <= startDate) {
         throw new Error('End date must be after start date');
       }
-      if (regEndDate <= regStartDate) {
+      if ((regStartDate && !regEndDate) || (!regStartDate && regEndDate)) {
+        throw new Error('Registration start and end dates must both be provided or both be left blank');
+      }
+      if (regStartDate && regEndDate && regEndDate <= regStartDate) {
         throw new Error('Registration end date must be after registration start date');
       }
-      if (regStartDate > startDate) {
+      if (regStartDate && regStartDate > startDate) {
         throw new Error('Registration should start before or on the semester start date');
       }
 
       const submitData = {
-        ...formData,
+        name: formData.name,
+        code: normalizeOptionalText(formData.code),
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
-        registrationStartDate: regStartDate.toISOString(),
-        registrationEndDate: regEndDate.toISOString()
+        isActive: formData.isActive,
+        ...(regStartDate && regEndDate
+          ? {
+              registrationStartDate: regStartDate.toISOString(),
+              registrationEndDate: regEndDate.toISOString()
+            }
+          : {})
       };
 
       let response;
@@ -182,22 +191,39 @@ export default function SemestersPage() {
     }
   };
 
-  const handleDelete = async (semesterId: string, semesterName: string) => {
-    if (!confirm(`Are you sure you want to delete the semester "${semesterName}"? This action cannot be undone.`)) {
+  const handleArchive = async (semester: Semester) => {
+    if (!confirm(`Archive the semester "${semester.name}"? It will remain available for historical records, but it will no longer be active.`)) {
       return;
     }
 
     try {
-      const response = await apiClient.delete(`/api/semesters/${semesterId}`);
+      const response = await apiClient.put(`/api/semesters/${semester.id}`, {
+        name: semester.name,
+        code: normalizeOptionalText(semester.code),
+        startDate: semester.startDate,
+        endDate: semester.endDate,
+        isActive: false,
+        ...(semester.registrationStartDate && semester.registrationEndDate
+          ? {
+              registrationStartDate: semester.registrationStartDate,
+              registrationEndDate: semester.registrationEndDate
+            }
+          : {})
+      });
 
       if (!response.ok) {
-        throw new Error('Failed to delete semester');
+        const errorPayload = await readApiError(response);
+        const details = [errorPayload.message, errorPayload.debug]
+          .filter((value): value is string => Boolean(value && value.trim()))
+          .join(' | ');
+
+        throw new Error(details || 'Failed to archive semester');
       }
 
       await fetchSemesters();
-    } catch (err) {
-      setError('Failed to delete semester');
-      console.error('Error deleting semester:', err);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to archive semester');
+      console.error('Error archiving semester:', err);
     }
   };
 
@@ -209,21 +235,35 @@ export default function SemestersPage() {
     });
   };
 
+  const formatOptionalDateRange = (startDate: string | null, endDate: string | null) => {
+    if (!startDate || !endDate) {
+      return 'Not set';
+    }
+
+    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+  };
+
   const getSemesterStatus = (semester: Semester) => {
+    if (!semester.isActive) {
+      return { status: 'archived', label: 'Archived', color: 'bg-gray-100 text-gray-800' };
+    }
+
     const now = new Date();
     const startDate = new Date(semester.startDate);
     const endDate = new Date(semester.endDate);
-    const regStartDate = new Date(semester.registrationStartDate);
-    const regEndDate = new Date(semester.registrationEndDate);
+    const regStartDate = parseOptionalDate(semester.registrationStartDate);
+    const regEndDate = parseOptionalDate(semester.registrationEndDate);
 
-    if (now < regStartDate) {
+    if (regStartDate && regEndDate && now < regStartDate) {
       return { status: 'upcoming', label: 'Upcoming', color: 'bg-blue-100 text-blue-800' };
-    } else if (now >= regStartDate && now <= regEndDate) {
+    } else if (regStartDate && regEndDate && now >= regStartDate && now <= regEndDate) {
       return { status: 'registration', label: 'Registration Open', color: 'bg-green-100 text-green-800' };
-    } else if (now > regEndDate && now < startDate) {
+    } else if (regStartDate && regEndDate && now > regEndDate && now < startDate) {
       return { status: 'pre-semester', label: 'Registration Closed', color: 'bg-yellow-100 text-yellow-800' };
     } else if (now >= startDate && now <= endDate) {
       return { status: 'active', label: 'Active', color: 'bg-green-100 text-green-800' };
+    } else if (now < startDate) {
+      return { status: 'upcoming', label: 'Upcoming', color: 'bg-blue-100 text-blue-800' };
     } else {
       return { status: 'completed', label: 'Completed', color: 'bg-gray-100 text-gray-800' };
     }
@@ -347,8 +387,9 @@ export default function SemestersPage() {
                           </button>
                           <button
                             id={`delete-semester-${semester.id}`}
-                            onClick={() => handleDelete(semester.id, semester.name)}
+                            onClick={() => handleArchive(semester)}
                             className="text-gray-400 hover:text-red-600"
+                            title="Archive semester"
                           >
                             <TrashIcon className="h-5 w-5" />
                           </button>
@@ -373,7 +414,7 @@ export default function SemestersPage() {
                             <span className="font-medium">Registration Period</span>
                           </div>
                           <p className="text-sm text-gray-900 ml-6">
-                            {formatDate(semester.registrationStartDate)} - {formatDate(semester.registrationEndDate)}
+                            {formatOptionalDateRange(semester.registrationStartDate, semester.registrationEndDate)}
                           </p>
                         </div>
                       </div>
@@ -470,12 +511,11 @@ export default function SemestersPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Registration Start *
+                        Registration Start
                       </label>
                       <input
                         id="semester-reg-start-date-input"
                         type="date"
-                        required
                         value={formData.registrationStartDate}
                         onChange={(e) => setFormData({ ...formData, registrationStartDate: e.target.value })}
                         className="form-input"
@@ -484,12 +524,11 @@ export default function SemestersPage() {
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Registration End *
+                        Registration End
                       </label>
                       <input
                         id="semester-reg-end-date-input"
                         type="date"
-                        required
                         value={formData.registrationEndDate}
                         onChange={(e) => setFormData({ ...formData, registrationEndDate: e.target.value })}
                         className="form-input"
@@ -574,4 +613,21 @@ async function readApiError(response: Response): Promise<ApiErrorResponse> {
       message: `Backend error: ${response.status} ${response.statusText}`
     };
   }
+}
+
+function normalizeOptionalText(value: string | null | undefined): string | null {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+}
+
+function parseOptionalDate(value: string | null | undefined): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  return new Date(value);
+}
+
+function splitDateOrEmpty(value: string | null | undefined): string {
+  return value ? value.split('T')[0] : '';
 }

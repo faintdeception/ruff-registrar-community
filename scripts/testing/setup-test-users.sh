@@ -2,8 +2,7 @@
 
 # Setup Test Users for E2E Testing
 # This script creates the required test users in Keycloak for role-based E2E testing
-# Run this AFTER the Keycloak realm has been bootstrapped (setup-keycloak.sh for local dev,
-# or bootstrap-keycloak.sh + harden-realm.sh for cloud environments)
+# Run this AFTER setup-keycloak.sh has been executed
 
 set -e
 
@@ -15,7 +14,7 @@ KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8080}"
 ADMIN_USER="${KEYCLOAK_ADMIN_USER:-admin}"
 REALM_NAME="${KEYCLOAK_REALM:-student-registrar}"
 
-# Function to check if command succeeded
+# Function to check if command succeeded (copied from setup-keycloak.sh)
 check_api_response() {
     local response="$1"
     local description="$2"
@@ -28,24 +27,20 @@ check_api_response() {
     return 0
 }
 
-# Prompt for admin password
+# Prompt for admin password (same as setup-keycloak.sh)
 if [ -n "${KEYCLOAK_ADMIN_PASSWORD:-}" ]; then
     ADMIN_PASSWORD="$KEYCLOAK_ADMIN_PASSWORD"
     echo "🔑 Using KEYCLOAK_ADMIN_PASSWORD from environment"
 else
     echo "📋 Enter your Keycloak admin password:"
+    echo "   (The same password you used for setup-keycloak.sh)"
     echo ""
     read -s -p "Enter Keycloak admin password: " ADMIN_PASSWORD
     echo ""
 fi
 
-# Get admin token via admin-cli against master realm
+# Get admin token (using the same method as setup-keycloak.sh)
 echo "🔑 Getting admin access token..."
-if ! curl -sf --connect-timeout 5 "${KEYCLOAK_URL}/realms/master/.well-known/openid-configuration" -o /dev/null; then
-    echo "❌ Cannot reach Keycloak at ${KEYCLOAK_URL}. Is the Aspire stack running?"
-    exit 1
-fi
-
 TOKEN_RESPONSE=$(curl -s -X POST "${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     --data-urlencode "username=${ADMIN_USER}" \
@@ -53,17 +48,16 @@ TOKEN_RESPONSE=$(curl -s -X POST "${KEYCLOAK_URL}/realms/master/protocol/openid-
     -d "grant_type=password" \
     -d "client_id=admin-cli")
 
-TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty')
+TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token')
 
-if [ -z "$TOKEN" ]; then
-    echo "❌ Failed to get admin token. Check your password and that the '${REALM_NAME}' realm is bootstrapped."
-    echo "Response: $TOKEN_RESPONSE"
+if [ "$TOKEN" == "null" ] || [ -z "$TOKEN" ]; then
+    echo "❌ Failed to get admin token. Please check your password and try again."
     exit 1
 fi
 
 echo "✅ Admin token obtained successfully"
 
-# Create test users
+# Create test users (following setup-keycloak.sh pattern)
 echo "👥 Creating test users..."
 
 # Create admin1 test user
@@ -366,7 +360,7 @@ echo "  👤 member1 (MemberPass123!) - Role: Member [TEST ONLY]"
 echo "  👤 parenteducator1 (ParentEducatorPass123!) - Role: Member promoted during parent educator workflow [TEST ONLY]"
 echo ""
 echo "🔧 System admin account (separate from tests):"
-echo "  👨‍💼 scoopadmin (ChangeThis123!) - Role: Administrator [SYSTEM ACCOUNT]"
+echo "  👨‍💼 scoopadmin (changethis123!) - Role: Administrator [SYSTEM ACCOUNT]"
 echo ""
 echo "⚠️  SECURITY NOTE: admin1/educator1/member1 are for E2E testing only!"
 echo "   Use scoopadmin for actual system administration and data seeding."

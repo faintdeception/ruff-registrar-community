@@ -110,11 +110,7 @@ function Invoke-KeycloakJson {
 
     if ($null -ne $Body) {
         $parameters.ContentType = 'application/json'
-        if ($Body -is [array]) {
-            $parameters.Body = (ConvertTo-Json -InputObject $Body -Depth 10 -Compress)
-        } else {
-            $parameters.Body = ($Body | ConvertTo-Json -Depth 10 -Compress)
-        }
+        $parameters.Body = ConvertTo-Json -InputObject $Body -Depth 10 -Compress
     }
 
     Invoke-RestMethod @parameters
@@ -123,37 +119,22 @@ function Invoke-KeycloakJson {
 function Get-AdminToken {
     param([string]$Password)
 
-    $maxAttempts = 12
-
-    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-        try {
-            $tokenResponse = Invoke-RestMethod `
-                -Method Post `
-                -Uri "$KeycloakUrl/realms/master/protocol/openid-connect/token" `
-                -ContentType 'application/x-www-form-urlencoded' `
-                -Body @{
-                    username = $AdminUser
-                    password = $Password
-                    grant_type = 'password'
-                    client_id = 'admin-cli'
-                }
-
-            if (-not [string]::IsNullOrWhiteSpace($tokenResponse.access_token)) {
-                return $tokenResponse.access_token
-            }
-
-            if ($attempt -eq $maxAttempts) {
-                throw 'Failed to get Keycloak admin access token.'
-            }
-        } catch {
-            if ($attempt -eq $maxAttempts) {
-                throw
-            }
-
-            Write-Host "Waiting for Keycloak token endpoint at $KeycloakUrl (attempt $attempt/$maxAttempts)..."
-            Start-Sleep -Seconds 2
+    $tokenResponse = Invoke-RestMethod `
+        -Method Post `
+        -Uri "$KeycloakUrl/realms/master/protocol/openid-connect/token" `
+        -ContentType 'application/x-www-form-urlencoded' `
+        -Body @{
+            username = $AdminUser
+            password = $Password
+            grant_type = 'password'
+            client_id = 'admin-cli'
         }
+
+    if ([string]::IsNullOrWhiteSpace($tokenResponse.access_token)) {
+        throw 'Failed to get Keycloak admin access token.'
     }
+
+    $tokenResponse.access_token
 }
 
 function Get-RealmRole {
@@ -163,27 +144,6 @@ function Get-RealmRole {
     )
 
     Invoke-KeycloakJson -Method Get -Uri "$KeycloakUrl/admin/realms/$RealmName/roles/$Name" -Headers $Headers
-}
-
-function Test-RealmExists {
-    param([Parameter(Mandatory)] [hashtable]$Headers)
-
-    try {
-        Invoke-KeycloakJson -Method Get -Uri "$KeycloakUrl/admin/realms/$RealmName" -Headers $Headers | Out-Null
-        return
-    } catch {
-        $availableRealms = @()
-        try {
-            $availableRealms = @(Invoke-KeycloakJson -Method Get -Uri "$KeycloakUrl/admin/realms" -Headers $Headers |
-                ForEach-Object { $_.realm } |
-                Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-        } catch {
-            # Ignore follow-up failures and preserve the primary error context.
-        }
-
-        $availableRealmsText = if ($availableRealms.Count -gt 0) { $availableRealms -join ', ' } else { '(unable to query realms)' }
-        throw "Realm '$RealmName' was not found at $KeycloakUrl. Verify the realm name, ensure bootstrap has run, or pass -RealmName with an existing realm. Available realms: $availableRealmsText"
-    }
 }
 
 function Get-KeycloakUser {
@@ -196,50 +156,49 @@ function Get-KeycloakUser {
     @($users)[0]
 }
 
-function Test-UserPasswordValid {
+function Remove-KeycloakUser {
     param(
-        [Parameter(Mandatory)] [string]$Username,
-        [Parameter(Mandatory)] [string]$Password
+        [Parameter(Mandatory)] [string]$UserId,
+        [Parameter(Mandatory)] [hashtable]$Headers
     )
 
-    try {
-        $response = Invoke-RestMethod `
-            -Method Post `
-            -Uri "$KeycloakUrl/realms/$RealmName/protocol/openid-connect/token" `
-            -ContentType 'application/x-www-form-urlencoded' `
-            -Body @{
-                client_id = 'student-registrar-spa'
-                grant_type = 'password'
-                username = $Username
-                password = $Password
-                scope = 'openid profile email'
-            }
+    Invoke-KeycloakJson -Method Delete -Uri "$KeycloakUrl/admin/realms/$RealmName/users/$UserId" -Headers $Headers | Out-Null
+}
 
-        return -not [string]::IsNullOrWhiteSpace($response.access_token)
-    } catch {
-        return $false
-    }
+function New-KeycloakUser {
+    param(
+        [Parameter(Mandatory)] [hashtable]$User,
+        [Parameter(Mandatory)] [hashtable]$Headers
+    )
+
+    Invoke-KeycloakJson `
+        -Method Post `
+        -Uri "$KeycloakUrl/admin/realms/$RealmName/users" `
+        -Headers $Headers `
+        -Body @{
+            username = $User.Username
+            enabled = $true
+            emailVerified = $true
+            firstName = $User.FirstName
+            lastName = $User.LastName
+            email = $User.Email
+        } | Out-Null
+
+    return Get-KeycloakUser -Username $User.Username -Headers $Headers
 }
 
 function Set-UserPassword {
     param(
         [Parameter(Mandatory)] [string]$UserId,
-        [Parameter(Mandatory)] [string]$Username,
         [Parameter(Mandatory)] [string]$Password,
         [Parameter(Mandatory)] [hashtable]$Headers
     )
 
-    try {
-        Invoke-KeycloakJson `
-            -Method Put `
-            -Uri "$KeycloakUrl/admin/realms/$RealmName/users/$UserId/reset-password" `
-            -Headers $Headers `
-            -Body @{ type = 'password'; value = $Password; temporary = $false } | Out-Null
-    } catch {
-        if (-not (Test-UserPasswordValid -Username $Username -Password $Password)) {
-            throw
-        }
-    }
+    Invoke-KeycloakJson `
+        -Method Put `
+        -Uri "$KeycloakUrl/admin/realms/$RealmName/users/$UserId/reset-password" `
+        -Headers $Headers `
+        -Body @{ type = 'password'; value = $Password; temporary = $false } | Out-Null
 }
 
 function Get-UserRealmRoles {
@@ -313,27 +272,33 @@ function Ensure-TestUser {
     $existingUser = Get-KeycloakUser -Username $User.Username -Headers $Headers
 
     if (-not $existingUser) {
-        Invoke-KeycloakJson `
-            -Method Post `
-            -Uri "$KeycloakUrl/admin/realms/$RealmName/users" `
-            -Headers $Headers `
-            -Body @{
-                username = $User.Username
-                enabled = $true
-                emailVerified = $true
-                firstName = $User.FirstName
-                lastName = $User.LastName
-                email = $User.Email
-            } | Out-Null
-
-        $existingUser = Get-KeycloakUser -Username $User.Username -Headers $Headers
+        $existingUser = New-KeycloakUser -User $User -Headers $Headers
     }
 
     if (-not $existingUser) {
         throw "Unable to find or create Keycloak user '$($User.Username)'."
     }
 
-    Set-UserPassword -UserId $existingUser.id -Username $User.Username -Password $User.Password -Headers $Headers
+    try {
+        Set-UserPassword -UserId $existingUser.id -Password $User.Password -Headers $Headers
+    }
+    catch {
+        $errorDetails = $_.ErrorDetails.Message
+        if ($errorDetails -match 'invalidPasswordHistoryMessage') {
+            Write-Warning "Password history blocked reset for '$($User.Username)'; recreating user with deterministic test password."
+            Remove-KeycloakUser -UserId $existingUser.id -Headers $Headers
+            $existingUser = New-KeycloakUser -User $User -Headers $Headers
+
+            if (-not $existingUser) {
+                throw "Unable to recreate Keycloak user '$($User.Username)' after password history conflict."
+            }
+
+            Set-UserPassword -UserId $existingUser.id -Password $User.Password -Headers $Headers
+        }
+        else {
+            throw
+        }
+    }
 
     foreach ($roleName in $User.Roles) {
         $role = Get-RealmRole -Name $roleName -Headers $Headers
@@ -443,7 +408,6 @@ Write-Step "Setting up E2E test users in realm '$RealmName' at $KeycloakUrl"
 $password = Get-AdminPassword
 $token = Get-AdminToken -Password $password
 $headers = @{ Authorization = "Bearer $token"; 'Content-Type' = 'application/json' }
-Test-RealmExists -Headers $headers
 
 $testUsers = @(
     @{

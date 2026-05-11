@@ -37,7 +37,14 @@ public class SemesterService : ISemesterService
     public async Task<SemesterDto> CreateSemesterAsync(CreateSemesterDto createDto)
     {
         var semester = _mapper.Map<Semester>(createDto);
+        semester.Code = NormalizeCode(semester.Code);
         var createdSemester = await _semesterRepository.CreateAsync(semester);
+
+        if (createdSemester.IsActive)
+        {
+            createdSemester = await _semesterRepository.SetActiveAsync(createdSemester.Id);
+        }
+
         return _mapper.Map<SemesterDto>(createdSemester);
     }
 
@@ -48,7 +55,14 @@ public class SemesterService : ISemesterService
             return null;
 
         _mapper.Map(updateDto, existingSemester);
+        existingSemester.Code = NormalizeCode(existingSemester.Code);
         var updatedSemester = await _semesterRepository.UpdateAsync(existingSemester);
+
+        if (updatedSemester.IsActive)
+        {
+            updatedSemester = await _semesterRepository.SetActiveAsync(updatedSemester.Id);
+        }
+
         return _mapper.Map<SemesterDto>(updatedSemester);
     }
 
@@ -62,5 +76,13 @@ public class SemesterService : ISemesterService
             throw new InvalidOperationException("Cannot delete a semester that has courses assigned to it.");
 
         return await _semesterRepository.DeleteAsync(id);
+    }
+
+    private static string? NormalizeCode(string? code)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+            return null;
+
+        return code.Trim();
     }
 }

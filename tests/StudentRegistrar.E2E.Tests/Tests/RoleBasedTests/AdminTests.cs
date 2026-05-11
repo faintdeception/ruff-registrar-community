@@ -301,6 +301,76 @@ public class AdminTests : BaseTest
     }
 
     [Fact]
+    public void Admin_Should_Create_New_Semester_Without_Code()
+    {
+        LoginAsAdmin();
+        var semestersPage = new SemestersPage(Driver);
+        semestersPage.NavigateToSemesters();
+
+        var initialCount = semestersPage.GetSemesterCount();
+        var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+        var semesterName = $"No Code Semester {timestamp}";
+
+        semestersPage.ClickCreateSemester();
+        semestersPage.FillSemesterForm(
+            name: semesterName,
+            code: string.Empty,
+            startDate: new DateTime(2025, 8, 15),
+            endDate: new DateTime(2025, 12, 15),
+            regStartDate: new DateTime(2025, 6, 1),
+            regEndDate: new DateTime(2025, 8, 1),
+            isActive: false
+        );
+
+        semestersPage.SaveSemester();
+        WaitForPageLoad();
+        WaitUntil(d => semestersPage.IsSemesterVisible(semesterName) || semestersPage.IsErrorDisplayed(), 15, 300, "Semester without code did not finish saving");
+
+        if (semestersPage.IsErrorDisplayed())
+        {
+            throw new Exception($"Semester creation without code failed: {semestersPage.GetErrorMessage()}");
+        }
+
+        semestersPage.IsSemesterVisible(semesterName).Should().BeTrue("Semester without code should appear in the list");
+        semestersPage.GetSemesterCount().Should().BeGreaterThan(initialCount, "Semester count should increase after creating a semester without a code");
+    }
+
+    [Fact]
+    public void Admin_Should_Create_New_Semester_Without_Registration_Dates()
+    {
+        LoginAsAdmin();
+        var semestersPage = new SemestersPage(Driver);
+        semestersPage.NavigateToSemesters();
+
+        var initialCount = semestersPage.GetSemesterCount();
+        var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+        var semesterName = $"No Registration Dates {timestamp}";
+
+        semestersPage.ClickCreateSemester();
+        semestersPage.FillSemesterForm(
+            name: semesterName,
+            code: string.Empty,
+            startDate: new DateTime(2025, 8, 15),
+            endDate: new DateTime(2025, 12, 15),
+            regStartDate: null,
+            regEndDate: null,
+            isActive: false
+        );
+
+        semestersPage.SaveSemester();
+        WaitForPageLoad();
+        WaitUntil(d => semestersPage.IsSemesterVisible(semesterName) || semestersPage.IsErrorDisplayed(), 15, 300, "Semester without registration dates did not finish saving");
+
+        if (semestersPage.IsErrorDisplayed())
+        {
+            throw new Exception($"Semester creation without registration dates failed: {semestersPage.GetErrorMessage()}");
+        }
+
+        semestersPage.IsSemesterVisible(semesterName).Should().BeTrue("Semester without registration dates should appear in the list");
+        semestersPage.GetSemesterCount().Should().BeGreaterThan(initialCount, "Semester count should increase after creating a semester without registration dates");
+    }
+
+    [Fact]
     public void Admin_Should_See_Create_Semester_Button()
     {
         // Arrange - Login as admin and navigate to semesters
@@ -583,6 +653,39 @@ public class AdminTests : BaseTest
         // Assert - Verify the semester was updated
         semestersPage.IsSemesterVisible(updatedName).Should().BeTrue("Updated semester should be visible");
         semestersPage.IsSemesterVisible(originalName).Should().BeFalse("Original semester name should be gone");
+    }
+
+    [Fact]
+    public void Admin_Should_Archive_Existing_Semester()
+    {
+        LoginAsAdmin();
+        var semestersPage = new SemestersPage(Driver);
+        semestersPage.NavigateToSemesters();
+
+        var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+        var semesterName = $"Archive Test {timestamp}";
+
+        semestersPage.ClickCreateSemester();
+        semestersPage.FillSemesterForm(
+            name: semesterName,
+            code: $"ARCH{timestamp.Substring(8)}",
+            startDate: new DateTime(2025, 9, 1),
+            endDate: new DateTime(2025, 12, 20),
+            regStartDate: new DateTime(2025, 7, 15),
+            regEndDate: new DateTime(2025, 8, 25),
+            isActive: true
+        );
+
+        semestersPage.SaveSemester();
+        WaitUntil(d => semestersPage.IsSemesterVisible(semesterName) || semestersPage.IsErrorDisplayed());
+
+        semestersPage.IsSemesterVisible(semesterName).Should().BeTrue("Semester should be created before archiving");
+
+        semestersPage.ArchiveSemester(semesterName);
+        WaitUntil(d => semestersPage.IsSemesterArchived(semesterName) || semestersPage.IsErrorDisplayed());
+
+        semestersPage.IsSemesterVisible(semesterName).Should().BeTrue("Archived semester should remain visible for historical reference");
+        semestersPage.IsSemesterArchived(semesterName).Should().BeTrue("Archived semester should show archived status");
     }
 
     [Fact]

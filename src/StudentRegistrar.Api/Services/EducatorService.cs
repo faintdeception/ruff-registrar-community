@@ -10,20 +10,17 @@ public class EducatorService : IEducatorService
     private readonly IEducatorRepository _educatorRepository;
     private readonly IAccountHolderRepository _accountHolderRepository;
     private readonly IKeycloakService _keycloakService;
-    private readonly IGradeRepository _gradeRepository;
     private readonly IMapper _mapper;
 
     public EducatorService(
         IEducatorRepository educatorRepository,
         IAccountHolderRepository accountHolderRepository,
         IKeycloakService keycloakService,
-        IGradeRepository gradeRepository,
         IMapper mapper)
     {
         _educatorRepository = educatorRepository;
         _accountHolderRepository = accountHolderRepository;
         _keycloakService = keycloakService;
-        _gradeRepository = gradeRepository;
         _mapper = mapper;
     }
 
@@ -199,15 +196,8 @@ public class EducatorService : IEducatorService
 
     public async Task<DeleteEducatorResult> DeleteEducatorAsync(Guid id)
     {
-        var hasGrades = await _gradeRepository.HasGradesByEducatorIdAsync(id);
-        if (hasGrades)
-        {
-            var softDeleted = await _educatorRepository.SoftDeleteAsync(id);
-            return softDeleted ? DeleteEducatorResult.SoftDeleted : DeleteEducatorResult.NotFound;
-        }
-
-        var hardDeleted = await _educatorRepository.DeleteAsync(id);
-        return hardDeleted ? DeleteEducatorResult.HardDeleted : DeleteEducatorResult.NotFound;
+        var deleted = await _educatorRepository.DeleteAsync(id);
+        return deleted ? DeleteEducatorResult.HardDeleted : DeleteEducatorResult.NotFound;
     }
 
     public async Task<bool> DeactivateEducatorAsync(Guid id)

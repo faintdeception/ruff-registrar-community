@@ -65,7 +65,7 @@ public class SemestersPage
     }
 
     public void FillSemesterForm(string name, string code, DateTime startDate, DateTime endDate, 
-                                DateTime regStartDate, DateTime regEndDate, bool isActive = false)
+                                DateTime? regStartDate = null, DateTime? regEndDate = null, bool isActive = false)
     {
         SemesterNameInput.Clear();
         SemesterNameInput.SendKeys(name);
@@ -75,8 +75,8 @@ public class SemestersPage
         
         SetInputValue(StartDateInput, startDate.ToString("yyyy-MM-dd"));
         SetInputValue(EndDateInput, endDate.ToString("yyyy-MM-dd"));
-        SetInputValue(RegistrationStartDateInput, regStartDate.ToString("yyyy-MM-dd"));
-        SetInputValue(RegistrationEndDateInput, regEndDate.ToString("yyyy-MM-dd"));
+        SetInputValue(RegistrationStartDateInput, regStartDate?.ToString("yyyy-MM-dd") ?? string.Empty);
+        SetInputValue(RegistrationEndDateInput, regEndDate?.ToString("yyyy-MM-dd") ?? string.Empty);
 
         if (isActive != IsActiveCheckbox.Selected)
         {
@@ -161,17 +161,47 @@ public class SemestersPage
         }
     }
 
-    public void DeleteSemester(string semesterName)
+    public bool IsSemesterArchived(string semesterName)
+    {
+        var slug = semesterName.Replace(" ", "-").ToLower();
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            try
+            {
+                var semesterCard = _driver.FindElement(By.Id($"semester-{slug}"));
+                return semesterCard.Text.Contains("Archived", StringComparison.OrdinalIgnoreCase);
+            }
+            catch (StaleElementReferenceException)
+            {
+                if (attempt == 2)
+                {
+                    throw;
+                }
+            }
+            catch (NoSuchElementException)
+            {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    public void ArchiveSemester(string semesterName)
     {
         var slug = semesterName.Replace(" ", "-").ToLower();
         var semesterCard = _driver.FindElement(By.Id($"semester-{slug}"));
         var semesterId = semesterCard.GetDomAttribute("data-semester-id");
-        var deleteButton = _driver.FindElement(By.Id($"delete-semester-{semesterId}"));
-        deleteButton.Click();
-        
-        // Handle confirmation dialog
+        var archiveButton = _driver.FindElement(By.Id($"delete-semester-{semesterId}"));
+        archiveButton.Click();
+
         var alert = _wait.Until(d => d.SwitchTo().Alert());
         alert.Accept();
+    }
+
+    public void DeleteSemester(string semesterName)
+    {
+        ArchiveSemester(semesterName);
     }
 
     public void EditSemester(string semesterName)

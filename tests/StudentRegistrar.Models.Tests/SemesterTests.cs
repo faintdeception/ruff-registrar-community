@@ -16,11 +16,11 @@ public class SemesterTests
         // Assert
         semester.Id.Should().NotBeEmpty();
         semester.Name.Should().BeEmpty();
-        semester.Code.Should().BeEmpty();
+        semester.Code.Should().BeNull();
         semester.StartDate.Should().Be(default);
         semester.EndDate.Should().Be(default);
-        semester.RegistrationStartDate.Should().Be(default);
-        semester.RegistrationEndDate.Should().Be(default);
+        semester.RegistrationStartDate.Should().BeNull();
+        semester.RegistrationEndDate.Should().BeNull();
         semester.IsActive.Should().BeTrue();
         semester.PeriodConfigJson.Should().Be("{}");
         semester.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
@@ -86,6 +86,14 @@ public class SemesterTests
         };
 
         // Act & Assert
+        semester.IsRegistrationOpen.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsRegistrationOpen_Should_ReturnFalse_WhenRegistrationDatesAreMissing()
+    {
+        var semester = new Semester();
+
         semester.IsRegistrationOpen.Should().BeFalse();
     }
 

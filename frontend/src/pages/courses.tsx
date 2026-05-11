@@ -1260,7 +1260,9 @@ export default function CoursesPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-xl font-semibold text-gray-900">{currentSemester.name}</h3>
-                        <p className="text-gray-600">{currentSemester.code}</p>
+                        {currentSemester.code && (
+                          <p className="text-gray-600">{currentSemester.code}</p>
+                        )}
                       </div>
                       <div className="text-right">
                         <div className="flex items-center text-sm text-gray-600 mb-1">

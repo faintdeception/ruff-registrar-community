@@ -130,7 +130,14 @@ public class SemesterServiceTests
 
         _semesterRepository
             .Setup(r => r.CreateAsync(It.IsAny<Semester>()))
-            .ReturnsAsync((Semester s) => s);
+            .ReturnsAsync((Semester s) =>
+            {
+                s.Id = Guid.NewGuid();
+                return s;
+            });
+        _semesterRepository
+            .Setup(r => r.SetActiveAsync(It.IsAny<Guid>()))
+            .ReturnsAsync((Guid id) => MakeSemester(id: id, isActive: true));
 
         var result = await _service.CreateSemesterAsync(createDto);
 
@@ -140,6 +147,7 @@ public class SemesterServiceTests
 
         _semesterRepository.Verify(r => r.CreateAsync(It.Is<Semester>(s =>
             s.Name == "Fall 2026" && s.Code == "F26")), Times.Once);
+        _semesterRepository.Verify(r => r.SetActiveAsync(result.Id), Times.Once);
     }
 
     // -------------------------------------------------------------------------
@@ -164,12 +172,14 @@ public class SemesterServiceTests
 
         _semesterRepository.Setup(r => r.GetByIdAsync(id)).ReturnsAsync(existing);
         _semesterRepository.Setup(r => r.UpdateAsync(existing)).ReturnsAsync(existing);
+        _semesterRepository.Setup(r => r.SetActiveAsync(id)).ReturnsAsync(existing);
 
         var result = await _service.UpdateSemesterAsync(id, updateDto);
 
         result.Should().NotBeNull();
         result!.Id.Should().Be(id);
         _semesterRepository.Verify(r => r.UpdateAsync(existing), Times.Once);
+        _semesterRepository.Verify(r => r.SetActiveAsync(id), Times.Once);
     }
 
     [Fact]

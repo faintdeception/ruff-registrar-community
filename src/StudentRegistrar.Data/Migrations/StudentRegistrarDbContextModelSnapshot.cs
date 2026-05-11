@@ -562,7 +562,6 @@ namespace StudentRegistrar.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("Code")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
@@ -584,10 +583,10 @@ namespace StudentRegistrar.Data.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb");
 
-                    b.Property<DateTime>("RegistrationEndDate")
+                    b.Property<DateTime?>("RegistrationEndDate")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime>("RegistrationStartDate")
+                    b.Property<DateTime?>("RegistrationStartDate")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("StartDate")

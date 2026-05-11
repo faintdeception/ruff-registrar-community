@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import apiClient from '@/lib/api-client';
-import { AccountHolderDto, EducatorDto, InviteEducatorDto, InviteEducatorResponse, UpdateEducatorDto, UserCredentials } from '@/types';
+import { AccountHolderDto, EducatorDto, InviteEducatorDto, InviteEducatorResponse, UserCredentials } from '@/types';
 
 const emptyEducatorInvite: InviteEducatorDto = {
   firstName: '',
@@ -27,15 +28,20 @@ const EducatorsPage = () => {
   const [inviteMessage, setInviteMessage] = useState<string | null>(null);
   const [inviteCredentials, setInviteCredentials] = useState<UserCredentials | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const router = useRouter();
+
   const [newEducator, setNewEducator] = useState<InviteEducatorDto>(emptyEducatorInvite);
-  const [editingEducator, setEditingEducator] = useState<EducatorDto | null>(null);
-  const [editForm, setEditForm] = useState<UpdateEducatorDto | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const isAdmin = user?.roles?.includes('Administrator');
 
   const fetchEducators = useCallback(async () => {
     try {
+      const accessToken = localStorage.getItem('accessToken');
+      if (!accessToken) {
+        router.push('/login');
+        return;
+      }
+
       const response = await apiClient.get('/api/Educators');
       
       if (response.ok) {
@@ -50,7 +56,7 @@ const EducatorsPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [router]);
 
   const fetchAccountHolders = useCallback(async () => {
     try {
@@ -104,6 +110,12 @@ const EducatorsPage = () => {
     e.preventDefault();
     
     try {
+      const accessToken = localStorage.getItem('accessToken');
+      if (!accessToken) {
+        router.push('/login');
+        return;
+      }
+
       setInviteCredentials(null);
       setInviteMessage(null);
       setError(null);
@@ -136,6 +148,12 @@ const EducatorsPage = () => {
     if (!isAdmin) return;
     
     try {
+      const accessToken = localStorage.getItem('accessToken');
+      if (!accessToken) {
+        router.push('/login');
+        return;
+      }
+
       const endpoint = currentStatus ? 'deactivate' : 'activate';
       const response = await apiClient.post(`/api/Educators/${id}/${endpoint}`);
 
@@ -148,78 +166,6 @@ const EducatorsPage = () => {
     } catch (err) {
       setError(`Error ${currentStatus ? 'deactivating' : 'activating'} educator`);
       console.error(`Error ${currentStatus ? 'deactivating' : 'activating'} educator:`, err);
-    }
-  };
-
-  const handleEditClick = (educator: EducatorDto) => {
-    setEditingEducator(educator);
-    setEditForm({
-      firstName: educator.firstName,
-      lastName: educator.lastName,
-      email: educator.email || '',
-      phone: educator.phone || '',
-      educatorInfo: educator.educatorInfo
-        ? { ...educator.educatorInfo }
-        : { bio: '', qualifications: [], specializations: [], department: '', customFields: {} }
-    });
-  };
-
-  const handleEditSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingEducator || !editForm) return;
-
-    try {
-      setError(null);
-      const response = await apiClient.put(`/api/Educators/${editingEducator.id}`, editForm);
-
-      if (response.ok) {
-        const updated: EducatorDto = await response.json();
-        setEducators(current => current.map(ed => ed.id === updated.id ? updated : ed));
-        setEditingEducator(null);
-        setEditForm(null);
-      } else {
-        setError('Failed to update educator');
-      }
-    } catch (err) {
-      setError('Error updating educator');
-      console.error('Error updating educator:', err);
-    }
-  };
-
-  const handleDeleteClick = (id: string) => {
-    setDeleteConfirmId(id);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!deleteConfirmId) return;
-
-    try {
-      setError(null);
-      const response = await apiClient.delete(`/api/Educators/${deleteConfirmId}`);
-
-      if (response.status === 204) {
-        // Hard delete — remove from list
-        setEducators(current => current.filter(ed => ed.id !== deleteConfirmId));
-      } else if (response.status === 200) {
-        // Soft delete — mark as deleted in list
-        const body = await response.json() as { softDeleted: boolean };
-        if (body.softDeleted) {
-          setEducators(current =>
-            current.map(ed =>
-              ed.id === deleteConfirmId ? { ...ed, isDeleted: true, isActive: false } : ed
-            )
-          );
-        }
-      } else if (response.status === 404) {
-        setError('Educator not found');
-      } else {
-        setError('Failed to delete educator');
-      }
-    } catch (err) {
-      setError('Error deleting educator');
-      console.error('Error deleting educator:', err);
-    } finally {
-      setDeleteConfirmId(null);
     }
   };
 
@@ -438,12 +384,7 @@ const EducatorsPage = () => {
                       <div>
                         <h3 className="text-lg font-medium text-gray-900">
                           {educator.fullName}
-                          {educator.isDeleted && (
-                            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-700">
-                              Archived
-                            </span>
-                          )}
-                          {!educator.isDeleted && !educator.isActive && (
+                          {!educator.isActive && (
                             <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                               Inactive
                             </span>
@@ -458,19 +399,12 @@ const EducatorsPage = () => {
                         </div>
                       </div>
                     </div>
-                    {isAdmin && !educator.isDeleted && (
+                    {isAdmin && (
                       <div className="flex space-x-2">
-                        <button
-                          data-testid={`edit-educator-btn-${educator.id}`}
-                          onClick={() => handleEditClick(educator)}
-                          className="text-blue-600 hover:text-blue-900 text-sm font-medium"
-                        >
-                          Edit
-                        </button>
                         {educator.isActive ? (
                           <button
                             onClick={() => handleToggleActive(educator.id, true)}
-                            className="text-yellow-600 hover:text-yellow-900 text-sm font-medium"
+                            className="text-red-600 hover:text-red-900 text-sm font-medium"
                           >
                             Deactivate
                           </button>
@@ -482,13 +416,6 @@ const EducatorsPage = () => {
                             Activate
                           </button>
                         )}
-                        <button
-                          data-testid={`delete-educator-btn-${educator.id}`}
-                          onClick={() => handleDeleteClick(educator.id)}
-                          className="text-red-600 hover:text-red-900 text-sm font-medium"
-                        >
-                          Delete
-                        </button>
                       </div>
                     )}
                   </div>
@@ -524,126 +451,6 @@ const EducatorsPage = () => {
           )}
         </div>
       </main>
-
-      {/* Edit Educator Modal */}
-      {editingEducator && editForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50" data-testid="edit-educator-modal">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
-            <h2 className="text-xl font-semibold mb-4">Edit Educator</h2>
-            <form onSubmit={handleEditSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
-                  <input
-                    data-testid="edit-first-name-input"
-                    type="text"
-                    value={editForm.firstName}
-                    onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
-                  <input
-                    data-testid="edit-last-name-input"
-                    type="text"
-                    value={editForm.lastName}
-                    onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input
-                    data-testid="edit-email-input"
-                    type="email"
-                    value={editForm.email || ''}
-                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <input
-                    data-testid="edit-phone-input"
-                    type="tel"
-                    value={editForm.phone || ''}
-                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                  <input
-                    data-testid="edit-department-input"
-                    type="text"
-                    value={editForm.educatorInfo?.department || ''}
-                    onChange={(e) => setEditForm({ ...editForm, educatorInfo: { ...editForm.educatorInfo!, department: e.target.value } })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-                <textarea
-                  data-testid="edit-bio-input"
-                  value={editForm.educatorInfo?.bio || ''}
-                  onChange={(e) => setEditForm({ ...editForm, educatorInfo: { ...editForm.educatorInfo!, bio: e.target.value } })}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="flex justify-end space-x-2">
-                <button
-                  type="button"
-                  data-testid="cancel-edit-btn"
-                  onClick={() => { setEditingEducator(null); setEditForm(null); }}
-                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  data-testid="save-edit-btn"
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirm Dialog */}
-      {deleteConfirmId && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50" data-testid="delete-confirm-dialog">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
-            <h2 className="text-lg font-semibold mb-2">Delete Educator?</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              If this educator has grade history, they will be archived rather than permanently removed.
-            </p>
-            <div className="flex justify-end space-x-2">
-              <button
-                data-testid="cancel-delete-btn"
-                onClick={() => setDeleteConfirmId(null)}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                data-testid="confirm-delete-btn"
-                onClick={handleDeleteConfirm}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </ProtectedRoute>
   );
 };
