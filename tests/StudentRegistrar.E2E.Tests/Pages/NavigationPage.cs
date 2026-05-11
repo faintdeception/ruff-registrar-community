@@ -198,6 +198,7 @@ public class NavigationPage
         return navItems
             .Where(item => item.Displayed)
             .Select(item => item.GetDomAttribute("data-nav-item"))
+            .OfType<string>()
             .ToList();
     }
 
@@ -207,6 +208,7 @@ public class NavigationPage
         return adminItems
             .Where(item => item.Displayed)
             .Select(item => item.GetDomAttribute("data-nav-item"))
+            .OfType<string>()
             .ToList();
     }
 

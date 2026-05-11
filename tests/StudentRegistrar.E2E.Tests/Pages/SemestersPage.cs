@@ -285,7 +285,7 @@ public class SemestersPage
     // Helper methods
     private void WaitForPageLoad()
     {
-        _wait.Until(driver => ((IJavaScriptExecutor)driver).ExecuteScript("return document.readyState").Equals("complete"));
+        _wait.Until(driver => Equals(((IJavaScriptExecutor)driver).ExecuteScript("return document.readyState"), "complete"));
         _wait.Until(d => !d.PageSource.Contains("Loading semesters...", StringComparison.OrdinalIgnoreCase));
         _wait.Until(d =>
             d.Url.Contains("/semesters", StringComparison.OrdinalIgnoreCase) &&

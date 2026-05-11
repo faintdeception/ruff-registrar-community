@@ -150,6 +150,41 @@ public class SemesterServiceTests
         _semesterRepository.Verify(r => r.SetActiveAsync(result.Id), Times.Once);
     }
 
+    [Fact]
+    public async Task CreateSemesterAsync_BlankCodeAndMissingRegistrationDates_NormalizesToNull()
+    {
+        var createDto = new CreateSemesterDto
+        {
+            Name = "Summer 2026",
+            Code = "   ",
+            StartDate = new DateTime(2026, 6, 1),
+            EndDate = new DateTime(2026, 8, 15),
+            RegistrationStartDate = null,
+            RegistrationEndDate = null,
+            IsActive = false
+        };
+
+        _semesterRepository
+            .Setup(r => r.CreateAsync(It.IsAny<Semester>()))
+            .ReturnsAsync((Semester s) =>
+            {
+                s.Id = Guid.NewGuid();
+                return s;
+            });
+
+        var result = await _service.CreateSemesterAsync(createDto);
+
+        result.Code.Should().BeNull();
+        result.RegistrationStartDate.Should().BeNull();
+        result.RegistrationEndDate.Should().BeNull();
+
+        _semesterRepository.Verify(r => r.CreateAsync(It.Is<Semester>(s =>
+            s.Code == null &&
+            s.RegistrationStartDate == null &&
+            s.RegistrationEndDate == null)), Times.Once);
+        _semesterRepository.Verify(r => r.SetActiveAsync(It.IsAny<Guid>()), Times.Never);
+    }
+
     // -------------------------------------------------------------------------
     // UpdateSemesterAsync
     // -------------------------------------------------------------------------
@@ -180,6 +215,40 @@ public class SemesterServiceTests
         result!.Id.Should().Be(id);
         _semesterRepository.Verify(r => r.UpdateAsync(existing), Times.Once);
         _semesterRepository.Verify(r => r.SetActiveAsync(id), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateSemesterAsync_BlankCodeAndMissingRegistrationDates_NormalizesToNull()
+    {
+        var id = Guid.NewGuid();
+        var existing = MakeSemester(id: id, code: "F26");
+        var updateDto = new UpdateSemesterDto
+        {
+            Name = "Fall 2026",
+            Code = "  ",
+            StartDate = existing.StartDate,
+            EndDate = existing.EndDate,
+            RegistrationStartDate = null,
+            RegistrationEndDate = null,
+            IsActive = false
+        };
+
+        _semesterRepository.Setup(r => r.GetByIdAsync(id)).ReturnsAsync(existing);
+        _semesterRepository.Setup(r => r.UpdateAsync(existing)).ReturnsAsync(existing);
+
+        var result = await _service.UpdateSemesterAsync(id, updateDto);
+
+        result.Should().NotBeNull();
+        result!.Code.Should().BeNull();
+        result.RegistrationStartDate.Should().BeNull();
+        result.RegistrationEndDate.Should().BeNull();
+
+        _semesterRepository.Verify(r => r.UpdateAsync(It.Is<Semester>(s =>
+            s.Id == id &&
+            s.Code == null &&
+            s.RegistrationStartDate == null &&
+            s.RegistrationEndDate == null)), Times.Once);
+        _semesterRepository.Verify(r => r.SetActiveAsync(It.IsAny<Guid>()), Times.Never);
     }
 
     [Fact]

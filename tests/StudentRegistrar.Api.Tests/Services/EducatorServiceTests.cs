@@ -1,5 +1,6 @@
 using AutoMapper;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using StudentRegistrar.Api.DTOs;
 using StudentRegistrar.Api.Services;
@@ -18,12 +19,17 @@ public class EducatorServiceTests
 
     public EducatorServiceTests()
     {
-        var mapperConfig = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>());
+        var mapper = new ServiceCollection()
+            .AddLogging()
+            .AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>())
+            .BuildServiceProvider()
+            .GetRequiredService<IMapper>();
+
         _service = new EducatorService(
             _educatorRepository.Object,
             _accountHolderRepository.Object,
             _keycloakService.Object,
-            mapperConfig.CreateMapper());
+            mapper);
     }
 
     [Fact]
