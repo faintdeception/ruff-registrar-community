@@ -36,12 +36,6 @@ const EducatorsPage = () => {
 
   const fetchEducators = useCallback(async () => {
     try {
-      const accessToken = localStorage.getItem('accessToken');
-      if (!accessToken) {
-        router.push('/login');
-        return;
-      }
-
       const response = await apiClient.get('/api/Educators');
       
       if (response.ok) {
@@ -110,12 +104,6 @@ const EducatorsPage = () => {
     e.preventDefault();
     
     try {
-      const accessToken = localStorage.getItem('accessToken');
-      if (!accessToken) {
-        router.push('/login');
-        return;
-      }
-
       setInviteCredentials(null);
       setInviteMessage(null);
       setError(null);
@@ -148,12 +136,6 @@ const EducatorsPage = () => {
     if (!isAdmin) return;
     
     try {
-      const accessToken = localStorage.getItem('accessToken');
-      if (!accessToken) {
-        router.push('/login');
-        return;
-      }
-
       const endpoint = currentStatus ? 'deactivate' : 'activate';
       const response = await apiClient.post(`/api/Educators/${id}/${endpoint}`);
 

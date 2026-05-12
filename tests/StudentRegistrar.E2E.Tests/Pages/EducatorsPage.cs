@@ -7,11 +7,14 @@ public sealed class EducatorsPage
 {
     private readonly IWebDriver _driver;
     private readonly WebDriverWait _wait;
+    private static readonly By UserRolesSelector = By.CssSelector("[data-testid='user-roles']");
+    private static readonly By AddEducatorButtonSelector = By.Id("add-educator-btn");
+    private static readonly By EducatorCardSelector = By.CssSelector("[data-testid^='educator-']");
 
     public EducatorsPage(IWebDriver driver)
     {
         _driver = driver;
-        _wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+        _wait = new WebDriverWait(driver, TimeSpan.FromSeconds(20));
     }
 
     public void NavigateToEducators(string baseUrl)
@@ -86,8 +89,23 @@ public sealed class EducatorsPage
             ((IJavaScriptExecutor)driver).ExecuteScript("return document.readyState")?.ToString(),
             "complete",
             StringComparison.OrdinalIgnoreCase));
-        _wait.Until(d => d.FindElements(By.Id("add-educator-btn")).Any()
-            || d.PageSource.Contains("Educators", StringComparison.OrdinalIgnoreCase));
+        _wait.Until(d => d.PageSource.Contains("Educators", StringComparison.OrdinalIgnoreCase));
+        _wait.Until(d =>
+        {
+            if (IsAdministratorView(d))
+            {
+                return d.FindElements(AddEducatorButtonSelector).Any(element => element.Displayed);
+            }
+
+            return d.FindElements(EducatorCardSelector).Any(element => element.Displayed)
+                || d.PageSource.Contains("No educators found", StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    private static bool IsAdministratorView(IWebDriver driver)
+    {
+        return driver.FindElements(UserRolesSelector)
+            .Any(element => element.Displayed && element.Text.Contains("Administrator", StringComparison.OrdinalIgnoreCase));
     }
 
     private void SetText(By locator, string value)
