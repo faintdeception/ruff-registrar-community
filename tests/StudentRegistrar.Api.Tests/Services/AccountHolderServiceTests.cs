@@ -194,6 +194,54 @@ public class AccountHolderServiceTests
     }
 
     // -------------------------------------------------------------------------
+    // AddStudentToAccountAsync
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task AddStudentToAccountAsync_MapsStudentInfoAndNotes_ForAccountWorkflow()
+    {
+        var accountHolderId = Guid.NewGuid();
+        var createDto = new CreateStudentForAccountDto
+        {
+            FirstName = "Avery",
+            LastName = "Learner",
+            Grade = "5",
+            DateOfBirth = new DateTime(2014, 9, 12),
+            Notes = "Needs a peanut-free classroom.",
+            StudentInfoJson = new StudentInfoDetails
+            {
+                SpecialConditions = new() { "ADHD" },
+                Allergies = new() { "Peanuts" },
+                Medications = new() { "Inhaler" },
+                PreferredName = "Ave",
+                ParentNotes = "Call before administering medication."
+            }
+        };
+
+        _studentRepository
+            .Setup(r => r.CreateAsync(It.IsAny<Student>()))
+            .ReturnsAsync((Student student) => student);
+
+        var result = await _service.AddStudentToAccountAsync(accountHolderId, createDto);
+
+        result.FirstName.Should().Be("Avery");
+        result.LastName.Should().Be("Learner");
+
+        _studentRepository.Verify(r => r.CreateAsync(It.Is<Student>(student =>
+            student.AccountHolderId == accountHolderId &&
+            student.FirstName == createDto.FirstName &&
+            student.LastName == createDto.LastName &&
+            student.Grade == createDto.Grade &&
+            student.DateOfBirth == createDto.DateOfBirth &&
+            student.Notes == createDto.Notes &&
+            student.GetStudentInfo().SpecialConditions.SequenceEqual(new[] { "ADHD" }) &&
+            student.GetStudentInfo().Allergies.SequenceEqual(new[] { "Peanuts" }) &&
+            student.GetStudentInfo().Medications.SequenceEqual(new[] { "Inhaler" }) &&
+            student.GetStudentInfo().PreferredName == "Ave" &&
+            student.GetStudentInfo().ParentNotes == "Call before administering medication.")), Times.Once);
+    }
+
+    // -------------------------------------------------------------------------
     // RemoveStudentFromAccountAsync
     // -------------------------------------------------------------------------
 

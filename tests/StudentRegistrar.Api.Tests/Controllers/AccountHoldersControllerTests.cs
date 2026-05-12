@@ -237,6 +237,53 @@ public class AccountHoldersControllerTests
     }
 
     // -------------------------------------------------------------------------
+    // POST /api/accountholders/me/students
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task AddStudentToMyAccount_ForwardsStudentInfoAndNotes()
+    {
+        var keycloakId = "kc-user-1";
+        var accountHolderId = Guid.NewGuid();
+        var createDto = new CreateStudentForAccountDto
+        {
+            FirstName = "Avery",
+            LastName = "Learner",
+            Grade = "5",
+            DateOfBirth = new DateTime(2014, 9, 12),
+            Notes = "Needs a peanut-free classroom.",
+            StudentInfoJson = new StudentInfoDetails
+            {
+                SpecialConditions = new() { "ADHD" },
+                Allergies = new() { "Peanuts" },
+                PreferredName = "Ave",
+                ParentNotes = "Call before administering medication."
+            }
+        };
+        var accountHolder = MakeDto(id: accountHolderId.ToString());
+        var createdStudent = MakeStudentDto();
+
+        SetUser(keycloakId: keycloakId);
+        _accountHolderService.Setup(s => s.GetAccountHolderByUserIdAsync(keycloakId)).ReturnsAsync(accountHolder);
+        _accountHolderService.Setup(s => s.AddStudentToAccountAsync(accountHolderId, createDto)).ReturnsAsync(createdStudent);
+
+        var result = await _controller.AddStudentToMyAccount(createDto);
+
+        var created = result.Result.Should().BeOfType<CreatedAtActionResult>().Subject;
+        created.ActionName.Should().Be("GetStudent");
+        created.RouteValues!["id"].Should().Be(createdStudent.Id);
+        created.Value.Should().BeEquivalentTo(createdStudent);
+
+        _accountHolderService.Verify(s => s.AddStudentToAccountAsync(accountHolderId, It.Is<CreateStudentForAccountDto>(dto =>
+            dto.Notes == createDto.Notes &&
+            dto.StudentInfoJson != null &&
+            dto.StudentInfoJson.SpecialConditions.SequenceEqual(new[] { "ADHD" }) &&
+            dto.StudentInfoJson.Allergies.SequenceEqual(new[] { "Peanuts" }) &&
+            dto.StudentInfoJson.PreferredName == "Ave" &&
+            dto.StudentInfoJson.ParentNotes == "Call before administering medication.")), Times.Once);
+    }
+
+    // -------------------------------------------------------------------------
     // DELETE /api/accountholders/me/students/{studentId}
     // -------------------------------------------------------------------------
 
