@@ -4,18 +4,25 @@ using Microsoft.EntityFrameworkCore.Migrations;
 using StudentRegistrar.Data;
 using StudentRegistrar.Api.Services;
 using StudentRegistrar.Api.Services.Infrastructure;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using AutoMapper;
 using StudentRegistrar.Api.DTOs;
+using Npgsql;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
 using System.Collections.Concurrent;
+using System.Data.Common;
+using System.Reflection;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 var httpContextAccessor = new HttpContextAccessor();
+const string authSessionIdClaimType = "studentregistrar:session_id";
+const string csrfHeaderName = "X-CSRF-TOKEN";
 
 var allowUntrustedKeycloakCertificates =
     builder.Configuration.GetValue<bool?>("Keycloak:AllowUntrustedCertificates")
@@ -47,6 +54,8 @@ builder.Services.AddDbContext<StudentRegistrarDbContext>(options =>
     {
         throw new InvalidOperationException("Connection string 'studentregistrar' is not configured.");
     }
+
+    connectionString = NormalizePostgresConnectionString(connectionString);
 
     options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.EnableRetryOnFailure());
 });
@@ -92,20 +101,62 @@ builder.Services.AddScoped<IKeycloakService, KeycloakService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
+builder.Services.AddSingleton<IAuthSessionStore, MemoryAuthSessionStore>();
 
-// Add HttpClient for Keycloak
-builder.Services.AddHttpClient<IKeycloakService, KeycloakService>()
-    .ConfigurePrimaryHttpMessageHandler(() =>
+static string NormalizePostgresConnectionString(string connectionString)
+{
+    var connectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString);
+    var host = connectionStringBuilder.Host ?? string.Empty;
+
+    if (host.StartsWith("tcp://", StringComparison.OrdinalIgnoreCase)
+        && Uri.TryCreate(host, UriKind.Absolute, out var hostUri))
     {
-        var handler = new HttpClientHandler();
-
-        if (allowUntrustedKeycloakCertificates)
+        connectionStringBuilder.Host = hostUri.Host;
+        if (!hostUri.IsDefaultPort)
         {
-            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+            connectionStringBuilder.Port = hostUri.Port;
         }
 
-        return handler;
-    });
+        host = connectionStringBuilder.Host ?? string.Empty;
+    }
+
+    if (connectionStringBuilder.SslMode == SslMode.Prefer
+        && IsLocalPostgresHost(host))
+    {
+        connectionStringBuilder.SslMode = SslMode.Disable;
+    }
+
+    return connectionStringBuilder.ConnectionString;
+}
+
+static bool IsLocalPostgresHost(string host)
+{
+    return string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(host, "127.0.0.1", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(host, "::1", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(host, "host.docker.internal", StringComparison.OrdinalIgnoreCase);
+}
+
+// Keycloak calls use a plain HttpClient to avoid Aspire service-discovery handlers
+// interfering with absolute local Keycloak endpoints during auth flows.
+builder.Services.AddScoped<IKeycloakService>(serviceProvider =>
+{
+    var handler = new HttpClientHandler();
+
+    if (allowUntrustedKeycloakCertificates)
+    {
+        handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+    }
+
+    var httpClient = new HttpClient(handler);
+
+    return new KeycloakService(
+        httpClient,
+        serviceProvider.GetRequiredService<IConfiguration>(),
+        serviceProvider.GetRequiredService<ILogger<KeycloakService>>(),
+        serviceProvider.GetRequiredService<IPasswordService>(),
+        serviceProvider.GetService<ITenantContextAccessor>());
+});
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -126,7 +177,52 @@ builder.Services.AddCors(options =>
 });
 
 // Add Authentication
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultScheme = "SessionOrBearer";
+        options.DefaultAuthenticateScheme = "SessionOrBearer";
+        options.DefaultChallengeScheme = "SessionOrBearer";
+    })
+    .AddPolicyScheme("SessionOrBearer", "Session or Bearer", options =>
+    {
+        options.ForwardDefaultSelector = context =>
+        {
+            var authorization = context.Request.Headers.Authorization.ToString();
+            return !string.IsNullOrWhiteSpace(authorization) && authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                ? JwtBearerDefaults.AuthenticationScheme
+                : CookieAuthenticationDefaults.AuthenticationScheme;
+        };
+    })
+    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
+    {
+        options.Cookie.Name = "studentregistrar.session";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+        options.Cookie.SameSite = builder.Environment.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.None;
+        options.SlidingExpiration = false;
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnValidatePrincipal = async context =>
+            {
+                var sessionStore = context.HttpContext.RequestServices.GetRequiredService<IAuthSessionStore>();
+                var sessionId = context.Principal?.FindFirst(authSessionIdClaimType)?.Value;
+
+                if (string.IsNullOrWhiteSpace(sessionId))
+                {
+                    context.RejectPrincipal();
+                    await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    return;
+                }
+
+                var session = await sessionStore.GetAsync(sessionId, context.HttpContext.RequestAborted);
+                if (session == null)
+                {
+                    context.RejectPrincipal();
+                    await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                }
+            }
+        };
+    })
     .AddJwtBearer(options =>
     {
         var realm = builder.Configuration["Keycloak:Realm"] ?? "student-registrar";
@@ -261,9 +357,26 @@ if (runMigrations)
         var dbContext = scope.ServiceProvider.GetRequiredService<StudentRegistrarDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         var migrationsAssembly = dbContext.GetService<IMigrationsAssembly>();
+        var historyRepository = dbContext.GetService<IHistoryRepository>();
         var migrationIds = migrationsAssembly.Migrations.Keys.ToList();
         logger.LogInformation("Available migrations ({Count}): {Migrations}",
             migrationIds.Count, string.Join(", ", migrationIds));
+        var appliedMigrationIds = (await dbContext.Database.GetAppliedMigrationsAsync()).ToList();
+        var pendingMigrationIds = (await dbContext.Database.GetPendingMigrationsAsync()).ToList();
+        logger.LogInformation("Applied migrations ({Count}): {Migrations}",
+            appliedMigrationIds.Count, appliedMigrationIds.Count == 0 ? "<none>" : string.Join(", ", appliedMigrationIds));
+        logger.LogInformation("Pending migrations ({Count}): {Migrations}",
+            pendingMigrationIds.Count, pendingMigrationIds.Count == 0 ? "<none>" : string.Join(", ", pendingMigrationIds));
+
+        await TryBaselineDevelopmentDatabaseAsync(
+            dbContext,
+            historyRepository,
+            migrationIds,
+            appliedMigrationIds,
+            pendingMigrationIds,
+            logger,
+            app.Environment);
+
         var connectionString = dbContext.Database.GetConnectionString();
         var redactedConnectionString = System.Text.RegularExpressions.Regex.Replace(
             connectionString ?? "", 
@@ -272,9 +385,10 @@ if (runMigrations)
             System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         logger.LogInformation($"Using connection string: {redactedConnectionString}");
 
-        // Add retry logic for database connection
-        var maxRetries = 10;
-        var delay = TimeSpan.FromSeconds(2);
+        // Local Aspire startup can take a while to make Postgres reachable.
+        // Keep retrying long enough for containers and port forwarding to settle.
+        var maxRetries = 24;
+        var delay = TimeSpan.FromSeconds(5);
 
         for (int i = 0; i < maxRetries; i++)
         {
@@ -315,6 +429,34 @@ app.UseCors("AllowFrontend");
 app.UseTenantResolution();
 
 app.UseAuthentication();
+
+app.Use(async (context, next) =>
+{
+    if (!HttpMethods.IsGet(context.Request.Method)
+        && !HttpMethods.IsHead(context.Request.Method)
+        && !HttpMethods.IsOptions(context.Request.Method)
+        && (context.Request.Path.StartsWithSegments("/api")
+            || context.Request.Path.Equals("/auth/logout", StringComparison.OrdinalIgnoreCase)))
+    {
+        var sessionId = context.User.FindFirst(authSessionIdClaimType)?.Value;
+        if (!string.IsNullOrWhiteSpace(sessionId))
+        {
+            var sessionStore = context.RequestServices.GetRequiredService<IAuthSessionStore>();
+            var session = await sessionStore.GetAsync(sessionId, context.RequestAborted);
+            var csrfHeader = context.Request.Headers[csrfHeaderName].FirstOrDefault();
+
+            if (session == null || string.IsNullOrWhiteSpace(csrfHeader) || !string.Equals(session.CsrfToken, csrfHeader, StringComparison.Ordinal))
+            {
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await context.Response.WriteAsJsonAsync(new { error = "Invalid CSRF token." });
+                return;
+            }
+        }
+    }
+
+    await next();
+});
+
 app.UseAuthorization();
 
 app.MapControllers();
@@ -451,6 +593,94 @@ static CachedSigningKeys FetchSigningKeys(string issuer, bool allowUntrustedCert
     return new CachedSigningKeys(
         jwks.GetSigningKeys().ToArray(),
         DateTimeOffset.UtcNow.AddMinutes(10));
+}
+
+static async Task TryBaselineDevelopmentDatabaseAsync(
+    StudentRegistrarDbContext dbContext,
+    IHistoryRepository historyRepository,
+    IReadOnlyCollection<string> availableMigrationIds,
+    IReadOnlyCollection<string> appliedMigrationIds,
+    IReadOnlyCollection<string> pendingMigrationIds,
+    ILogger logger,
+    IHostEnvironment environment)
+{
+    if (!environment.IsDevelopment() || pendingMigrationIds.Count == 0 || appliedMigrationIds.Count == 0)
+    {
+        return;
+    }
+
+    var knownMigrationIds = new HashSet<string>(availableMigrationIds, StringComparer.OrdinalIgnoreCase);
+    if (appliedMigrationIds.Any(knownMigrationIds.Contains))
+    {
+        return;
+    }
+
+    var initialMigrationId = pendingMigrationIds.First();
+    if (!initialMigrationId.EndsWith("_InitialCreate", StringComparison.OrdinalIgnoreCase))
+    {
+        return;
+    }
+
+    if (!await TableExistsAsync(dbContext, "AcademicYears"))
+    {
+        return;
+    }
+
+    logger.LogWarning(
+        "Detected an existing development database with a pre-squash EF migration history. Recording {MigrationId} as applied so newer migrations can run.",
+        initialMigrationId);
+
+    var productVersion = GetEntityFrameworkProductVersion();
+    var insertScript = historyRepository.GetInsertScript(new HistoryRow(initialMigrationId, productVersion));
+    await dbContext.Database.ExecuteSqlRawAsync(insertScript);
+}
+
+static async Task<bool> TableExistsAsync(StudentRegistrarDbContext dbContext, string tableName)
+{
+    var connection = dbContext.Database.GetDbConnection();
+    var openedConnection = connection.State != System.Data.ConnectionState.Open;
+
+    if (openedConnection)
+    {
+        await connection.OpenAsync();
+    }
+
+    try
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            select exists (
+                select 1
+                from information_schema.tables
+                where table_schema = 'public' and table_name = @tableName
+            )
+            """;
+
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = "@tableName";
+        parameter.Value = tableName;
+        command.Parameters.Add(parameter);
+
+        var result = await command.ExecuteScalarAsync();
+        return result is bool exists && exists;
+    }
+    finally
+    {
+        if (openedConnection)
+        {
+            await connection.CloseAsync();
+        }
+    }
+}
+
+static string GetEntityFrameworkProductVersion()
+{
+    return typeof(Migration).Assembly
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+        .InformationalVersion
+        .Split('+')[0]
+        ?? typeof(Migration).Assembly.GetName().Version?.ToString()
+        ?? "10.0.1";
 }
 
 file sealed record CachedSigningKeys(IReadOnlyCollection<SecurityKey> Keys, DateTimeOffset ExpiresAt);

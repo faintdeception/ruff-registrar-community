@@ -10,4 +10,5 @@ public interface IKeycloakService
     Task<string?> GetUserIdByEmailAsync(string email);
     Task DeactivateUserAsync(string keycloakId);
     Task<bool> UserExistsAsync(string email);
+    Task<KeycloakTokenResponse> AuthenticateUserAsync(string email, string password, CancellationToken cancellationToken = default);
 }

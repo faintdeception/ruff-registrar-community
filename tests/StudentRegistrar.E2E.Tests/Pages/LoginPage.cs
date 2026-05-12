@@ -14,11 +14,11 @@ public class LoginPage
         _wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
     }
 
-    // Page elements - supports both the app login entry page and the hosted Keycloak form.
+    // Page elements - supports both the direct app form and older hosted-login entry pages.
     public IWebElement UsernameField => _wait.Until(d => d.FindElement(By.Id("username")));
     public IWebElement PasswordField => _driver.FindElement(By.Id("password"));
     public IWebElement LoginButton => _driver.FindElement(By.CssSelector("button[type='submit'], input[type='submit'], .login-button"));
-    public IWebElement KeycloakEntryButton => _wait.Until(d => d.FindElement(By.XPath("//button[normalize-space()='Sign in with Keycloak']")));
+    public IWebElement HostedLoginEntryButton => _wait.Until(d => d.FindElement(By.XPath("//button[normalize-space()='Continue to Sign In' or normalize-space()='Sign in with Keycloak' or normalize-space()='Sign In']")));
     
     // Error message elements
     public IWebElement LoginErrorHeading => _driver.FindElement(By.XPath("//*[contains(text(), 'Login Error')]"));
@@ -57,7 +57,7 @@ public class LoginPage
     {
         try
         {
-            if (_driver.Url.Contains("/login") && _driver.FindElements(By.XPath("//button[normalize-space()='Sign in with Keycloak']")).Any())
+            if (_driver.Url.Contains("/login") && _driver.FindElements(By.XPath("//button[normalize-space()='Continue to Sign In' or normalize-space()='Sign in with Keycloak' or normalize-space()='Sign In']")).Any())
             {
                 return true;
             }
@@ -128,9 +128,18 @@ public class LoginPage
         }
 
         if (_driver.Url.Contains("/login", StringComparison.OrdinalIgnoreCase) &&
-            _driver.FindElements(By.XPath("//button[normalize-space()='Sign in with Keycloak']")).Any())
+            _driver.FindElements(By.XPath("//button[normalize-space()='Continue to Sign In' or normalize-space()='Sign in with Keycloak' or normalize-space()='Sign In']")).Any())
         {
-            KeycloakEntryButton.Click();
+            var hostedLoginEntryButton = HostedLoginEntryButton;
+
+            try
+            {
+                hostedLoginEntryButton.Click();
+            }
+            catch (ElementClickInterceptedException)
+            {
+                ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", hostedLoginEntryButton);
+            }
         }
 
         _wait.Until(d => d.FindElements(By.Id("username")).Any() && d.FindElements(By.Id("password")).Any());

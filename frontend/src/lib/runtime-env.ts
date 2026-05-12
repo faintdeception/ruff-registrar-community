@@ -24,7 +24,15 @@ export const getApiBaseUrl = (): string => {
     return process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
   }
 
-  return getRuntimeEnv()?.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  return '/backend';
+};
+
+export const getForwardedHost = (): string | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  return window.location.host || null;
 };
 
 export const getAppVersion = (): string => {

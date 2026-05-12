@@ -1,6 +1,7 @@
 using StudentRegistrar.Api.DTOs;
 using StudentRegistrar.Api.Services.Infrastructure;
 using StudentRegistrar.Models;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
@@ -33,6 +34,8 @@ public class KeycloakService : IKeycloakService
         _logger = logger;
         _passwordService = passwordService;
         _tenantContextAccessor = tenantContextAccessor;
+        _httpClient.DefaultRequestVersion = HttpVersion.Version11;
+        _httpClient.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
         
         // Load Keycloak configuration
         _keycloakBaseUrl = _configuration["Keycloak:BaseUrl"] ?? "http://localhost:8080";
@@ -300,6 +303,64 @@ public class KeycloakService : IKeycloakService
             _logger.LogError(ex, "Failed to check if user exists for email: {Email}", email);
             throw;
         }
+    }
+
+    public async Task<KeycloakTokenResponse> AuthenticateUserAsync(string email, string password, CancellationToken cancellationToken = default)
+    {
+        var tokenRequest = new Dictionary<string, string>
+        {
+            { "grant_type", "password" },
+            { "client_id", _clientId },
+            { "username", email },
+            { "password", password }
+        };
+
+        if (!string.IsNullOrWhiteSpace(_clientSecret))
+        {
+            tokenRequest["client_secret"] = _clientSecret;
+        }
+
+        var realm = GetCurrentRealm();
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{_keycloakBaseUrl}/realms/{realm}/protocol/openid-connect/token");
+        request.Content = new FormUrlEncodedContent(tokenRequest);
+
+        var response = await _httpClient.SendAsync(request, cancellationToken);
+        var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest || response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            _logger.LogWarning("Keycloak password grant rejected for {Email} in realm {Realm}", email, realm);
+            throw new UnauthorizedAccessException("Invalid credentials.");
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException($"Failed to authenticate user. Status: {response.StatusCode}, Error: {responseContent}");
+        }
+
+        using var jsonDoc = JsonDocument.Parse(responseContent);
+        var accessToken = jsonDoc.RootElement.GetProperty("access_token").GetString();
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            throw new InvalidOperationException("Access token is missing from Keycloak response.");
+        }
+
+        var refreshToken = jsonDoc.RootElement.TryGetProperty("refresh_token", out var refreshTokenElement)
+            ? refreshTokenElement.GetString()
+            : null;
+        var expiresIn = jsonDoc.RootElement.TryGetProperty("expires_in", out var expiresInElement)
+            ? expiresInElement.GetInt32()
+            : 300;
+        var refreshExpiresIn = jsonDoc.RootElement.TryGetProperty("refresh_expires_in", out var refreshExpiresInElement)
+            ? refreshExpiresInElement.GetInt32()
+            : 0;
+        var now = DateTimeOffset.UtcNow;
+
+        return new KeycloakTokenResponse(
+            accessToken,
+            refreshToken,
+            now.AddSeconds(expiresIn),
+            refreshExpiresIn > 0 ? now.AddSeconds(refreshExpiresIn) : null);
     }
 
     private async Task<string> GetAdminAccessTokenAsync()

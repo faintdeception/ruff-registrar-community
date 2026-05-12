@@ -1,3 +1,4 @@
+using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -6,6 +7,7 @@ using StudentRegistrar.Api.DTOs;
 using StudentRegistrar.Api.Services;
 using StudentRegistrar.Models;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using Xunit;
@@ -184,6 +186,59 @@ public class KeycloakServiceTests
             _keycloakService.CreateUserAsync(request));
         
         Assert.Contains("Failed to obtain access token", exception.Message);
+    }
+
+    [Fact]
+    public async Task AuthenticateUserAsync_SuccessfulPasswordGrant_ReturnsTokenResponse()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var tokenHttpResponse = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(JsonSerializer.Serialize(new
+            {
+                access_token = "user-access-token",
+                refresh_token = "user-refresh-token",
+                expires_in = 300,
+                refresh_expires_in = 1800
+            }))
+        };
+
+        _httpMessageHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(request =>
+                    request.Method == HttpMethod.Post &&
+                    request.RequestUri != null &&
+                    request.RequestUri.ToString().EndsWith("/realms/test-realm/protocol/openid-connect/token")),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(tokenHttpResponse);
+
+        var result = await _keycloakService.AuthenticateUserAsync("user@example.com", "Password123!");
+
+        result.AccessToken.Should().Be("user-access-token");
+        result.RefreshToken.Should().Be("user-refresh-token");
+        result.AccessTokenExpiresAt.Should().BeAfter(now.AddMinutes(4));
+        result.RefreshTokenExpiresAt.Should().NotBeNull();
+        result.RefreshTokenExpiresAt.Should().BeAfter(now.AddMinutes(25));
+    }
+
+    [Fact]
+    public async Task AuthenticateUserAsync_InvalidCredentials_ThrowsUnauthorizedAccessException()
+    {
+        var tokenHttpResponse = new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent("invalid_grant")
+        };
+
+        _httpMessageHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(tokenHttpResponse);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            _keycloakService.AuthenticateUserAsync("user@example.com", "wrong-password"));
     }
 
     [Fact]

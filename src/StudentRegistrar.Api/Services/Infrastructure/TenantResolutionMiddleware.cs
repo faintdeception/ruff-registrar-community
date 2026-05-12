@@ -185,7 +185,34 @@ public class TenantResolutionMiddleware
             return forwardedHost.Split(',')[0].Trim();
         }
 
+        var originHost = TryGetHostFromAbsoluteHeader(context.Request.Headers["Origin"].FirstOrDefault());
+        if (!string.IsNullOrWhiteSpace(originHost))
+        {
+            return originHost;
+        }
+
+        var refererHost = TryGetHostFromAbsoluteHeader(context.Request.Headers.Referer.FirstOrDefault());
+        if (!string.IsNullOrWhiteSpace(refererHost))
+        {
+            return refererHost;
+        }
+
         return context.Request.Host.Value ?? string.Empty;
+    }
+
+    private static string? TryGetHostFromAbsoluteHeader(string? headerValue)
+    {
+        if (string.IsNullOrWhiteSpace(headerValue))
+        {
+            return null;
+        }
+
+        if (!Uri.TryCreate(headerValue, UriKind.Absolute, out var uri))
+        {
+            return null;
+        }
+
+        return uri.IsDefaultPort ? uri.Host : uri.Authority;
     }
 
     private static bool IsValidSubdomain(string subdomain)

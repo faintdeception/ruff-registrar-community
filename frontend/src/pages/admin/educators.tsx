@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { EducatorDto, EducatorInfo } from '@/types';
-import { getApiBaseUrl } from '@/lib/runtime-env';
-import { getAccessToken } from '@/lib/auth';
+import apiClient from '@/lib/api-client';
 
 interface CreateEducatorFormData {
   firstName: string;
@@ -18,9 +17,7 @@ const AdminEducatorsPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
-  const apiBaseUrl = getApiBaseUrl();
 
   const [newInstructor, setNewInstructor] = useState<CreateEducatorFormData>({
     firstName: '',
@@ -37,18 +34,15 @@ const AdminEducatorsPage = () => {
     }
   });
 
-  const loadInstructors = useCallback(async (authToken: string) => {
+  const loadInstructors = useCallback(async () => {
     try {
-      const response = await fetch(`${apiBaseUrl}/api/Educators`, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await apiClient.get('/api/Educators');
       
       if (response.ok) {
         const data = await response.json();
         setInstructors(data);
+      } else if (response.status === 401) {
+        void router.push('/login');
       } else {
         setError('Failed to load educators');
       }
@@ -58,24 +52,17 @@ const AdminEducatorsPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [apiBaseUrl]);
+  }, [router]);
 
   useEffect(() => {
     let cancelled = false;
 
     const initialize = async () => {
-      const runtimeToken = await getAccessToken();
-      if (!runtimeToken) {
-        void router.push('/login');
-        return;
-      }
-
       if (cancelled) {
         return;
       }
 
-      setToken(runtimeToken);
-      await loadInstructors(runtimeToken);
+      await loadInstructors();
     };
 
     void initialize();
@@ -87,7 +74,6 @@ const AdminEducatorsPage = () => {
 
   const handleAddInstructor = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
 
     try {
       // Create payload that matches CreateEducatorDto
@@ -106,14 +92,7 @@ const AdminEducatorsPage = () => {
         }
       };
 
-      const response = await fetch(`${apiBaseUrl}/api/Educators`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
+      const response = await apiClient.post('/api/Educators', payload);
 
       if (response.ok) {
         const created = await response.json();
@@ -143,15 +122,8 @@ const AdminEducatorsPage = () => {
   };
 
   const handleDeleteInstructor = async (id: string) => {
-    if (!token) return;
-
     try {
-      const response = await fetch(`${apiBaseUrl}/api/Educators/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await apiClient.delete(`/api/Educators/${id}`);
 
       if (response.ok) {
         setInstructors(instructors.filter(i => i.id !== id));

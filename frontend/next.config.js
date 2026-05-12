@@ -4,6 +4,16 @@ const { version } = require('./package.json')
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
+  async rewrites() {
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+
+    return [
+      {
+        source: '/backend/:path*',
+        destination: `${apiBaseUrl.replace(/\/$/, '')}/:path*`,
+      },
+    ]
+  },
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
     NEXT_PUBLIC_KEYCLOAK_URL: process.env.NEXT_PUBLIC_KEYCLOAK_URL || 'http://localhost:8080',

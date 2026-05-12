@@ -1,7 +1,7 @@
-import Keycloak from 'keycloak-js';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { getKeycloakConfig } from './runtime-env';
+import { getApiBaseUrl, getForwardedHost } from './runtime-env';
+import { CSRF_HEADER_NAME, getCsrfToken } from './csrf';
 
 interface User {
   id: string;
@@ -22,20 +22,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-type KeycloakTokenClaims = {
-  sub?: string;
-  preferred_username?: string;
-  email?: string;
-  given_name?: string;
-  family_name?: string;
-  realm_access?: {
-    roles?: string[];
-  };
-};
-
-let keycloakClient: Keycloak | null = null;
-let keycloakInitPromise: Promise<boolean> | null = null;
+let currentUser: User | null = null;
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -45,58 +32,43 @@ export const useAuth = () => {
   return context;
 };
 
-const getKeycloak = () => getKeycloakConfig();
-
-const getRedirectUri = (path = '/'): string => {
-  if (typeof window === 'undefined') {
-    return path;
-  }
-
-  return new URL(path, window.location.origin).toString();
+const getAuthUrl = (path: string): string => {
+  return `${getApiBaseUrl().replace(/\/$/, '')}${path}`;
 };
 
-const getKeycloakClient = (): Keycloak => {
-  if (!keycloakClient) {
-    const config = getKeycloak();
-    keycloakClient = new Keycloak({
-      url: config.url,
-      realm: config.realm,
-      clientId: config.clientId,
-    });
-  }
-
-  return keycloakClient;
-};
-
-const mapUserFromToken = (client: Keycloak): User | null => {
-  const claims = client.tokenParsed as KeycloakTokenClaims | undefined;
-  if (!claims?.sub) {
-    return null;
-  }
+const buildAuthHeaders = (): Record<string, string> => {
+  const forwardedHost = getForwardedHost();
 
   return {
-    id: claims.sub,
-    username: claims.preferred_username ?? '',
-    email: claims.email ?? '',
-    firstName: claims.given_name ?? '',
-    lastName: claims.family_name ?? '',
-    roles: claims.realm_access?.roles ?? [],
+    'Content-Type': 'application/json',
+    ...(forwardedHost ? { 'X-Forwarded-Host': forwardedHost } : {}),
   };
 };
 
-const ensureKeycloakInitialized = async (): Promise<Keycloak> => {
-  const client = getKeycloakClient();
-  if (!keycloakInitPromise) {
-    keycloakInitPromise = client.init({
-      onLoad: 'check-sso',
-      pkceMethod: 'S256',
-      checkLoginIframe: false,
-      silentCheckSsoRedirectUri: getRedirectUri('/silent-check-sso.html'),
+const fetchCurrentUser = async (): Promise<User | null> => {
+  let response: Response;
+
+  try {
+    response = await fetch(getAuthUrl('/auth/me'), {
+      credentials: 'include',
+      headers: buildAuthHeaders(),
     });
+  } catch (error) {
+    console.warn('Session bootstrap failed; treating as signed out.', error);
+    return null;
   }
 
-  await keycloakInitPromise;
-  return client;
+  if (response.status === 401) {
+    return null;
+  }
+
+  if (!response.ok) {
+    console.warn(`Session bootstrap returned ${response.status}; treating as signed out.`);
+    return null;
+  }
+
+  const user = await response.json() as User;
+  return user;
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -109,40 +81,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const initializeAuth = async () => {
       try {
-        const client = await ensureKeycloakInitialized();
+        const nextUser = await fetchCurrentUser();
         if (cancelled) {
           return;
         }
 
-        setUser(mapUserFromToken(client));
+        currentUser = nextUser;
+        setUser(nextUser);
 
-        client.onAuthSuccess = () => {
-          setUser(mapUserFromToken(client));
-          if (router.pathname === '/login') {
-            void router.replace('/');
-          }
-        };
-
-        client.onAuthLogout = () => {
-          setUser(null);
-        };
-
-        client.onAuthRefreshSuccess = () => {
-          setUser(mapUserFromToken(client));
-        };
-
-        client.onTokenExpired = () => {
-          void client.updateToken(300)
-            .then(() => {
-              setUser(mapUserFromToken(client));
-            })
-            .catch(() => {
-              setUser(null);
-            });
-        };
+        if (nextUser && router.pathname === '/login') {
+          void router.replace('/');
+        }
       } catch (error) {
-        console.error('Error initializing Keycloak authentication:', error);
+        console.error('Error initializing session authentication:', error);
         if (!cancelled) {
+          currentUser = null;
           setUser(null);
         }
       } finally {
@@ -161,42 +114,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshToken = async (): Promise<string | null> => {
     try {
-      const client = await ensureKeycloakInitialized();
-      if (!client.authenticated) {
-        return null;
-      }
-
-      const refreshed = await client.updateToken(300);
-      if (!refreshed && !client.token) {
-        return null;
-      }
-
-      setUser(mapUserFromToken(client));
-      return client.token ?? null;
+      const nextUser = await fetchCurrentUser();
+      currentUser = nextUser;
+      setUser(nextUser);
+      return null;
     } catch (error) {
-      console.error('Error refreshing token:', error);
+      console.error('Error refreshing auth state:', error);
+      currentUser = null;
       setUser(null);
       return null;
     }
   };
 
-  const login = async () => {
-    const client = await ensureKeycloakInitialized();
-    await client.login({
-      redirectUri: getRedirectUri('/'),
-      scope: 'openid profile email',
+  const login = async (username?: string, password?: string) => {
+    if (!username || !password) {
+      throw new Error('Email and password are required');
+    }
+
+    const response = await fetch(getAuthUrl('/auth/login'), {
+      method: 'POST',
+      credentials: 'include',
+      headers: buildAuthHeaders(),
+      body: JSON.stringify({
+        email: username,
+        password,
+      }),
     });
+
+    const payload = await response.json().catch(() => null) as { success?: boolean; errorMessage?: string; user?: User } | null;
+
+    if (!response.ok || !payload?.success || !payload.user) {
+      throw new Error(payload?.errorMessage ?? 'Unable to sign in');
+    }
+
+    currentUser = payload.user;
+    setUser(payload.user);
+    await router.replace('/');
   };
 
   const logout = () => {
-    const client = keycloakClient;
+    currentUser = null;
     setUser(null);
-    if (client) {
-      void client.logout({ redirectUri: getRedirectUri('/login') });
-      return;
-    }
-
-    void router.push('/login');
+    void fetch(getAuthUrl('/auth/logout'), {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        ...buildAuthHeaders(),
+        [CSRF_HEADER_NAME]: getCsrfToken() ?? '',
+      },
+    }).finally(() => {
+      void router.push('/login');
+    });
   };
 
   const value = {
@@ -212,23 +180,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 export const getAccessToken = async (): Promise<string | null> => {
-  try {
-    const client = await ensureKeycloakInitialized();
-    if (!client.authenticated) {
-      return null;
-    }
-
-    await client.updateToken(300);
-    return client.token ?? null;
-  } catch {
-    return null;
-  }
+  return null;
 };
 
 export const getCurrentAccessToken = (): string | null => {
-  return keycloakClient?.authenticated ? keycloakClient.token ?? null : null;
+  return null;
 };
 
 export const isAuthenticated = (): boolean => {
-  return Boolean(keycloakClient?.authenticated && keycloakClient.token);
+  return Boolean(currentUser);
 };

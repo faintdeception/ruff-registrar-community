@@ -5,19 +5,22 @@ import { AcademicCapIcon, ArrowRightCircleIcon } from '@heroicons/react/24/outli
 
 export default function Login() {
   const appVersion = getAppVersion();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
   const { login } = useAuth();
 
-  const handleSignIn = async () => {
+  const handleSignIn = async (event: React.FormEvent) => {
+    event.preventDefault();
     setError('');
     setIsLoading(true);
 
     try {
-      await login();
+      await login(username, password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to start sign-in');
+      setError(err instanceof Error ? err.message : 'Unable to sign in');
     } finally {
       setIsLoading(false);
     }
@@ -39,10 +42,44 @@ export default function Login() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <div id="login-form" className="space-y-6">
+          <form id="login-form" className="space-y-6" onSubmit={handleSignIn}>
             <p className="text-sm text-gray-600">
-              Sign in using the organization login page. Credentials are entered directly with Keycloak instead of this app.
+              Use the administrator email address and password for your organization to sign in.
             </p>
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                Email or username
+              </label>
+              <div className="mt-1">
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  autoComplete="username"
+                  required
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <div className="mt-1">
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                />
+              </div>
+            </div>
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-md p-3">
                 <div className="flex">
@@ -59,8 +96,7 @@ export default function Login() {
             )}
             <div>
               <button
-                type="button"
-                onClick={handleSignIn}
+                type="submit"
                 disabled={isLoading}
                 className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
                   isLoading
@@ -74,17 +110,17 @@ export default function Login() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Redirecting...
+                    Signing in...
                   </div>
                 ) : (
                   <span className="flex items-center gap-2">
                     <ArrowRightCircleIcon className="h-5 w-5" />
-                    Sign in with Keycloak
+                    Sign In
                   </span>
                 )}
               </button>
             </div>
-          </div>
+          </form>
 
           <div className="mt-6">
             <div className="relative">
@@ -93,20 +129,20 @@ export default function Login() {
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-2 bg-white text-gray-500">
-                  Development Login
+                  Development Notes
                 </span>
               </div>
             </div>
 
             <div className="mt-6 bg-gray-50 rounded-md p-4">
               <p className="text-xs text-gray-600 mb-2">
-                <strong>Development Login:</strong>
+                <strong>Development sign-in:</strong>
               </p>
               <p className="text-xs text-gray-600">
-                Use your Keycloak username on the redirected login page.
+                Sign in with the administrator email and the password created during admin setup.
               </p>
               <p className="text-xs text-gray-600">
-                Local test accounts created by bootstrap, like <code className="bg-gray-200 px-1 rounded">scoopadmin</code>, still work.
+                Local bootstrap accounts and tenant admin accounts continue to work without exposing the identity provider name in the app UI.
               </p>
             </div>
           </div>
