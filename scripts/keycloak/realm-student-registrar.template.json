@@ -45,7 +45,7 @@
       "publicClient": false,
       "protocol": "openid-connect",
       "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": false,
+      "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": true,
       "redirectUris": ["http://localhost:3000/*", "http://localhost:3001/*"],
       "webOrigins": ["http://localhost:3000", "http://localhost:3001"],

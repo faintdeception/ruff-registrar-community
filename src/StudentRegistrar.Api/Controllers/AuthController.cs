@@ -28,6 +28,7 @@ public class AuthController : ControllerBase
     private readonly IAuthSessionStore _authSessionStore;
     private readonly IMapper _mapper;
     private readonly ILogger<AuthController> _logger;
+    private readonly string _keycloakRealm;
 
     public AuthController(
         StudentRegistrarDbContext dbContext,
@@ -35,7 +36,8 @@ public class AuthController : ControllerBase
         IKeycloakService keycloakService,
         IAuthSessionStore authSessionStore,
         IMapper mapper,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        IConfiguration configuration)
     {
         _dbContext = dbContext;
         _tenantContextAccessor = tenantContextAccessor;
@@ -43,6 +45,7 @@ public class AuthController : ControllerBase
         _authSessionStore = authSessionStore;
         _mapper = mapper;
         _logger = logger;
+        _keycloakRealm = configuration["Keycloak:Realm"] ?? "student-registrar";
     }
 
     [HttpPost("login")]
@@ -59,7 +62,7 @@ public class AuthController : ControllerBase
         }
 
         var tenantContext = _tenantContextAccessor.TenantContext;
-        if (tenantContext?.Tenant == null)
+        if (tenantContext == null)
         {
             return BadRequest(new SessionLoginResponse
             {
@@ -71,7 +74,7 @@ public class AuthController : ControllerBase
         try
         {
             var tokenResponse = await _keycloakService.AuthenticateUserAsync(request.Email, request.Password, cancellationToken);
-            var principal = BuildPrincipal(tokenResponse, tenantContext.Tenant.Id);
+            var principal = BuildPrincipal(tokenResponse, tenantContext.TenantId);
             var keycloakUserId = principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? principal.FindFirstValue("sub");
 
             if (string.IsNullOrWhiteSpace(keycloakUserId))
@@ -105,8 +108,8 @@ public class AuthController : ControllerBase
             {
                 SessionId = sessionId,
                 CsrfToken = csrfToken,
-                TenantId = tenantContext.Tenant.Id,
-                TenantRealm = tenantContext.Tenant.KeycloakRealm,
+                TenantId = tenantContext.TenantId,
+                TenantRealm = tenantContext.Tenant?.KeycloakRealm ?? _keycloakRealm,
                 KeycloakUserId = keycloakUserId,
                 AccessToken = tokenResponse.AccessToken,
                 RefreshToken = tokenResponse.RefreshToken,

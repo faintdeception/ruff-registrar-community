@@ -17,6 +17,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$selfHostedTenantId = '00000000-0000-0000-0000-000000000001'
+
 function Write-Step([string]$Message) {
     Write-Host "==> $Message"
 }
@@ -366,13 +368,13 @@ function Sync-TestDatabaseUsers {
     Write-Step "Syncing E2E test users in PostgreSQL container '$container'"
 
     $userValues = foreach ($user in $Users) {
-        "(gen_random_uuid(), $(ConvertTo-SqlLiteral $user.Email), $(ConvertTo-SqlLiteral $user.FirstName), $(ConvertTo-SqlLiteral $user.LastName), $(ConvertTo-SqlLiteral $user.KeycloakId), $($user.DatabaseRole), true, NOW(), NOW(), '00000000-0000-0000-0000-000000000000')"
+        "(gen_random_uuid(), $(ConvertTo-SqlLiteral $user.Email), $(ConvertTo-SqlLiteral $user.FirstName), $(ConvertTo-SqlLiteral $user.LastName), $(ConvertTo-SqlLiteral $user.KeycloakId), $($user.DatabaseRole), true, NOW(), NOW(), '$selfHostedTenantId')"
     }
 
     $accountHolderValues = foreach ($user in $Users) {
         $addressJson = '{"street":"300 Test User Rd","city":"Testville","state":"CA","postalCode":"12350","country":"US"}'
         $emergencyJson = '{"firstName":"Test","lastName":"Contact","homePhone":"555-1303","mobilePhone":"555-1304","email":"test.contact@example.com"}'
-        "(gen_random_uuid(), $(ConvertTo-SqlLiteral $user.FirstName), $(ConvertTo-SqlLiteral $user.LastName), $(ConvertTo-SqlLiteral $user.Email), '555-1301', '555-1302', '$addressJson'::jsonb, '$emergencyJson'::jsonb, 0.00, 0.00, $(ConvertTo-SqlLiteral $user.KeycloakId), NOW(), NOW(), NOW(), NOW(), '00000000-0000-0000-0000-000000000000')"
+        "(gen_random_uuid(), $(ConvertTo-SqlLiteral $user.FirstName), $(ConvertTo-SqlLiteral $user.LastName), $(ConvertTo-SqlLiteral $user.Email), '555-1301', '555-1302', '$addressJson'::jsonb, '$emergencyJson'::jsonb, 0.00, 0.00, $(ConvertTo-SqlLiteral $user.KeycloakId), NOW(), NOW(), NOW(), NOW(), '$selfHostedTenantId')"
     }
 
     $sql = @"

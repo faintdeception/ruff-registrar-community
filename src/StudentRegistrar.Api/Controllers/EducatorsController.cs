@@ -27,10 +27,9 @@ public class EducatorsController : ControllerBase
     {
         try
         {
-            var userRole = GetUserRole();
-            if (userRole != "Administrator")
+            if (!IsAdministrator())
             {
-                return Forbid("Only administrators can invite educators");
+                return ForbiddenMessage("Only administrators can invite educators");
             }
 
             var invitation = await _educatorService.InviteEducatorAsync(inviteDto);
@@ -83,11 +82,9 @@ public class EducatorsController : ControllerBase
     {
         try
         {
-            // Validate user has admin role
-            var userRole = GetUserRole();
-            if (userRole != "Administrator")
+            if (!IsAdministrator())
             {
-                return Forbid("Only administrators can create educators");
+                return ForbiddenMessage("Only administrators can create educators");
             }
 
             var educator = await _educatorService.CreateEducatorAsync(createDto);
@@ -105,11 +102,9 @@ public class EducatorsController : ControllerBase
     {
         try
         {
-            // Validate user has admin role
-            var userRole = GetUserRole();
-            if (userRole != "Administrator")
+            if (!IsAdministrator())
             {
-                return Forbid("Only administrators can update educators");
+                return ForbiddenMessage("Only administrators can update educators");
             }
 
             var educator = await _educatorService.UpdateEducatorAsync(id, updateDto);
@@ -130,11 +125,9 @@ public class EducatorsController : ControllerBase
     {
         try
         {
-            // Validate user has admin role
-            var userRole = GetUserRole();
-            if (userRole != "Administrator")
+            if (!IsAdministrator())
             {
-                return Forbid("Only administrators can delete educators");
+                return ForbiddenMessage("Only administrators can delete educators");
             }
 
             var result = await _educatorService.DeleteEducatorAsync(id);
@@ -158,11 +151,9 @@ public class EducatorsController : ControllerBase
     {
         try
         {
-            // Validate user has admin role
-            var userRole = GetUserRole();
-            if (userRole != "Administrator")
+            if (!IsAdministrator())
             {
-                return Forbid("Only administrators can deactivate educators");
+                return ForbiddenMessage("Only administrators can deactivate educators");
             }
 
             var success = await _educatorService.DeactivateEducatorAsync(id);
@@ -183,11 +174,9 @@ public class EducatorsController : ControllerBase
     {
         try
         {
-            // Validate user has admin role
-            var userRole = GetUserRole();
-            if (userRole != "Administrator")
+            if (!IsAdministrator())
             {
-                return Forbid("Only administrators can activate educators");
+                return ForbiddenMessage("Only administrators can activate educators");
             }
 
             var success = await _educatorService.ActivateEducatorAsync(id);
@@ -203,11 +192,21 @@ public class EducatorsController : ControllerBase
         }
     }
 
-    private string GetUserRole()
+    private ActionResult ForbiddenMessage(string message)
     {
+        return StatusCode(StatusCodes.Status403Forbidden, new { error = message });
+    }
+
+    private bool IsAdministrator()
+    {
+        if (User.IsInRole("Administrator"))
+        {
+            return true;
+        }
+
         var authHeader = Request.Headers["Authorization"].FirstOrDefault();
         if (authHeader == null || !authHeader.StartsWith("Bearer "))
-            return "";
+            return false;
 
         var token = authHeader.Substring("Bearer ".Length);
         var handler = new JwtSecurityTokenHandler();
@@ -228,7 +227,7 @@ public class EducatorsController : ControllerBase
                     if (rolesObject != null)
                     {
                         var roles = System.Text.Json.JsonSerializer.Deserialize<string[]>(rolesObject.ToString()!);
-                        return roles?.FirstOrDefault(r => r == "Administrator" || r == "Member" || r == "Educator" || r == "Instructor") ?? "";
+                        return roles?.Contains("Administrator") == true;
                     }
                 }
             }
@@ -238,6 +237,6 @@ public class EducatorsController : ControllerBase
             }
         }
 
-        return "";
+        return false;
     }
 }

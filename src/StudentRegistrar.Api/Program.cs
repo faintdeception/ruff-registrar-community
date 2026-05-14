@@ -49,10 +49,10 @@ builder.Services.AddTenantAuthorization();
 // Add database connection configuration via Aspire
 builder.Services.AddDbContext<StudentRegistrarDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("studentregistrar");
+    var connectionString = ResolvePostgresConnectionString(builder.Configuration);
     if (string.IsNullOrWhiteSpace(connectionString))
     {
-        throw new InvalidOperationException("Connection string 'studentregistrar' is not configured.");
+        throw new InvalidOperationException("Connection string 'studentregistrar' is not configured and Aspire database variables were not available.");
     }
 
     connectionString = NormalizePostgresConnectionString(connectionString);
@@ -102,6 +102,44 @@ builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddSingleton<IAuthSessionStore, MemoryAuthSessionStore>();
+
+static string? ResolvePostgresConnectionString(IConfiguration configuration)
+{
+    var connectionString = configuration.GetConnectionString("studentregistrar");
+    if (!string.IsNullOrWhiteSpace(connectionString))
+    {
+        return connectionString;
+    }
+
+    var host = configuration["STUDENTREGISTRAR_HOST"];
+    var database = configuration["STUDENTREGISTRAR_DATABASENAME"];
+    var username = configuration["STUDENTREGISTRAR_USERNAME"];
+    var password = configuration["STUDENTREGISTRAR_PASSWORD"];
+
+    if (string.IsNullOrWhiteSpace(host)
+        || string.IsNullOrWhiteSpace(database)
+        || string.IsNullOrWhiteSpace(username)
+        || string.IsNullOrWhiteSpace(password))
+    {
+        return null;
+    }
+
+    var connectionStringBuilder = new NpgsqlConnectionStringBuilder
+    {
+        Host = host,
+        Database = database,
+        Username = username,
+        Password = password,
+    };
+
+    if (int.TryParse(configuration["STUDENTREGISTRAR_PORT"], out var port)
+        && port > 0)
+    {
+        connectionStringBuilder.Port = port;
+    }
+
+    return connectionStringBuilder.ConnectionString;
+}
 
 static string NormalizePostgresConnectionString(string connectionString)
 {

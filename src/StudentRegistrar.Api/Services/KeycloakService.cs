@@ -112,10 +112,16 @@ public class KeycloakService : IKeycloakService
                 // Extract user ID from Location header
                 var locationHeader = response.Headers.Location?.ToString();
                 var userId = locationHeader?.Split('/').LastOrDefault();
-                
+
                 if (string.IsNullOrEmpty(userId))
                 {
-                    throw new InvalidOperationException("Failed to extract user ID from Keycloak response");
+                    _logger.LogWarning("Keycloak create-user response for {Email} did not include a Location header. Falling back to email lookup.", request.Email);
+                    userId = await GetUserIdByEmailAsync(request.Email);
+                }
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    throw new InvalidOperationException("Failed to resolve created user ID from Keycloak response");
                 }
                 
                 _logger.LogInformation("Successfully created user in Keycloak with ID: {UserId}", userId);

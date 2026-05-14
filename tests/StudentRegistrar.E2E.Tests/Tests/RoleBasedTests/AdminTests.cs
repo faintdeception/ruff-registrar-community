@@ -1135,8 +1135,8 @@ public class AdminTests : BaseTest
         // Submit the form
         var saveButton = Driver.FindElement(By.Id("save-room-btn"));
         ClickWithOverlayFallback(saveButton);
-    WaitForPageLoad();
-    WaitUntil(d => d.PageSource.Contains(uniqueName));
+        WaitForPageLoad();
+        WaitForRoomToAppear(uniqueName);
 
         // Assert - Room should be created and visible
         Driver.PageSource.Should().Contain(uniqueName, "New room should appear on the page");
@@ -1292,15 +1292,39 @@ public class AdminTests : BaseTest
 
         var saveButton = Driver.FindElement(By.Id("save-room-btn"));
         ClickWithOverlayFallback(saveButton);
-    WaitForPageLoad();
-    WaitUntil(d => d.PageSource.Contains(name));
+        WaitForPageLoad();
+        WaitForRoomToAppear(name);
     }
 
     private void NavigateToRoomsPage()
     {
         var roomsPage = new RoomsPage(Driver);
         roomsPage.NavigateToRooms(BaseUrl);
+        WaitForRoomsPageToBeReady();
+    }
+
+    private void WaitForRoomsPageToBeReady()
+    {
         WaitForUrlContains("/rooms");
+        WaitUntil(d =>
+            !d.PageSource.Contains("Loading rooms...") &&
+            (d.FindElements(By.Id("create-room-btn")).Any(e => e.Displayed) ||
+             d.FindElements(By.Id("create-first-room-btn")).Any(e => e.Displayed)),
+            timeoutSeconds: 20,
+            failureMessage: "Rooms page did not finish loading in time");
+    }
+
+    private void WaitForRoomToAppear(string roomName)
+    {
+        var roomTestId = $"room-{roomName.Replace(' ', '-').ToLowerInvariant()}";
+
+        WaitUntil(d =>
+            !d.PageSource.Contains("Loading rooms...") &&
+            !d.FindElements(By.Id("room-modal")).Any(e => e.Displayed) &&
+            (d.FindElements(By.CssSelector($"[data-testid='{roomTestId}']")).Any(e => e.Displayed) ||
+             d.PageSource.Contains(roomName)),
+            timeoutSeconds: 20,
+            failureMessage: $"Room '{roomName}' did not appear after save");
     }
 
     private IWebElement WaitForCreateRoomButton()

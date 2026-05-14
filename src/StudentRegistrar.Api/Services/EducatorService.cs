@@ -1,7 +1,9 @@
 using AutoMapper;
 using StudentRegistrar.Api.DTOs;
+using StudentRegistrar.Data;
 using StudentRegistrar.Data.Repositories;
 using StudentRegistrar.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace StudentRegistrar.Api.Services;
 
@@ -10,17 +12,20 @@ public class EducatorService : IEducatorService
     private readonly IEducatorRepository _educatorRepository;
     private readonly IAccountHolderRepository _accountHolderRepository;
     private readonly IKeycloakService _keycloakService;
+    private readonly StudentRegistrarDbContext _dbContext;
     private readonly IMapper _mapper;
 
     public EducatorService(
         IEducatorRepository educatorRepository,
         IAccountHolderRepository accountHolderRepository,
         IKeycloakService keycloakService,
+        StudentRegistrarDbContext dbContext,
         IMapper mapper)
     {
         _educatorRepository = educatorRepository;
         _accountHolderRepository = accountHolderRepository;
         _keycloakService = keycloakService;
+        _dbContext = dbContext;
         _mapper = mapper;
     }
 
@@ -105,6 +110,7 @@ public class EducatorService : IEducatorService
         }
 
         await _keycloakService.UpdateUserRoleAsync(keycloakUserId, UserRole.Educator);
+    await EnsureUserRecordAsync(keycloakUserId, email, firstName, lastName, phone, accountHolderId);
 
         if (accountHolderId.HasValue)
         {
@@ -208,5 +214,67 @@ public class EducatorService : IEducatorService
     public async Task<bool> ActivateEducatorAsync(Guid id)
     {
         return await _educatorRepository.ActivateAsync(id);
+    }
+
+    private async Task EnsureUserRecordAsync(
+        string keycloakUserId,
+        string email,
+        string firstName,
+        string lastName,
+        string? phone,
+        Guid? accountHolderId)
+    {
+        var existingUser = await _dbContext.Users
+            .FirstOrDefaultAsync(user => user.KeycloakId == keycloakUserId || user.Email == email);
+
+        if (existingUser == null)
+        {
+            existingUser = new User
+            {
+                TenantId = accountHolderId.HasValue
+                    ? await _dbContext.AccountHolders
+                        .Where(accountHolder => accountHolder.Id == accountHolderId.Value)
+                        .Select(accountHolder => accountHolder.TenantId)
+                        .FirstAsync()
+                    : Guid.Empty,
+                Email = email,
+                FirstName = firstName,
+                LastName = lastName,
+                KeycloakId = keycloakUserId,
+                Role = UserRole.Educator,
+                IsActive = true,
+            };
+
+            _dbContext.Users.Add(existingUser);
+        }
+        else
+        {
+            existingUser.Email = email;
+            existingUser.FirstName = firstName;
+            existingUser.LastName = lastName;
+            existingUser.KeycloakId = keycloakUserId;
+            existingUser.Role = UserRole.Educator;
+            existingUser.IsActive = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(phone))
+        {
+            var profile = await _dbContext.UserProfiles.FirstOrDefaultAsync(userProfile => userProfile.UserId == existingUser.Id);
+            if (profile == null)
+            {
+                _dbContext.UserProfiles.Add(new UserProfile
+                {
+                    TenantId = existingUser.TenantId,
+                    UserId = existingUser.Id,
+                    PhoneNumber = phone,
+                });
+            }
+            else if (string.IsNullOrWhiteSpace(profile.PhoneNumber))
+            {
+                profile.PhoneNumber = phone;
+            }
+        }
+
+        await _dbContext.SaveChangesAsync();
     }
 }

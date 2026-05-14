@@ -1,7 +1,10 @@
 using Projects;
 using Aspire.Hosting.ApplicationModel;
+using Microsoft.Extensions.Configuration;
 
 var builder = DistributedApplication.CreateBuilder(args);
+
+builder.Configuration.AddUserSecrets<Program>(optional: true);
 
 var deploymentPlatform = builder.Configuration["DEPLOYMENT_PLATFORM"] ?? "aks";
 var deployToAca = string.Equals(deploymentPlatform, "aca", StringComparison.OrdinalIgnoreCase);

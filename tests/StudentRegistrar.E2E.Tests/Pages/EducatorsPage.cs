@@ -9,7 +9,9 @@ public sealed class EducatorsPage
     private readonly WebDriverWait _wait;
     private static readonly By UserRolesSelector = By.CssSelector("[data-testid='user-roles']");
     private static readonly By AddEducatorButtonSelector = By.Id("add-educator-btn");
-    private static readonly By EducatorCardSelector = By.CssSelector("[data-testid^='educator-']");
+    private static readonly By EducatorCardSelector = By.CssSelector("li[data-testid^='educator-']");
+    private static readonly By InviteMessageSelector = By.CssSelector("[data-testid='educator-invite-message']");
+    private static readonly By ErrorBannerSelector = By.CssSelector("div.bg-red-100.border.border-red-400");
 
     public EducatorsPage(IWebDriver driver)
     {
@@ -42,7 +44,9 @@ public sealed class EducatorsPage
         Click(By.Id("save-educator-btn"));
 
         var fullName = $"{firstName} {lastName}";
+        WaitForSaveResult();
         _wait.Until(d => IsEducatorVisible(fullName));
+        _wait.Until(d => d.FindElements(InviteMessageSelector).Any(element => element.Displayed));
 
         var username = _wait.Until(d => d.FindElement(By.CssSelector("[data-testid='educator-invite-username']"))).Text;
         var password = _wait.Until(d => d.FindElement(By.CssSelector("[data-testid='educator-invite-password']"))).Text;
@@ -62,13 +66,14 @@ public sealed class EducatorsPage
         SetText(By.Id("educator-bio-input"), bio);
         Click(By.Id("save-educator-btn"));
 
+        WaitForSaveResult();
         _wait.Until(d => IsEducatorVisible(fullName));
         _wait.Until(d => GetInviteMessage().Contains("authorized", StringComparison.OrdinalIgnoreCase));
     }
 
     public string GetInviteMessage()
     {
-        return _wait.Until(d => d.FindElement(By.CssSelector("[data-testid='educator-invite-message']"))).Text;
+        return _wait.Until(d => d.FindElement(InviteMessageSelector)).Text;
     }
 
     public bool HasTemporaryCredentials()
@@ -79,7 +84,7 @@ public sealed class EducatorsPage
 
     public bool IsEducatorVisible(string fullName)
     {
-        return _driver.FindElements(By.CssSelector("[data-testid^='educator-']"))
+        return _driver.FindElements(EducatorCardSelector)
             .Any(e => e.Text.Contains(fullName, StringComparison.OrdinalIgnoreCase));
     }
 
@@ -126,6 +131,35 @@ public sealed class EducatorsPage
         catch (ElementClickInterceptedException)
         {
             ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", element);
+        }
+    }
+
+    private void WaitForSaveResult()
+    {
+        try
+        {
+            _wait.Until(d =>
+            {
+                var errorBanner = d.FindElements(ErrorBannerSelector)
+                    .FirstOrDefault(element => element.Displayed && !string.IsNullOrWhiteSpace(element.Text));
+                if (errorBanner != null)
+                {
+                    throw new InvalidOperationException($"Educator save failed: {errorBanner.Text}");
+                }
+
+                return !d.FindElements(By.Id("save-educator-btn")).Any(element => element.Displayed);
+            });
+        }
+        catch (WebDriverTimeoutException)
+        {
+            var visibleError = _driver.FindElements(ErrorBannerSelector)
+                .FirstOrDefault(element => element.Displayed && !string.IsNullOrWhiteSpace(element.Text));
+            if (visibleError != null)
+            {
+                throw new InvalidOperationException($"Educator save failed: {visibleError.Text}");
+            }
+
+            throw;
         }
     }
 
