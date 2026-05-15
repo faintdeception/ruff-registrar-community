@@ -1,2 +1,4 @@
--- No-op: database creation handled by 01-create-keycloak-db.sh
-SELECT 1;
+SELECT 'CREATE DATABASE keycloak'
+WHERE NOT EXISTS (
+	SELECT 1 FROM pg_database WHERE datname = 'keycloak'
+)\gexec
