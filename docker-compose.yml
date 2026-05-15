@@ -59,14 +59,19 @@ services:
       - Keycloak__Authority=http://keycloak:8080/realms/student-registrar
       - Keycloak__PublicAuthority=http://localhost:8080
       - Keycloak__Realm=student-registrar
+      - Keycloak__ClientId=student-registrar
+      - Keycloak__ClientSecret=${KEYCLOAK_CLIENT_SECRET:-student-registrar-local-dev-secret}
       - Keycloak__AdminUsername=admin
       - Keycloak__AdminPassword=${KEYCLOAK_ADMIN_PASSWORD:-changeme-in-production}
       - Keycloak__AdminRealm=master
+      - DEPLOYMENT_MODE=selfhosted
 
   frontend:
     build:
       context: frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://api:8080
     ports:
       - "3000:3000"
     depends_on:

@@ -29,6 +29,9 @@ First application admin email. Prompted if omitted.
 .PARAMETER InitialAdminTempPass
 First application admin temporary password. Prompted if omitted.
 
+.PARAMETER ClientSecret
+Optional confidential client secret to apply to the student-registrar client. Use for local/dev parity with docker-compose/AppHost settings.
+
 .PARAMETER AdminPasswordFile
 Path to file containing Keycloak master admin password.
 
@@ -43,6 +46,7 @@ param(
     [string]$InitialAdminUsername,
     [string]$InitialAdminEmail,
     [string]$InitialAdminTempPass,
+    [string]$ClientSecret = $env:KEYCLOAK_CLIENT_SECRET,
     [string]$AdminPasswordFile,
     [switch]$Help
 )
@@ -57,13 +61,15 @@ Usage: ./scripts/keycloak/bootstrap-keycloak.ps1 [options]
   -AdminUsername NAME          Master realm admin username (default: admin)
   -InitialAdminUsername NAME   First application admin username (non-interactive)
   -InitialAdminEmail EMAIL     First application admin email (non-interactive)
-  -InitialAdminTempPass PWD    First app admin temp password (non-interactive)
+    -InitialAdminTempPass PWD    First app admin temp password (non-interactive)
+    -ClientSecret SECRET         Optional secret for the student-registrar confidential client
   -AdminPasswordFile PATH      File containing Keycloak master admin password
   -Help                        Show this help
 
 Environment overrides:
   KEYCLOAK_ADMIN_PASSWORD   Master admin password (skips prompt)
-  INITIAL_ADMIN_TEMP_PASS   Temp password for first app admin (skips prompt if other fields supplied)
+    INITIAL_ADMIN_TEMP_PASS   Temp password for first app admin (skips prompt if other fields supplied)
+    KEYCLOAK_CLIENT_SECRET    Secret for the student-registrar confidential client
 
 Behavior:
   - If realm already exists, exits with code 10.
@@ -231,6 +237,21 @@ $clientUuid = $client.id
 if ([string]::IsNullOrWhiteSpace($clientUuid)) {
     Write-Warning "Could not resolve client '$clientId'. Skipping service account role grants."
 } else {
+    if (-not [string]::IsNullOrWhiteSpace($ClientSecret)) {
+        Write-Host "Configuring confidential client secret for '$clientId'..."
+        $client | Add-Member -NotePropertyName secret -NotePropertyValue $ClientSecret -Force
+        $client | Add-Member -NotePropertyName publicClient -NotePropertyValue $false -Force
+        $client | Add-Member -NotePropertyName directAccessGrantsEnabled -NotePropertyValue $true -Force
+        $client | Add-Member -NotePropertyName serviceAccountsEnabled -NotePropertyValue $true -Force
+        $clientBody = $client | ConvertTo-Json -Depth 20 -Compress
+
+        $setSecret = Invoke-Http -Method Put -Uri "$KeycloakUrl/admin/realms/$Realm/clients/$clientUuid" -Headers $authHeaders -Body $clientBody -ContentType 'application/json'
+        if ([int]$setSecret.StatusCode -ne 204) {
+            Write-Error "Failed to configure confidential client secret (HTTP $($setSecret.StatusCode))"
+            exit 16
+        }
+    }
+
     $serviceAccountUser = Invoke-RestMethod -Method Get -Uri "$KeycloakUrl/admin/realms/$Realm/clients/$clientUuid/service-account-user" -Headers $authHeaders
     $serviceAccountUserId = $serviceAccountUser.id
 
@@ -269,7 +290,7 @@ Bootstrap complete
 Realm: $Realm
 Initial admin (app): $InitialAdminUsername (temp password must be changed at first login)
 Client ID: $clientId
-Client Secret: [not displayed; retrieve from Keycloak Admin Console or via API after bootstrap]
+Client Secret: $(if ([string]::IsNullOrWhiteSpace($ClientSecret)) { '[not configured by script; retrieve from Keycloak Admin Console or via API after bootstrap]' } else { '[configured from -ClientSecret / KEYCLOAK_CLIENT_SECRET; not displayed]' })
 Add to appsettings / secrets accordingly.
 "@ | Write-Host
 

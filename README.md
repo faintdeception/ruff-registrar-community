@@ -54,7 +54,7 @@ This application implements secure password management with the following featur
 
 ## Quick Start with Docker (Optional)
 
-Docker Compose can stand up the services quickly, but you still need to bootstrap Keycloak and create the SPA client.
+Docker Compose can stand up the same Linux-based services used by CI and Azure deployment images, but you still need to bootstrap Keycloak and test users. Windows PowerShell commands below drive that Linux container topology from Windows; they are not a Windows-container deployment path.
 
 ```bash
 # Clone the repository
@@ -62,7 +62,7 @@ git clone <repository-url>
 cd student-registrar
 
 # Start all services
-docker-compose up -d
+docker compose up -d
 
 # Wait for services to be ready, then open:
 # - Frontend: http://localhost:3000
@@ -71,18 +71,26 @@ docker-compose up -d
 #   - Username: admin
 #   - Password: set KEYCLOAK_ADMIN_PASSWORD (see docker-compose.yml)
 
-# Bootstrap Keycloak realm + roles + test users (local dev only — does not apply cloud hardening)
-./setup-keycloak.sh
+```
 
-# Create the public SPA client used by the frontend
+Windows PowerShell:
+```powershell
+./scripts/keycloak/bootstrap-keycloak.ps1 -KeycloakUrl http://localhost:8080 -AdminUsername admin -Realm student-registrar -ClientSecret 'student-registrar-local-dev-secret'
+./scripts/testing/setup-test-users.ps1 -AdminPassword 'admin123!'
+```
+
+Linux/WSL Bash:
+```bash
+./setup-keycloak.sh
 ./scripts/keycloak/add-spa-client.sh
+./scripts/testing/setup-test-users.sh
 ```
 
 ## Development Setup
 
-### Automated Setup (Recommended)
+### Automated Setup (Linux/WSL)
 
-Use the provided setup script for automatic configuration:
+Linux/WSL users can use the provided setup script for automatic configuration. Windows PowerShell users should use the manual setup commands below while still targeting the same Linux container/AppHost services.
 
 ```bash
 # Clone the repository
@@ -111,27 +119,37 @@ The setup script will:
    ```bash
    dotnet run --project src/StudentRegistrar.AppHost
    ```
-2. Bootstrap Keycloak + the confidential application client:
+2. Bootstrap Keycloak + application clients.
+
+   Windows PowerShell path:
+   ```powershell
+   ./scripts/keycloak/bootstrap-keycloak.ps1 -KeycloakUrl http://localhost:8080 -AdminUsername admin -Realm student-registrar -ClientSecret 'student-registrar-local-dev-secret'
+   ```
+
+   Linux/WSL Bash path:
    ```bash
    ./setup-keycloak.sh
+   ./scripts/keycloak/add-spa-client.sh
    ```
    > **Local dev only.** This script sets up Keycloak for Aspire/docker-compose and does not apply
    > cloud-level hardening (password policy, PKCE, brute-force protection). For cloud deployments
    > use `scripts/keycloak/bootstrap-keycloak.sh` + `scripts/keycloak/harden-realm.sh` instead.
-3. Configure the public SPA client (required for frontend login):
-   ```bash
-   ./scripts/keycloak/add-spa-client.sh
-   ```
-4. Add the confidential client secret to AppHost settings:
+3. Add the confidential client secret to AppHost settings:
    ```bash
    cp src/StudentRegistrar.AppHost/appsettings.example.json src/StudentRegistrar.AppHost/appsettings.json
    ```
-   Update `Keycloak:ClientSecret` using the value printed by `setup-keycloak.sh`.
+   For local development, keep `Keycloak:ClientSecret` aligned with the secret passed to PowerShell `-ClientSecret` or the value printed by `setup-keycloak.sh`.
 
-On Windows, use the PowerShell E2E seeding script after bootstrap so Keycloak users and local database rows stay aligned:
+Use the platform-native E2E setup script after bootstrap so Keycloak users and local database rows stay aligned. Windows developers should be able to stay in PowerShell without WSL while validating against the same Linux-oriented app topology:
 
 ```powershell
 ./scripts/testing/setup-test-users.ps1 -AdminPassword 'admin123!'
+```
+
+Linux/WSL users can use the Bash equivalent:
+
+```bash
+./scripts/testing/setup-test-users.sh
 ```
 
 For detailed Keycloak usage, see [scripts/keycloak/README.md](scripts/keycloak/README.md).
@@ -338,7 +356,22 @@ For Keycloak bootstrap, SPA client setup, and test user seeding, see
 The application includes comprehensive E2E tests organized by user roles using Selenium WebDriver.
 
 #### Quick Start
+
+Windows PowerShell:
+```powershell
+# CI-equivalent local confidence lane: rebuilds images, starts Docker Compose,
+# bootstraps Keycloak, syncs users, seeds data, runs preflight, and executes E2E.
+./scripts/testing/run-ci-equivalent-e2e.ps1
+
+# Fast auth/database/API preflight without running Selenium tests.
+./scripts/testing/run-ci-equivalent-e2e.ps1 -PreflightOnly
+```
+
+Linux/WSL Bash:
 ```bash
+# CI-equivalent local confidence lane used by CI.
+./scripts/testing/run-ci-equivalent-e2e.sh
+
 # Run all E2E tests with browser visible
 ./scripts/testing/run-e2e-tests.sh
 
@@ -374,9 +407,9 @@ Tests are organized by user roles to reflect real-world usage patterns:
 
 #### Prerequisites for Testing
 
-1. **Application Running**: Student Registrar at `http://localhost:3001`
-2. **Test Users**: Created automatically with `--setup-users`, or with `./scripts/testing/setup-test-users.ps1 -AdminPassword 'admin123!'` on Windows.
-3. **Test Data**: The PowerShell setup script syncs the required E2E `Users` and `AccountHolders` rows when it can detect the local Aspire PostgreSQL container. Use `./scripts/testing/seed-database.sh` only when you want the broader sample-data set.
+1. **Application Running**: Student Registrar at `http://localhost:3001` for Aspire/local dev tests, or `http://localhost:3000` when using the CI-equivalent Docker Compose runners.
+2. **Test Users**: Created with `./scripts/testing/setup-test-users.ps1 -AdminPassword 'admin123!'` on Windows PowerShell, or `./scripts/testing/setup-test-users.sh` / `./scripts/testing/run-e2e-tests.sh --setup-users` on Linux/WSL.
+3. **Test Data**: The CI-equivalent runners call the platform-native seed scripts automatically. Use `./scripts/testing/seed-database.ps1` on Windows PowerShell or `./scripts/testing/seed-database.sh` on Linux/WSL when manually refreshing the broader sample-data set; keep both paths equivalent when changing seed behavior.
 
 For detailed testing documentation, see [`scripts/testing/README.md`](scripts/testing/README.md).
 

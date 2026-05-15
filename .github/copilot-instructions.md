@@ -64,12 +64,32 @@ dotnet ef migrations add InitialCreate --project src/StudentRegistrar.Data --sta
 
 ### Keycloak Configuration
 
-```bash
-# Bootstrap Keycloak realm, roles, and test users (local Aspire/docker-compose dev only)
-./setup-keycloak.sh
+Local scripts are intentionally cross-platform:
 
-# Configure SPA client for frontend authentication
+- Windows-first developers should use the PowerShell scripts from PowerShell and should not need WSL.
+- Linux, WSL2, and CI users can use the Bash scripts.
+- Local Docker, CI, and Azure deployment targets remain Linux-based. The PowerShell scripts should exercise the same Linux images/services from Windows, not introduce Windows-container-only behavior.
+- When changing bootstrap, seed, or E2E setup behavior, keep `.ps1` and `.sh` paths equivalent or call out the gap in docs.
+
+```powershell
+# Windows/PowerShell local bootstrap and E2E user setup
+./scripts/keycloak/bootstrap-keycloak.ps1 -KeycloakUrl http://localhost:8080 -AdminUsername admin -Realm student-registrar -ClientSecret 'student-registrar-local-dev-secret'
+./scripts/testing/setup-test-users.ps1 -AdminPassword 'admin123!'
+
+# Windows/PowerShell CI-equivalent confidence lane
+./scripts/testing/run-ci-equivalent-e2e.ps1 -PreflightOnly
+./scripts/testing/run-ci-equivalent-e2e.ps1
+```
+
+```bash
+# Linux/WSL local bootstrap path
+./setup-keycloak.sh
 ./scripts/keycloak/add-spa-client.sh
+./scripts/testing/setup-test-users.sh
+
+# Linux/WSL/CI CI-equivalent confidence lane
+./scripts/testing/run-ci-equivalent-e2e.sh --preflight-only
+./scripts/testing/run-ci-equivalent-e2e.sh
 ```
 
 > For cloud environments (STG/PRD), use `scripts/keycloak/bootstrap-keycloak.sh` +

@@ -16,9 +16,20 @@ This directory contains scripts and assets to bootstrap a new Keycloak instance 
 - `realm-student-registrar.template.json` – Minimal sanitized realm definition used as a baseline. Dynamic values (hostnames, client redirect URIs) are applied by bootstrap script.
 - `add-spa-client.sh` – Adds/updates the public SPA client used by the frontend.
 
+PowerShell scripts are the supported Windows-first path and should not require WSL. Bash scripts are for Linux, WSL2, and CI. Both paths should configure the same Linux-based local services and Azure-facing assumptions; PowerShell is a Windows-native way to drive that topology, not a separate Windows-container target. When changing bootstrap or seed behavior, keep the `.ps1` and `.sh` paths behaviorally equivalent or document the deliberate difference here.
+
 ## SPA client setup (local vs ACA)
 
 ### Local development
+
+PowerShell bootstrap uses the realm template, which already includes the local SPA client:
+
+```powershell
+./scripts/keycloak/bootstrap-keycloak.ps1 -KeycloakUrl http://localhost:8080 -AdminUsername admin -Realm student-registrar -ClientSecret 'student-registrar-local-dev-secret'
+```
+
+Bash local setups that use `setup-keycloak.sh` should also run the SPA client helper:
+
 ```bash
 KEYCLOAK_ADMIN_PASSWORD=admin123! \
   ./scripts/keycloak/add-spa-client.sh \
@@ -46,7 +57,7 @@ You can also provide the same values via `REDIRECT_URIS` and `WEB_ORIGINS` env v
 
 PowerShell:
 ```powershell
-./scripts/keycloak/bootstrap-keycloak.ps1 -KeycloakUrl http://localhost:8080 -AdminUsername admin -Realm student-registrar
+./scripts/keycloak/bootstrap-keycloak.ps1 -KeycloakUrl http://localhost:8080 -AdminUsername admin -Realm student-registrar -ClientSecret 'student-registrar-local-dev-secret'
 ```
 Prompts:
 1. Master (Keycloak) admin password

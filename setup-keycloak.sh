@@ -14,6 +14,7 @@ KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8080}"
 ADMIN_USER="${KEYCLOAK_ADMIN_USERNAME:-${KEYCLOAK_ADMIN_USER:-admin}}"
 REALM_NAME="student-registrar"
 CLIENT_ID="student-registrar"
+CLIENT_SECRET="${KEYCLOAK_CLIENT_SECRET:-student-registrar-local-dev-secret}"
 
 echo "🔐 Setting up Keycloak for Student Registrar"
 echo "============================================="
@@ -186,8 +187,9 @@ curl -s -X POST "${KEYCLOAK_URL}/admin/realms/$REALM_NAME/clients" \
         \"publicClient\": false,
         \"bearerOnly\": false,
         \"standardFlowEnabled\": true,
-        "directAccessGrantsEnabled": false,
+        \"directAccessGrantsEnabled\": true,
         \"serviceAccountsEnabled\": true,
+        \"secret\": \"$CLIENT_SECRET\",
         \"redirectUris\": [\"http://localhost:3000/*\", \"http://localhost:3001/*\"],
         \"webOrigins\": [\"http://localhost:3000\", \"http://localhost:3001\"],
         \"attributes\": {

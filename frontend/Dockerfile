@@ -9,6 +9,8 @@ ENV NPM_CONFIG_FETCH_RETRIES=5 \
 COPY package.json package-lock.json* ./
 RUN npm ci --no-audit --no-fund --prefer-offline
 COPY . .
+ARG NEXT_PUBLIC_API_URL=http://localhost:5000
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN npm run build
 
 # Production image
@@ -27,7 +29,7 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 
-RUN chmod +x /app/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /app/docker-entrypoint.sh && chmod +x /app/docker-entrypoint.sh
 RUN chown -R nextjs:nodejs /app/public /app/.next
 
 USER nextjs

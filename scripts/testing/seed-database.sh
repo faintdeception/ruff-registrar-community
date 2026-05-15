@@ -58,6 +58,65 @@ fi
 DB_CONTAINER=$(read_setting "Enter DB container name" "" "DB_CONTAINER" "true")
 TENANT_ID="${SEED_TENANT_ID:-00000000-0000-0000-0000-000000000001}"
 
+KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8080}"
+KEYCLOAK_REALM="${KEYCLOAK_REALM:-student-registrar}"
+KEYCLOAK_ADMIN_USERNAME="${KEYCLOAK_ADMIN_USERNAME:-${KEYCLOAK_ADMIN_USER:-admin}}"
+KEYCLOAK_ADMIN_TOKEN=""
+
+get_keycloak_admin_token() {
+    if [ -z "${KEYCLOAK_ADMIN_PASSWORD:-}" ] || ! command -v curl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
+        return 1
+    fi
+
+    if [ -n "$KEYCLOAK_ADMIN_TOKEN" ]; then
+        echo "$KEYCLOAK_ADMIN_TOKEN"
+        return 0
+    fi
+
+    KEYCLOAK_ADMIN_TOKEN=$(curl -s -X POST "${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token" \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        --data-urlencode "username=${KEYCLOAK_ADMIN_USERNAME}" \
+        --data-urlencode "password=${KEYCLOAK_ADMIN_PASSWORD}" \
+        -d "grant_type=password" \
+        -d "client_id=admin-cli" | jq -r '.access_token // empty')
+
+    if [ -z "$KEYCLOAK_ADMIN_TOKEN" ] || [ "$KEYCLOAK_ADMIN_TOKEN" = "null" ]; then
+        return 1
+    fi
+
+    echo "$KEYCLOAK_ADMIN_TOKEN"
+}
+
+get_keycloak_user_id() {
+    local username="$1"
+    local fallback_id="$2"
+    local token
+
+    if ! token=$(get_keycloak_admin_token); then
+        echo "$fallback_id"
+        return 0
+    fi
+
+    local user_id
+    user_id=$(curl -s -G "${KEYCLOAK_URL}/admin/realms/${KEYCLOAK_REALM}/users" \
+        -H "Authorization: Bearer $token" \
+        --data-urlencode "username=${username}" \
+        --data-urlencode "exact=true" | jq -r '.[0].id // empty')
+
+    if [ -z "$user_id" ] || [ "$user_id" = "null" ]; then
+        echo "$fallback_id"
+        return 0
+    fi
+
+    echo "$user_id"
+}
+
+SCOOPADMIN_KEYCLOAK_ID=$(get_keycloak_user_id "scoopadmin" "scoopadmin-keycloak-id")
+ADMIN1_KEYCLOAK_ID=$(get_keycloak_user_id "admin1" "admin1-keycloak-id")
+EDUCATOR1_KEYCLOAK_ID=$(get_keycloak_user_id "educator1" "educator1-keycloak-id")
+PARENT_EDUCATOR_KEYCLOAK_ID=$(get_keycloak_user_id "parenteducator1" "parenteducator1-keycloak-id")
+MEMBER1_KEYCLOAK_ID=$(get_keycloak_user_id "member1" "member1-keycloak-id")
+
 # Function to execute SQL
 execute_sql() {
     local sql="$1"
@@ -129,11 +188,11 @@ ON CONFLICT (\"Id\") DO NOTHING;"
 echo "🧑‍💼 Creating Users..."
 
 execute_sql "INSERT INTO \"Users\" (\"Id\", \"TenantId\", \"Email\", \"FirstName\", \"LastName\", \"KeycloakId\", \"Role\", \"IsActive\", \"CreatedAt\", \"UpdatedAt\") VALUES
-(gen_random_uuid(), '$TENANT_ID', 'scoopadmin@example.com', 'Scoop', 'Admin', 'scoopadmin-keycloak-id', 3, true, NOW(), NOW()),
-(gen_random_uuid(), '$TENANT_ID', 'admin.test@example.com', 'Admin', 'Test', 'admin1-keycloak-id', 3, true, NOW(), NOW()),
-(gen_random_uuid(), '$TENANT_ID', 'emily.educator@example.com', 'Emily', 'Educator', 'educator1-keycloak-id', 2, true, NOW(), NOW()),
-(gen_random_uuid(), '$TENANT_ID', 'sarah.johnson@example.com', 'Sarah', 'Johnson', 'parenteducator1-keycloak-id', 1, true, NOW(), NOW()),
-(gen_random_uuid(), '$TENANT_ID', 'mark.member@example.com', 'Mark', 'Member', 'member1-keycloak-id', 1, true, NOW(), NOW());"
+(gen_random_uuid(), '$TENANT_ID', 'scoopadmin@example.com', 'Scoop', 'Admin', '$SCOOPADMIN_KEYCLOAK_ID', 3, true, NOW(), NOW()),
+(gen_random_uuid(), '$TENANT_ID', 'admin.test@example.com', 'Admin', 'Test', '$ADMIN1_KEYCLOAK_ID', 3, true, NOW(), NOW()),
+(gen_random_uuid(), '$TENANT_ID', 'emily.educator@example.com', 'Emily', 'Educator', '$EDUCATOR1_KEYCLOAK_ID', 2, true, NOW(), NOW()),
+(gen_random_uuid(), '$TENANT_ID', 'sarah.johnson@example.com', 'Sarah', 'Johnson', '$PARENT_EDUCATOR_KEYCLOAK_ID', 1, true, NOW(), NOW()),
+(gen_random_uuid(), '$TENANT_ID', 'mark.member@example.com', 'Mark', 'Member', '$MEMBER1_KEYCLOAK_ID', 1, true, NOW(), NOW());"
 
 echo "👥 Creating AccountHolders..."
 
@@ -142,9 +201,9 @@ execute_sql "INSERT INTO \"AccountHolders\" (\"Id\", \"TenantId\", \"FirstName\"
 (gen_random_uuid(), '$TENANT_ID', 'John', 'Smith', 'scoopmember@example.com', '555-0101', '555-0102', '{\"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"postalCode\": \"12345\", \"country\": \"US\"}', '{\"firstName\": \"Jane\", \"lastName\": \"Smith\", \"homePhone\": \"555-0103\", \"mobilePhone\": \"555-0104\", \"email\": \"jane.smith@example.com\"}', 100.00, 75.00, 'scoopmember-keycloak-id', '2024-01-15', NOW(), NOW(), NOW()),
 (gen_random_uuid(), '$TENANT_ID', 'Sarah', 'Johnson', 'sarah.johnson@example.com', '555-0201', '555-0202', '{\"street\": \"456 Oak Ave\", \"city\": \"Somewhere\", \"state\": \"CA\", \"postalCode\": \"12346\", \"country\": \"US\"}', '{\"firstName\": \"Mike\", \"lastName\": \"Johnson\", \"homePhone\": \"555-0203\", \"mobilePhone\": \"555-0204\", \"email\": \"mike.johnson@example.com\"}', 150.00, 150.00, 'parenteducator1-keycloak-id', '2023-09-10', NOW(), NOW(), NOW()),
 (gen_random_uuid(), '$TENANT_ID', 'Michael', 'Brown', 'michael.brown@example.com', '555-0301', '555-0302', '{\"street\": \"789 Pine Rd\", \"city\": \"Elsewhere\", \"state\": \"CA\", \"postalCode\": \"12347\", \"country\": \"US\"}', '{\"firstName\": \"Lisa\", \"lastName\": \"Brown\", \"homePhone\": \"555-0303\", \"mobilePhone\": \"555-0304\", \"email\": \"lisa.brown@example.com\"}', 200.00, 100.00, 'michael-keycloak-id', '2024-03-20', NOW(), NOW(), NOW()),
-(gen_random_uuid(), '$TENANT_ID', 'Admin', 'Test', 'admin.test@example.com', '555-1101', '555-1102', '{\"street\": \"100 Admin St\", \"city\": \"AdminTown\", \"state\": \"CA\", \"postalCode\": \"12348\", \"country\": \"US\"}', '{\"firstName\": \"Test\", \"lastName\": \"Admin\", \"homePhone\": \"555-1103\", \"mobilePhone\": \"555-1104\", \"email\": \"test.admin@example.com\"}', 0.00, 0.00, 'admin1-keycloak-id', NOW(), NOW(), NOW(), NOW()),
-(gen_random_uuid(), '$TENANT_ID', 'Emily', 'Educator', 'emily.educator@example.com', '555-1201', '555-1202', '{\"street\": \"200 Educator Ave\", \"city\": \"TeacherTown\", \"state\": \"CA\", \"postalCode\": \"12349\", \"country\": \"US\"}', '{\"firstName\": \"Education\", \"lastName\": \"Contact\", \"homePhone\": \"555-1203\", \"mobilePhone\": \"555-1204\", \"email\": \"education.contact@example.com\"}', 0.00, 0.00, 'educator1-keycloak-id', NOW(), NOW(), NOW(), NOW()),
-(gen_random_uuid(), '$TENANT_ID', 'Mark', 'Member', 'mark.member@example.com', '555-1301', '555-1302', '{\"street\": \"300 Member Rd\", \"city\": \"MemberVille\", \"state\": \"CA\", \"postalCode\": \"12350\", \"country\": \"US\"}', '{\"firstName\": \"Member\", \"lastName\": \"Contact\", \"homePhone\": \"555-1303\", \"mobilePhone\": \"555-1304\", \"email\": \"member.contact@example.com\"}', 50.00, 25.00, 'member1-keycloak-id', NOW(), NOW(), NOW(), NOW());"
+(gen_random_uuid(), '$TENANT_ID', 'Admin', 'Test', 'admin.test@example.com', '555-1101', '555-1102', '{\"street\": \"100 Admin St\", \"city\": \"AdminTown\", \"state\": \"CA\", \"postalCode\": \"12348\", \"country\": \"US\"}', '{\"firstName\": \"Test\", \"lastName\": \"Admin\", \"homePhone\": \"555-1103\", \"mobilePhone\": \"555-1104\", \"email\": \"test.admin@example.com\"}', 0.00, 0.00, '$ADMIN1_KEYCLOAK_ID', NOW(), NOW(), NOW(), NOW()),
+(gen_random_uuid(), '$TENANT_ID', 'Emily', 'Educator', 'emily.educator@example.com', '555-1201', '555-1202', '{\"street\": \"200 Educator Ave\", \"city\": \"TeacherTown\", \"state\": \"CA\", \"postalCode\": \"12349\", \"country\": \"US\"}', '{\"firstName\": \"Education\", \"lastName\": \"Contact\", \"homePhone\": \"555-1203\", \"mobilePhone\": \"555-1204\", \"email\": \"education.contact@example.com\"}', 0.00, 0.00, '$EDUCATOR1_KEYCLOAK_ID', NOW(), NOW(), NOW(), NOW()),
+(gen_random_uuid(), '$TENANT_ID', 'Mark', 'Member', 'mark.member@example.com', '555-1301', '555-1302', '{\"street\": \"300 Member Rd\", \"city\": \"MemberVille\", \"state\": \"CA\", \"postalCode\": \"12350\", \"country\": \"US\"}', '{\"firstName\": \"Member\", \"lastName\": \"Contact\", \"homePhone\": \"555-1303\", \"mobilePhone\": \"555-1304\", \"email\": \"member.contact@example.com\"}', 50.00, 25.00, '$MEMBER1_KEYCLOAK_ID', NOW(), NOW(), NOW(), NOW());"
 
 echo "📅 Creating Semesters..."
 

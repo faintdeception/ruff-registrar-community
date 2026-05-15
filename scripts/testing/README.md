@@ -6,19 +6,37 @@ This directory contains all scripts related to testing the Student Registrar app
 
 ```
 scripts/testing/
-├── run-e2e-tests.sh       # 🎯 Main E2E testing script (recommended)
-├── setup-test-users.sh    # 👥 Creates test users in Keycloak
-├── setup-test-users.ps1   # 👥 Windows/PowerShell test user setup
+├── run-ci-equivalent-e2e.sh  # 🎯 Linux/WSL/CI Docker Compose confidence lane
+├── run-ci-equivalent-e2e.ps1 # 🎯 Windows/PowerShell Docker Compose confidence lane
+├── run-e2e-tests.sh       # 🎯 Linux/WSL/CI E2E testing script
+├── setup-test-users.sh    # 👥 Linux/WSL Keycloak test user setup
+├── setup-test-users.ps1   # 👥 Windows/PowerShell test user and DB sync setup
 ├── verify-api-migrations.ps1 # 🧪 Standalone API migration verification
 ├── test-e2e-only.sh       # 🔧 Simple E2E test runner
 ├── seed-database.sh       # 🌱 Seeds database with test data
+├── seed-database.ps1      # 🌱 Windows/PowerShell test data seed
 └── Dockerfile             # 🐳 Docker container for E2E tests
 ```
 
 ## 🚀 Quick Start
 
-### Run All E2E Tests (Recommended)
+### Run All E2E Tests
+
+Windows PowerShell developers can use the CI-equivalent Docker Compose runner without WSL. It rebuilds the Linux images, starts the same local services used by CI, bootstraps Keycloak, syncs users, seeds sample data, runs preflight checks, and then runs E2E tests:
+
+```powershell
+./scripts/testing/run-ci-equivalent-e2e.ps1
+
+# Fast confidence check without Selenium.
+./scripts/testing/run-ci-equivalent-e2e.ps1 -PreflightOnly
+```
+
+Linux/WSL/CI users can use the Bash CI-equivalent runner or the lighter local E2E runner:
+
 ```bash
+# Rebuild images, start Docker Compose, bootstrap, seed, preflight, and run E2E.
+./scripts/testing/run-ci-equivalent-e2e.sh
+
 # Run all tests with browser visible
 ./scripts/testing/run-e2e-tests.sh
 
@@ -29,14 +47,7 @@ scripts/testing/
 ./scripts/testing/run-e2e-tests.sh --setup-users
 ```
 
-On Windows, prefer the PowerShell setup script before running E2E so Keycloak users and local database rows are synchronized with live Keycloak IDs:
-
-```powershell
-./scripts/testing/setup-test-users.ps1 -AdminPassword 'admin123!'
-$env:SeleniumSettings__Headless='true'
-dotnet test tests/StudentRegistrar.E2E.Tests/StudentRegistrar.E2E.Tests.csproj --logger "console;verbosity=normal" --collect:"XPlat Code Coverage"
-Remove-Item Env:SeleniumSettings__Headless
-```
+The PowerShell and Bash confidence lanes should remain behaviorally equivalent. The difference is the host shell, not the target runtime: CI and Azure use Linux images/services, and the Windows PowerShell path should operate against that same topology. When changing test user, database sync, seed, or E2E setup behavior, update both paths or document the intentional gap.
 
 ### Run Specific Test Suites
 ```bash
@@ -86,7 +97,10 @@ This PowerShell helper starts the API with `--no-launch-profile`, forces an isol
    ```bash
    ./scripts/testing/seed-database.sh
    ```
-   On Windows, `setup-test-users.ps1` also syncs the required E2E `Users` and `AccountHolders` rows with live Keycloak IDs when a local PostgreSQL container is available. This sync is required for workflows that authorize an existing member, such as `parenteducator1`.
+   ```powershell
+   ./scripts/testing/seed-database.ps1 -Reset
+   ```
+   On Windows, `setup-test-users.ps1` syncs the required E2E `Users` and `AccountHolders` rows with live Keycloak IDs when a local PostgreSQL container is available, and `seed-database.ps1` creates the broader sample-data set used by the CI-equivalent runner.
 
 ## 🧪 Test Users
 
@@ -124,7 +138,32 @@ Tests are organized by user roles to reflect real-world usage:
 
 ## 🔧 Individual Scripts
 
-### `run-e2e-tests.sh` (Recommended)
+### `run-ci-equivalent-e2e.ps1` (Windows/PowerShell)
+**Purpose**: Windows-native CI-equivalent Docker Compose confidence lane
+**Features**:
+- Rebuilds API and frontend Linux Docker images
+- Starts PostgreSQL, Keycloak, API, and frontend through Docker Compose
+- Bootstraps Keycloak with the deterministic local client secret
+- Creates E2E users and syncs live Keycloak IDs into PostgreSQL
+- Seeds comprehensive E2E sample data with `seed-database.ps1`
+- Runs preflight checks before optional Selenium E2E execution
+
+```powershell
+./scripts/testing/run-ci-equivalent-e2e.ps1
+./scripts/testing/run-ci-equivalent-e2e.ps1 -PreflightOnly
+./scripts/testing/run-ci-equivalent-e2e.ps1 -Filter 'FullyQualifiedName~Login'
+```
+
+### `run-ci-equivalent-e2e.sh` (Linux/WSL/CI)
+**Purpose**: Bash CI-equivalent Docker Compose confidence lane used by CI
+
+```bash
+./scripts/testing/run-ci-equivalent-e2e.sh
+./scripts/testing/run-ci-equivalent-e2e.sh --preflight-only
+./scripts/testing/run-ci-equivalent-e2e.sh --filter 'FullyQualifiedName~Login'
+```
+
+### `run-e2e-tests.sh` (Linux/WSL/CI)
 **Purpose**: Complete E2E testing workflow with setup and execution
 **Features**:
 - ✅ Application connectivity check
@@ -188,7 +227,7 @@ When `-DbContainer` is omitted, it auto-detects the mapped Aspire PostgreSQL con
 ./scripts/testing/test-e2e-only.sh headless # Headless mode
 ```
 
-### `seed-database.sh`
+### `seed-database.sh` / `seed-database.ps1`
 **Purpose**: Populates database with comprehensive test data
 **Features**:
 - ✅ Account holders and families
@@ -199,6 +238,10 @@ When `-DbContainer` is omitted, it auto-detects the mapped Aspire PostgreSQL con
 
 ```bash
 ./scripts/testing/seed-database.sh
+```
+
+```powershell
+./scripts/testing/seed-database.ps1 -Reset
 ```
 
 ### `Dockerfile`
