@@ -1,5 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { getApiBaseUrl, getForwardedHost } from './runtime-env';
+import { buildTenantPath, buildTenantRequestHeaders, getApiBaseUrl } from './runtime-env';
 import { CSRF_HEADER_NAME, getCsrfToken, isUnsafeHttpMethod } from './csrf';
 
 interface RetryableAxiosRequestConfig extends InternalAxiosRequestConfig {
@@ -20,10 +20,7 @@ export const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const forwardedHost = getForwardedHost();
-    if (forwardedHost) {
-      config.headers['X-Forwarded-Host'] = forwardedHost;
-    }
+    Object.assign(config.headers, buildTenantRequestHeaders());
 
     if (isUnsafeHttpMethod(config.method)) {
       const csrfToken = getCsrfToken();
@@ -45,7 +42,7 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true;
-      window.location.href = '/login';
+      window.location.href = buildTenantPath('/login');
     }
 
     return Promise.reject(error);

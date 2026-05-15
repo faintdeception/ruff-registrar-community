@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { getApiBaseUrl, getForwardedHost } from './runtime-env';
+import { buildTenantPath, buildTenantRequestHeaders, getApiBaseUrl } from './runtime-env';
 import { CSRF_HEADER_NAME, getCsrfToken } from './csrf';
 
 interface User {
@@ -37,11 +37,9 @@ const getAuthUrl = (path: string): string => {
 };
 
 const buildAuthHeaders = (): Record<string, string> => {
-  const forwardedHost = getForwardedHost();
-
   return {
     'Content-Type': 'application/json',
-    ...(forwardedHost ? { 'X-Forwarded-Host': forwardedHost } : {}),
+    ...buildTenantRequestHeaders(),
   };
 };
 
@@ -90,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(nextUser);
 
         if (nextUser && router.pathname === '/login') {
-          void router.replace('/');
+          void router.replace(buildTenantPath('/', router.asPath));
         }
       } catch (error) {
         console.error('Error initializing session authentication:', error);
@@ -149,7 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     currentUser = payload.user;
     setUser(payload.user);
-    await router.replace('/');
+    await router.replace(buildTenantPath('/', router.asPath));
   };
 
   const logout = () => {
@@ -163,7 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         [CSRF_HEADER_NAME]: getCsrfToken() ?? '',
       },
     }).finally(() => {
-      void router.push('/login');
+      void router.push(buildTenantPath('/login', router.asPath));
     });
   };
 

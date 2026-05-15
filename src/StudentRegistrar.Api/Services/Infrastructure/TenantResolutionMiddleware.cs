@@ -79,13 +79,12 @@ public class TenantResolutionMiddleware
         //
         // Controllers using [Authorize] will automatically enforce tenant membership
         // via the "TenantMember" policy configured in TenantAuthorizationHandler.
-        var host = GetEffectiveHost(context);
-        var subdomain = ExtractSubdomain(host);
+        var subdomain = GetRequestedTenantSubdomain(context);
 
         if (string.IsNullOrEmpty(subdomain))
         {
             // No subdomain - could be the portal/marketing site or invalid request
-            _logger.LogDebug("No subdomain found in host: {Host}", host);
+            _logger.LogDebug("No tenant subdomain found for request path {Path} and host {Host}", context.Request.Path, GetEffectiveHost(context));
             
             // Allow request to continue for portal routes, controllers will handle appropriately
             tenantContextAccessor.TenantContext = null;
@@ -126,6 +125,22 @@ public class TenantResolutionMiddleware
             tenant.Name, tenant.Id, subdomain);
 
         await _next(context);
+    }
+
+    private string? GetRequestedTenantSubdomain(HttpContext context)
+    {
+        var tenantHeader = context.Request.Headers["X-Tenant-Subdomain"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(tenantHeader))
+        {
+            var normalized = tenantHeader.Trim().ToLowerInvariant();
+            if (IsValidSubdomain(normalized) && !ReservedSubdomains.Contains(normalized))
+            {
+                return normalized;
+            }
+        }
+
+        var host = GetEffectiveHost(context);
+        return ExtractSubdomain(host);
     }
 
     /// <summary>

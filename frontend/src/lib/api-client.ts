@@ -1,4 +1,4 @@
-import { getApiBaseUrl, getForwardedHost } from './runtime-env';
+import { buildTenantPath, buildTenantRequestHeaders, getApiBaseUrl } from './runtime-env';
 import { CSRF_HEADER_NAME, getCsrfToken, isUnsafeHttpMethod } from './csrf';
 
 interface ApiClientOptions extends RequestInit {
@@ -10,13 +10,9 @@ class ApiClient {
     const requestUrl = resolveApiUrl(url);
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      ...buildTenantRequestHeaders(),
       ...(options.headers || {}),
     };
-    const forwardedHost = getForwardedHost();
-
-    if (forwardedHost) {
-      headers['X-Forwarded-Host'] = forwardedHost;
-    }
 
     if (isUnsafeHttpMethod(options.method)) {
       const csrfToken = getCsrfToken();
@@ -33,7 +29,7 @@ class ApiClient {
       });
 
       if (response.status === 401) {
-        window.location.href = '/login';
+        window.location.href = buildTenantPath('/login');
       }
 
       return response;

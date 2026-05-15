@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../lib/auth';
 import ProtectedRoute from '../components/ProtectedRoute';
 import apiClient from '../lib/api-client';
+import { buildTenantPath } from '../lib/runtime-env';
 import { PlusIcon, XMarkIcon, UserIcon, PhoneIcon, EnvelopeIcon, MapPinIcon, ClipboardDocumentIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 interface Member {
@@ -112,7 +113,7 @@ const MembersPage: React.FC = () => {
     
     // Only admins can view this page
     if (!user.roles?.includes('Administrator')) {
-      router.push('/');
+      router.push(buildTenantPath('/', router.asPath));
       return;
     }
     

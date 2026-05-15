@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import apiClient from '@/lib/api-client';
+import { buildTenantPath } from '@/lib/runtime-env';
 import {
   UserGroupIcon,
   PlusIcon,
@@ -32,9 +34,11 @@ interface Student {
 
 export default function StudentsPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const tenantPath = (path: string) => buildTenantPath(path, router.asPath);
 
   const isAdmin = user?.roles.includes('Administrator');
 
@@ -125,11 +129,11 @@ export default function StudentsPage() {
               <h1 className="ml-3 text-2xl font-bold text-gray-900">Students</h1>
             </div>
             <div className="flex space-x-3">
-              <Link href="/account-holder" className="btn btn-secondary">
+              <Link href={tenantPath('/account-holder')} className="btn btn-secondary">
                 <AcademicCapIcon className="h-5 w-5" />
                 Account Management
               </Link>
-              <Link href="/courses" className="btn btn-secondary">
+              <Link href={tenantPath('/courses')} className="btn btn-secondary">
                 <BookOpenIcon className="h-5 w-5" />
                 Browse Courses
               </Link>
@@ -153,7 +157,7 @@ export default function StudentsPage() {
                   : "You don't have any students registered yet."
                 }
               </p>
-              <Link href="/account-holder" className="btn btn-primary">
+              <Link href={tenantPath('/account-holder')} className="btn btn-primary">
                 <PlusIcon className="h-5 w-5" />
                 Add Student
               </Link>

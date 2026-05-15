@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { EducatorDto, EducatorInfo } from '@/types';
 import apiClient from '@/lib/api-client';
+import { buildTenantPath } from '@/lib/runtime-env';
 
 interface CreateEducatorFormData {
   firstName: string;
@@ -42,7 +43,7 @@ const AdminEducatorsPage = () => {
         const data = await response.json();
         setInstructors(data);
       } else if (response.status === 401) {
-        void router.push('/login');
+        void router.push(buildTenantPath('/login', router.asPath));
       } else {
         setError('Failed to load educators');
       }

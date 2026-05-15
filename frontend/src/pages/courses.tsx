@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/auth';
 import Layout from '@/components/Layout';
 import apiClient from '@/lib/api-client';
+import { buildTenantPath } from '@/lib/runtime-env';
 import {
   BookOpenIcon,
   CalendarIcon,
@@ -113,6 +115,7 @@ interface CreateCourseInstructorPayload {
 
 export default function CoursesPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedSemester, setSelectedSemester] = useState<string>('');
@@ -133,6 +136,7 @@ export default function CoursesPage() {
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('2');
   const [isSigningUp, setIsSigningUp] = useState(false);
+  const tenantPath = (path: string) => buildTenantPath(path, router.asPath);
 
   const isAdmin = !!user?.roles.includes('Administrator');
   const canCreateCourses = isAdmin || !!user?.roles.includes('Educator');
@@ -1185,7 +1189,7 @@ export default function CoursesPage() {
             {canCreateCourses && (
               <div className="flex space-x-3">
                 {isAdmin && (
-                  <Link href="/semesters" className="btn btn-secondary">
+                  <Link href={tenantPath('/semesters')} className="btn btn-secondary">
                     <CalendarIcon className="h-5 w-5" />
                     Manage Semesters
                   </Link>
