@@ -12,8 +12,8 @@ using StudentRegistrar.Data;
 namespace StudentRegistrar.Data.Migrations
 {
     [DbContext(typeof(StudentRegistrarDbContext))]
-    [Migration("20260507135133_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260515204349_BaselineReset")]
+    partial class BaselineReset
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -565,7 +565,6 @@ namespace StudentRegistrar.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("Code")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
@@ -587,10 +586,10 @@ namespace StudentRegistrar.Data.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb");
 
-                    b.Property<DateTime>("RegistrationEndDate")
+                    b.Property<DateTime?>("RegistrationEndDate")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime>("RegistrationStartDate")
+                    b.Property<DateTime?>("RegistrationStartDate")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("StartDate")
