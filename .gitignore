@@ -19,6 +19,7 @@ obj/
 *.userprefs
 *.pidb
 *.sln.docstates
+*.lscache
 *.swp
 *.swo
 *~

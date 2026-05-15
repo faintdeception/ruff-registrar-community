@@ -12,15 +12,15 @@ using StudentRegistrar.Data;
 namespace StudentRegistrar.Data.Migrations
 {
     [DbContext(typeof(StudentRegistrarDbContext))]
-    [Migration("20260515204349_BaselineReset")]
-    partial class BaselineReset
+    [Migration("20260515221507_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.5")
+                .HasAnnotation("ProductVersion", "10.0.1")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
