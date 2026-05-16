@@ -94,6 +94,7 @@ public class StudentRegistrarDbContext : DbContext
             entity.Property(e => e.Subdomain).IsRequired().HasMaxLength(63);
             entity.Property(e => e.SubscriptionTier).IsRequired();
             entity.Property(e => e.SubscriptionStatus).IsRequired();
+            entity.Property(e => e.TrialEndsAtUtc);
             entity.Property(e => e.StripeCustomerId).HasMaxLength(255);
             entity.Property(e => e.StripeSubscriptionId).HasMaxLength(255);
             entity.Property(e => e.StripeSetupIntentId).HasMaxLength(255);

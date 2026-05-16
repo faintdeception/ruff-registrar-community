@@ -111,6 +111,24 @@ public class TenantResolutionMiddleware
             return;
         }
 
+        if (await EnsureTrialStatusAsync(tenant, dbContext))
+        {
+            _logger.LogWarning("Tenant trial expired and is now in billing hold: {Subdomain}", subdomain);
+        }
+
+        if (tenant.SubscriptionStatus == SubscriptionStatus.BillingHold)
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            await context.Response.WriteAsJsonAsync(new
+            {
+                error = "Trial expired. Billing is required to restore access.",
+                subdomain,
+                status = tenant.SubscriptionStatus.ToString(),
+                trialEndsAtUtc = tenant.TrialEndsAtUtc
+            });
+            return;
+        }
+
         if (tenant.SubscriptionStatus == SubscriptionStatus.Cancelled)
         {
             _logger.LogWarning("Tenant subscription cancelled: {Subdomain}", subdomain);
@@ -141,6 +159,26 @@ public class TenantResolutionMiddleware
 
         var host = GetEffectiveHost(context);
         return ExtractSubdomain(host);
+    }
+
+    private static async Task<bool> EnsureTrialStatusAsync(Tenant tenant, StudentRegistrarDbContext dbContext)
+    {
+        if (tenant.SubscriptionStatus != SubscriptionStatus.Trialing ||
+            !tenant.TrialEndsAtUtc.HasValue ||
+            tenant.TrialEndsAtUtc.Value > DateTime.UtcNow)
+        {
+            return false;
+        }
+
+        await dbContext.Set<Tenant>()
+            .Where(t => t.Id == tenant.Id && t.SubscriptionStatus == SubscriptionStatus.Trialing)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(t => t.SubscriptionStatus, SubscriptionStatus.BillingHold)
+                .SetProperty(t => t.UpdatedAt, DateTime.UtcNow));
+
+        tenant.SubscriptionStatus = SubscriptionStatus.BillingHold;
+        tenant.UpdatedAt = DateTime.UtcNow;
+        return true;
     }
 
     /// <summary>
