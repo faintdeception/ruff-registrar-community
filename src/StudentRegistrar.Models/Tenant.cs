@@ -69,6 +69,12 @@ public partial class Tenant
     public DateTime? TrialEndsAtUtc { get; set; }
 
     /// <summary>
+    /// Whether this tenant has a manual complimentary billing override.
+    /// Complimentary tenants keep their assigned tier without requiring Stripe billing.
+    /// </summary>
+    public bool IsComplimentary { get; set; }
+
+    /// <summary>
     /// Stripe Customer ID for platform billing (subscription to ruff-registrar).
     /// </summary>
     [MaxLength(255)]
