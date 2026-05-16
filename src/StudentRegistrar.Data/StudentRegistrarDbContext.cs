@@ -66,6 +66,8 @@ public class StudentRegistrarDbContext : DbContext
 
     // Tenant management (not filtered by tenant)
     public DbSet<Tenant> Tenants { get; set; }
+    public DbSet<TenantFeatureOverride> TenantFeatureOverrides { get; set; }
+    public DbSet<TenantBrandingSettings> TenantBrandingSettings { get; set; }
     
     // Current entities (filtered by tenant in SaaS mode)
     public DbSet<Student> Students { get; set; }
@@ -111,6 +113,40 @@ public class StudentRegistrarDbContext : DbContext
 
             entity.HasIndex(e => e.Subdomain).IsUnique();
             entity.HasIndex(e => e.KeycloakRealm).IsUnique();
+        });
+
+        modelBuilder.Entity<TenantFeatureOverride>(entity =>
+        {
+            entity.ToTable("TenantFeatureOverrides");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TenantId).IsRequired();
+            entity.Property(e => e.FeatureKey).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.IsEnabled).IsRequired();
+            entity.Property(e => e.Reason).HasMaxLength(500);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.UpdatedAt).IsRequired();
+
+            entity.HasIndex(e => new { e.TenantId, e.FeatureKey }).IsUnique();
+            entity.HasIndex(e => e.TenantId);
+        });
+
+        modelBuilder.Entity<TenantBrandingSettings>(entity =>
+        {
+            entity.ToTable("TenantBrandingSettings");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TenantId).IsRequired();
+            entity.Property(e => e.DisplayName).HasMaxLength(200);
+            entity.Property(e => e.LogoBase64).HasMaxLength(700000);
+            entity.Property(e => e.LogoMimeType).HasMaxLength(50);
+            entity.Property(e => e.PrimaryColor).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.SecondaryColor).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.FooterText).HasMaxLength(200);
+            entity.Property(e => e.HidePoweredBy).IsRequired();
+            entity.Property(e => e.CustomCss).HasMaxLength(50000);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.UpdatedAt).IsRequired();
+
+            entity.HasIndex(e => e.TenantId).IsUnique();
         });
 
         // Apply global query filters for tenant isolation
@@ -482,6 +518,14 @@ public class StudentRegistrarDbContext : DbContext
                 !_tenantProvider.ShouldApplyTenantFilter ||
                 e.TenantId == _tenantProvider.CurrentTenantId);
         modelBuilder.Entity<UserProfile>()
+            .HasQueryFilter(e =>
+                !_tenantProvider.ShouldApplyTenantFilter ||
+                e.TenantId == _tenantProvider.CurrentTenantId);
+        modelBuilder.Entity<TenantFeatureOverride>()
+            .HasQueryFilter(e =>
+                !_tenantProvider.ShouldApplyTenantFilter ||
+                e.TenantId == _tenantProvider.CurrentTenantId);
+        modelBuilder.Entity<TenantBrandingSettings>()
             .HasQueryFilter(e =>
                 !_tenantProvider.ShouldApplyTenantFilter ||
                 e.TenantId == _tenantProvider.CurrentTenantId);

@@ -142,28 +142,7 @@ export default function CoursesPage() {
   const canCreateCourses = isAdmin || !!user?.roles.includes('Educator');
   const canSignUpForCourses = !!user;
 
-  useEffect(() => {
-    fetchSemesters();
-    fetchAvailableRooms(); // Load rooms once when component mounts
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      fetchMyAccountHolder();
-    } else {
-      setAccountHolder(null);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (selectedSemester) {
-      fetchCoursesBySemester(selectedSemester);
-    } else if (activeSemester) {
-      fetchCoursesBySemester(activeSemester.id);
-    }
-  }, [selectedSemester, activeSemester]);
-
-  const fetchSemesters = async () => {
+  const fetchSemesters = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -204,7 +183,23 @@ export default function CoursesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedSemester]);
+
+  useEffect(() => {
+    if (user) {
+      fetchMyAccountHolder();
+    } else {
+      setAccountHolder(null);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (selectedSemester) {
+      fetchCoursesBySemester(selectedSemester);
+    } else if (activeSemester) {
+      fetchCoursesBySemester(activeSemester.id);
+    }
+  }, [selectedSemester, activeSemester]);
 
   const fetchCoursesBySemester = async (semesterId: string) => {
     try {
@@ -263,6 +258,11 @@ export default function CoursesPage() {
       setRoomError(err instanceof Error ? err.message : 'Failed to fetch rooms');
     }
   }, []);
+
+  useEffect(() => {
+    void fetchSemesters();
+    fetchAvailableRooms(); // Load rooms once when component mounts
+  }, [fetchAvailableRooms, fetchSemesters]);
 
   const fetchMyAccountHolder = async () => {
     try {
@@ -405,7 +405,13 @@ export default function CoursesPage() {
   };
 
   // Course Edit Modal Component
-  const CourseEditModal = () => {
+  const CourseEditModal = ({
+    editingCourse,
+    showEditModal,
+  }: {
+    editingCourse: Course | null;
+    showEditModal: boolean;
+  }) => {
     const [courseInstructors, setCourseInstructors] = useState<CourseInstructor[]>([]);
     const [loadingInstructors, setLoadingInstructors] = useState(false);
     const [addingInstructor, setAddingInstructor] = useState(false);
@@ -419,13 +425,7 @@ export default function CoursesPage() {
     });
 
     // Fetch course instructors when modal opens
-    useEffect(() => {
-      if (showEditModal && editingCourse) {
-        fetchCourseInstructors();
-      }
-    }, [showEditModal, editingCourse]);
-
-    const fetchCourseInstructors = async () => {
+    const fetchCourseInstructors = useCallback(async () => {
       if (!editingCourse) return;
       
       try {
@@ -442,7 +442,13 @@ export default function CoursesPage() {
       } finally {
         setLoadingInstructors(false);
       }
-    };
+    }, [editingCourse]);
+
+    useEffect(() => {
+      if (showEditModal) {
+        void fetchCourseInstructors();
+      }
+    }, [fetchCourseInstructors, showEditModal]);
 
     const addInstructor = async () => {
       if (!editingCourse) return;
@@ -1445,7 +1451,7 @@ export default function CoursesPage() {
         <CourseCreateModal />
 
         {/* Course Edit Modal */}
-        <CourseEditModal />
+        <CourseEditModal editingCourse={editingCourse} showEditModal={showEditModal} />
 
         {/* Course Signup Modal */}
         <CourseSignupModal />

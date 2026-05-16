@@ -41,6 +41,8 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 // Add tenant services for multi-tenancy support
 builder.Services.AddTenantServices();
 builder.Services.AddScoped<ITenantProvider, TenantContextProvider>();
+builder.Services.AddScoped<ITenantEntitlementService, TenantEntitlementService>();
+builder.Services.AddScoped<IBrandingSettingsService, BrandingSettingsService>();
 
 // Add tenant authorization to validate user's tenant membership
 // This prevents cross-tenant access even if Host header is spoofed

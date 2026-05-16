@@ -3,6 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "scripts": {
+    "prebuild": "node -e \"const fs=require('fs');fs.rmSync('.next/diagnostics',{recursive:true,force:true});fs.rmSync('.next/cache/webpack',{recursive:true,force:true})\"",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

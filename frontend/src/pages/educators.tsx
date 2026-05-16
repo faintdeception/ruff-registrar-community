@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import apiClient from '@/lib/api-client';
@@ -28,7 +27,6 @@ const EducatorsPage = () => {
   const [inviteMessage, setInviteMessage] = useState<string | null>(null);
   const [inviteCredentials, setInviteCredentials] = useState<UserCredentials | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const router = useRouter();
 
   const [newEducator, setNewEducator] = useState<InviteEducatorDto>(emptyEducatorInvite);
 
@@ -50,7 +48,7 @@ const EducatorsPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [router]);
+  }, []);
 
   const fetchAccountHolders = useCallback(async () => {
     try {

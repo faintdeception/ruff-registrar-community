@@ -1,15 +1,14 @@
 import type { AppProps } from 'next/app';
-import Script from 'next/script';
 import { AuthProvider } from '@/lib/auth';
+import { TenantExperienceProvider } from '@/lib/tenant-experience';
 import '@/styles/globals.css';
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
-    <>
-      <Script src="/env.js" strategy="beforeInteractive" />
-      <AuthProvider>
+    <AuthProvider>
+      <TenantExperienceProvider>
         <Component {...pageProps} />
-      </AuthProvider>
-    </>
+      </TenantExperienceProvider>
+    </AuthProvider>
   );
 }

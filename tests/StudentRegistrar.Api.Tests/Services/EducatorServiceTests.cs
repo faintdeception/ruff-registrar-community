@@ -1,9 +1,11 @@
 using AutoMapper;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using StudentRegistrar.Api.DTOs;
 using StudentRegistrar.Api.Services;
+using StudentRegistrar.Data;
 using StudentRegistrar.Data.Repositories;
 using StudentRegistrar.Models;
 using Xunit;
@@ -15,20 +17,26 @@ public class EducatorServiceTests
     private readonly Mock<IEducatorRepository> _educatorRepository = new();
     private readonly Mock<IAccountHolderRepository> _accountHolderRepository = new();
     private readonly Mock<IKeycloakService> _keycloakService = new();
+    private readonly StudentRegistrarDbContext _dbContext;
     private readonly EducatorService _service;
 
     public EducatorServiceTests()
     {
-        var mapper = new ServiceCollection()
+        var serviceProvider = new ServiceCollection()
             .AddLogging()
             .AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>())
-            .BuildServiceProvider()
-            .GetRequiredService<IMapper>();
+            .AddDbContext<StudentRegistrarDbContext>(options => options.UseInMemoryDatabase($"EducatorServiceTests-{Guid.NewGuid()}"))
+            .AddScoped<ITenantProvider, DefaultTenantProvider>()
+            .BuildServiceProvider();
+
+        var mapper = serviceProvider.GetRequiredService<IMapper>();
+        _dbContext = serviceProvider.GetRequiredService<StudentRegistrarDbContext>();
 
         _service = new EducatorService(
             _educatorRepository.Object,
             _accountHolderRepository.Object,
             _keycloakService.Object,
+            _dbContext,
             mapper);
     }
 

@@ -57,16 +57,6 @@ public interface ITenantContext
     /// The current subscription tier. In self-hosted mode, always returns Enterprise.
     /// </summary>
     SubscriptionTier SubscriptionTier { get; }
-    
-    /// <summary>
-    /// Whether the current tenant has access to payment features (Pro+ tiers).
-    /// </summary>
-    bool HasPaymentFeatures => IsSelfHostedMode || SubscriptionTier >= SubscriptionTier.Pro;
-    
-    /// <summary>
-    /// Whether the current tenant has access to branding features (Enterprise tier).
-    /// </summary>
-    bool HasBrandingFeatures => IsSelfHostedMode || SubscriptionTier >= SubscriptionTier.Enterprise;
 }
 
 /// <summary>

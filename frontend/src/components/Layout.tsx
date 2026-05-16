@@ -1,5 +1,7 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
+import { useTenantExperience } from '@/lib/tenant-experience';
 import { buildTenantPath } from '@/lib/runtime-env';
 import { useRouter } from 'next/router';
 import { useState, useRef, useEffect } from 'react';
@@ -16,6 +18,7 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const { user, logout } = useAuth();
+  const { branding } = useTenantExperience();
   const router = useRouter();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
@@ -33,18 +36,44 @@ export default function Layout({ children }: LayoutProps) {
   }, []);
 
   const isAdmin = user?.roles.includes('Administrator');
+  const brandName = branding?.displayName || 'Student Registrar';
+  const footerText = branding?.footerText || 'Built for homeschool co-ops.';
+  const poweredByHidden = branding?.hidePoweredBy ?? false;
+  const primaryColor = branding?.primaryColor || '#3B82F6';
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--tenant-primary-color', branding?.primaryColor || '#3B82F6');
+    root.style.setProperty('--tenant-secondary-color', branding?.secondaryColor || '#10B981');
+
+    return () => {
+      root.style.setProperty('--tenant-primary-color', '#3B82F6');
+      root.style.setProperty('--tenant-secondary-color', '#10B981');
+    };
+  }, [branding?.primaryColor, branding?.secondaryColor]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
               <Link href={tenantPath('/')} className="flex items-center">
-                <AcademicCapIcon className="h-8 w-8 text-primary-600" />
-                <h1 className="ml-2 text-2xl font-bold text-gray-900">
-                  Student Registrar
+                {branding?.logoBase64 && branding?.logoMimeType ? (
+                  <Image
+                    src={`data:${branding.logoMimeType};base64,${branding.logoBase64}`}
+                    alt={brandName}
+                    className="h-10 w-10 rounded object-cover"
+                    width={40}
+                    height={40}
+                    unoptimized
+                  />
+                ) : (
+                  <AcademicCapIcon className="h-8 w-8" style={{ color: primaryColor }} />
+                )}
+                <h1 className="ml-2 text-2xl font-bold text-gray-900" style={{ color: primaryColor }}>
+                  {brandName}
                 </h1>
               </Link>
             </div>
@@ -214,7 +243,22 @@ export default function Layout({ children }: LayoutProps) {
       </header>
 
       {/* Main Content */}
-  {children}
+      <main className="flex-1">{children}</main>
+
+      <footer className="border-t border-gray-200 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col gap-2 text-sm text-gray-600 md:flex-row md:items-center md:justify-between">
+          <div>{footerText}</div>
+          {!poweredByHidden && (
+            <div>
+              Powered by <span style={{ color: primaryColor, fontWeight: 600 }}>Ruff Registrar</span>
+            </div>
+          )}
+        </div>
+      </footer>
+
+      {branding?.sanitizedCustomCss && (
+        <style dangerouslySetInnerHTML={{ __html: branding.sanitizedCustomCss }} />
+      )}
     </div>
   );
 }
