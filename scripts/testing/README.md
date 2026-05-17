@@ -315,6 +315,8 @@ Symptoms: login tests stay on `/login` or Keycloak returns `Realm does not exist
 3. Run `./scripts/keycloak/add-spa-client.sh` to ensure the public SPA client exists.
 4. Restart the AppHost.
 5. Run `./scripts/testing/setup-test-users.sh`, or on Windows run `./scripts/testing/setup-test-users.ps1 -AdminPassword 'admin123!'` so database rows are synced too.
+6. If database state is stale, reseed/reset schema (`./scripts/testing/seed-database.sh` or `./scripts/testing/seed-database.ps1 -Reset`) before touching volumes.
+7. Treat deleting local dev volumes as last resort only, after bootstrap + user sync + reseed/schema reset fail to recover the environment.
 
 ### Test Failures
 1. Check application logs: `docker-compose logs frontend`

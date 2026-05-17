@@ -35,7 +35,7 @@ This application implements secure password management with the following featur
 ### Local Development Passwords
 - **PostgreSQL**: The Aspire AppHost uses a fixed local development password, `postgres123`, with the `postgres-data-v1` volume.
 - **Keycloak**: The Aspire AppHost uses a fixed local development admin password, `admin123!`, with the `keycloak-data-v13` volume.
-- **Clean resets**: After intentional schema or realm resets, remove those local volumes before rerunning the AppHost.
+- **Resets**: Prefer non-destructive recovery first (drop/recreate schema, rerun migrations/bootstrap, reseed users/data). Only remove local dev volumes when the persisted state is irreparably inconsistent.
 
 ### No Production Secrets in Source
 - Local development defaults are wired through Aspire parameters so the app can run predictably on a fresh machine.

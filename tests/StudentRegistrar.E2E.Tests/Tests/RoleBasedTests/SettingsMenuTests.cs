@@ -121,8 +121,8 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         Driver.PageSource.Should().Contain("System Settings", 
             "Page should contain System Settings title");
         
-        Driver.PageSource.Should().Contain("Coming Soon", 
-            "Page should show Coming Soon message");
+        Driver.PageSource.Should().Contain("Save Branding", 
+            "Page should show the branding settings form");
     }
 
     #endregion

@@ -325,7 +325,6 @@ public class TenantResolutionMiddleware
         "dashboard",
         "console",
         "panel",
-        "test",
         "dev",
         "staging",
         "demo",
