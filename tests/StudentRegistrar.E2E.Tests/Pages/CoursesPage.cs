@@ -7,6 +7,7 @@ public class CoursesPage
 {
     private readonly IWebDriver _driver;
     private readonly WebDriverWait _wait;
+    private static readonly By SemesterSelectLocator = By.CssSelector("[data-testid='semester-select']");
     private static readonly By CreateCourseButtonLocator = By.CssSelector("[data-testid='add-course-btn'], [data-testid='add-first-course-btn']");
     private static readonly By CourseNameInputLocator = By.CssSelector("[data-testid='course-name-input']");
     private static readonly By CourseCodeInputLocator = By.CssSelector("[data-testid='course-code-input']");
@@ -29,7 +30,7 @@ public class CoursesPage
     }
 
     // Page elements
-    private IWebElement SemesterSelect => _wait.Until(d => d.FindElement(By.CssSelector("[data-testid='semester-select']")));
+    private IWebElement SemesterSelect => _wait.Until(d => d.FindElement(SemesterSelectLocator));
     private IWebElement CreateCourseButton => _driver.FindElement(CreateCourseButtonLocator);
     private IWebElement SaveCourseButton => _driver.FindElement(SaveCourseButtonLocator);
     private IWebElement CancelCourseButton => _driver.FindElement(CancelCourseButtonLocator);
@@ -63,17 +64,31 @@ public class CoursesPage
     /// </summary>
     public void SelectSemester(string semesterName)
     {
-        var semesterSelect = new SelectElement(SemesterSelect);
-        
-        // Find option that starts with the semester name (handles dates in parentheses)
-        var option = semesterSelect.Options
-            .FirstOrDefault(opt => opt.Text.StartsWith(semesterName, StringComparison.OrdinalIgnoreCase));
-        
-        if (option != null)
+        var selected = _wait.Until(driver =>
         {
-            option.Click();
-        }
-        else
+            try
+            {
+                var semesterSelect = new SelectElement(driver.FindElement(SemesterSelectLocator));
+
+                // Find option that starts with the semester name (handles dates in parentheses)
+                var option = semesterSelect.Options
+                    .FirstOrDefault(opt => opt.Text.StartsWith(semesterName, StringComparison.OrdinalIgnoreCase));
+
+                if (option is null)
+                {
+                    return false;
+                }
+
+                option.Click();
+                return true;
+            }
+            catch (StaleElementReferenceException)
+            {
+                return false;
+            }
+        });
+
+        if (!selected)
         {
             throw new NoSuchElementException($"Could not find semester option starting with: {semesterName}");
         }
