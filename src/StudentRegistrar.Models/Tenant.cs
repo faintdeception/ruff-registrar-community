@@ -25,7 +25,8 @@ public enum SubscriptionStatus
     Active = 0,
     PastDue = 1,
     Cancelled = 2,
-    Trialing = 3
+    Trialing = 3,
+    BillingHold = 4
 }
 
 /// <summary>
@@ -60,6 +61,18 @@ public partial class Tenant
     /// Current subscription status.
     /// </summary>
     public SubscriptionStatus SubscriptionStatus { get; set; } = SubscriptionStatus.Active;
+
+    /// <summary>
+    /// Trial expiry timestamp for time-boxed onboarding periods.
+    /// Null when the tenant is not in a trial window.
+    /// </summary>
+    public DateTime? TrialEndsAtUtc { get; set; }
+
+    /// <summary>
+    /// Whether this tenant has a manual complimentary billing override.
+    /// Complimentary tenants keep their assigned tier without requiring Stripe billing.
+    /// </summary>
+    public bool IsComplimentary { get; set; }
 
     /// <summary>
     /// Stripe Customer ID for platform billing (subscription to ruff-registrar).
