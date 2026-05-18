@@ -7,8 +7,8 @@ namespace StudentRegistrar.Models;
 /// <summary>
 /// Subscription tier for SaaS billing.
 /// Free: Core features, no payment processing
-/// Pro: Stripe payments enabled ($19/mo)
-/// Enterprise: Pro + logo, theming, whitelabeling ($49/mo)
+/// Pro: Stripe payments enabled ($49/mo)
+/// Enterprise: Pro + logo, theming, whitelabeling ($79/mo)
 /// </summary>
 public enum SubscriptionTier
 {
