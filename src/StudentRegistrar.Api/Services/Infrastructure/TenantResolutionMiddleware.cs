@@ -7,7 +7,7 @@ namespace StudentRegistrar.Api.Services.Infrastructure;
 
 /// <summary>
 /// Middleware that resolves the current tenant from the request.
-/// In SaaS mode, extracts subdomain from Host header and looks up tenant.
+/// In SaaS mode, extracts the tenant slug from the request and looks up tenant.
 /// In self-hosted mode, uses a default tenant context.
 /// </summary>
 public class TenantResolutionMiddleware
@@ -15,7 +15,6 @@ public class TenantResolutionMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<TenantResolutionMiddleware> _logger;
     private readonly DeploymentMode _deploymentMode;
-    private readonly string _baseDomain;
     private readonly IMemoryCache _cache;
     private const int CacheExpirationMinutes = 5;
 
@@ -37,11 +36,7 @@ public class TenantResolutionMiddleware
             ? DeploymentMode.SaaS 
             : DeploymentMode.SelfHosted;
         
-        // Base domain for subdomain extraction (e.g., "ruffregistrar.com")
-        _baseDomain = configuration["Tenancy:BaseDomain"] ?? "ruffregistrar.com";
-        
-        _logger.LogInformation("Tenant resolution initialized. Mode: {Mode}, BaseDomain: {BaseDomain}", 
-            _deploymentMode, _baseDomain);
+        _logger.LogInformation("Tenant resolution initialized. Mode: {Mode}", _deploymentMode);
     }
 
     public async Task InvokeAsync(HttpContext context, ITenantContextAccessor tenantContextAccessor, StudentRegistrarDbContext dbContext)
@@ -55,13 +50,13 @@ public class TenantResolutionMiddleware
             return;
         }
 
-        // SaaS mode: resolve tenant from subdomain
+        // SaaS mode: resolve tenant from request header or path
         // 
         // SECURITY MODEL (Defense in Depth):
         // ═══════════════════════════════════
-        // 1. This middleware extracts tenant from subdomain (Host header)
-        //    - Host header CAN be spoofed by clients
-        //    - Subdomain validation only ensures format correctness
+        // 1. This middleware extracts tenant from the request header or path
+        //    - Request metadata CAN be spoofed by clients
+        //    - Tenant slug validation only ensures format correctness
         //    - This establishes the REQUESTED tenant context
         //
         // 2. JWT Authentication validates user identity
@@ -70,22 +65,20 @@ public class TenantResolutionMiddleware
         //
         // 3. TenantAuthorizationHandler validates tenant membership
         //    - Looks up user's actual TenantId from database
-        //    - Compares user's TenantId with resolved tenant from subdomain
+        //    - Compares user's TenantId with the resolved tenant from the request
         //    - Denies access if mismatch (prevents cross-tenant access)
         //
-        // This layered approach ensures that even if an attacker spoofs the Host header
+        // This layered approach ensures that even if an attacker spoofs tenant request metadata
         // to request tenant B's subdomain, they cannot access tenant B's data without
         // valid credentials for a user who actually belongs to tenant B.
         //
         // Controllers using [Authorize] will automatically enforce tenant membership
         // via the "TenantMember" policy configured in TenantAuthorizationHandler.
-        var host = GetEffectiveHost(context);
-        var subdomain = ExtractSubdomain(host);
+        var tenantSlug = ExtractTenantSlug(context);
 
-        if (string.IsNullOrEmpty(subdomain))
+        if (string.IsNullOrEmpty(tenantSlug))
         {
-            // No subdomain - could be the portal/marketing site or invalid request
-            _logger.LogDebug("No subdomain found in host: {Host}", host);
+            _logger.LogDebug("No tenant slug found on request {Path}", context.Request.Path);
             
             // Allow request to continue for portal routes, controllers will handle appropriately
             tenantContextAccessor.TenantContext = null;
@@ -93,163 +86,101 @@ public class TenantResolutionMiddleware
             return;
         }
 
-        // Look up tenant by subdomain (with caching)
-        var cacheKey = $"tenant:subdomain:{subdomain}";
+        var cacheKey = $"tenant:slug:{tenantSlug}";
         var tenant = await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(CacheExpirationMinutes);
             
             return await dbContext.Set<Tenant>()
                 .AsNoTracking()
-                .FirstOrDefaultAsync(t => t.Subdomain == subdomain && t.IsActive);
+                .FirstOrDefaultAsync(t => t.Subdomain == tenantSlug && t.IsActive);
         });
 
         if (tenant == null)
         {
-            _logger.LogWarning("Tenant not found for subdomain: {Subdomain}", subdomain);
+            _logger.LogWarning("Tenant not found for slug: {TenantSlug}", tenantSlug);
             context.Response.StatusCode = StatusCodes.Status404NotFound;
-            await context.Response.WriteAsJsonAsync(new { error = "Organization not found", subdomain });
+            await context.Response.WriteAsJsonAsync(new { error = "Organization not found", tenant = tenantSlug });
             return;
         }
 
         if (tenant.SubscriptionStatus == SubscriptionStatus.Cancelled)
         {
-            _logger.LogWarning("Tenant subscription cancelled: {Subdomain}", subdomain);
+            _logger.LogWarning("Tenant subscription cancelled: {TenantSlug}", tenantSlug);
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
-            await context.Response.WriteAsJsonAsync(new { error = "Subscription cancelled", subdomain });
+            await context.Response.WriteAsJsonAsync(new { error = "Subscription cancelled", tenant = tenantSlug });
             return;
         }
 
         // Set tenant context for the request
         tenantContextAccessor.TenantContext = TenantContext.ForSaaS(tenant);
-        _logger.LogDebug("Resolved tenant: {TenantName} ({TenantId}) from subdomain: {Subdomain}", 
-            tenant.Name, tenant.Id, subdomain);
+        _logger.LogDebug("Resolved tenant: {TenantName} ({TenantId}) from slug: {TenantSlug}", 
+            tenant.Name, tenant.Id, tenantSlug);
 
         await _next(context);
     }
 
     /// <summary>
-    /// Extracts the subdomain from the host header.
-    /// Examples:
-    ///   "acme.ruffregistrar.com" -> "acme"
-    ///   "www.ruffregistrar.com" -> null (reserved)
-    ///   "ruffregistrar.com" -> null
-    ///   "localhost:3000" -> null
+    /// Extracts the tenant slug from the request metadata.
     /// </summary>
-    private string? ExtractSubdomain(string host)
+    private static string? ExtractTenantSlug(HttpContext context)
     {
-        // Remove port if present
-        var hostWithoutPort = host.Split(':')[0];
-        
-        // Handle localhost for development
-        if (hostWithoutPort == "localhost" || hostWithoutPort == "127.0.0.1")
+        var explicitHeader = context.Request.Headers["X-Tenant-Slug"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(explicitHeader))
+        {
+            var normalizedHeader = explicitHeader.Trim().ToLowerInvariant();
+            return IsValidTenantSlug(normalizedHeader) ? normalizedHeader : null;
+        }
+
+        var segments = context.Request.Path.Value?
+            .Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (segments is null || segments.Length == 0)
         {
             return null;
         }
 
-        // Check if host ends with base domain
-        if (!hostWithoutPort.EndsWith(_baseDomain, StringComparison.OrdinalIgnoreCase))
+        var candidate = segments[0].ToLowerInvariant();
+        if (ReservedPathSegments.Contains(candidate) || !IsValidTenantSlug(candidate))
         {
             return null;
         }
 
-        // Extract subdomain
-        var baseDomainWithDot = "." + _baseDomain;
-        if (hostWithoutPort.Length <= baseDomainWithDot.Length)
-        {
-            return null; // Just the base domain, no subdomain
-        }
-
-        var subdomain = hostWithoutPort[..^baseDomainWithDot.Length].ToLowerInvariant();
-        
-        // Validate subdomain format
-        if (string.IsNullOrEmpty(subdomain) || !IsValidSubdomain(subdomain))
-        {
-            return null;
-        }
-
-        // Reserved subdomains should be treated as "no tenant"
-        if (ReservedSubdomains.Contains(subdomain))
-        {
-            return null;
-        }
-
-        return subdomain;
+        return candidate;
     }
 
-    private static string GetEffectiveHost(HttpContext context)
+    private static bool IsValidTenantSlug(string tenantSlug)
     {
-        var forwardedHost = context.Request.Headers["X-Forwarded-Host"].FirstOrDefault();
-        if (!string.IsNullOrWhiteSpace(forwardedHost))
-        {
-            return forwardedHost.Split(',')[0].Trim();
-        }
-
-        return context.Request.Host.Value ?? string.Empty;
-    }
-
-    private static bool IsValidSubdomain(string subdomain)
-    {
-        // Subdomain rules: 
+        // Tenant slug rules: 
         // - 1-63 characters
         // - Lowercase alphanumeric and hyphens only
         // - Cannot start or end with hyphen
-        if (subdomain.Length < 1 || subdomain.Length > 63)
+        if (tenantSlug.Length < 1 || tenantSlug.Length > 63)
             return false;
-        if (subdomain.StartsWith('-') || subdomain.EndsWith('-'))
+        if (tenantSlug.StartsWith('-') || tenantSlug.EndsWith('-'))
             return false;
-        return subdomain.All(c => char.IsLetterOrDigit(c) || c == '-');
+        return tenantSlug.All(c => char.IsLetterOrDigit(c) || c == '-');
     }
 
     /// <summary>
-    /// Reserved subdomains that cannot be used by tenants.
+    /// Reserved leading path segments that cannot identify tenants.
     /// </summary>
-    private static readonly HashSet<string> ReservedSubdomains = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> ReservedPathSegments = new(StringComparer.OrdinalIgnoreCase)
     {
-        "www",
-        "api",
         "admin",
-        "app",
-        "portal",
-        "billing",
-        "docs",
-        "help",
-        "support",
-        "status",
-        "mail",
-        "email",
-        "smtp",
-        "ftp",
-        "ssh",
-        "vpn",
-        "cdn",
-        "assets",
-        "static",
-        "media",
-        "images",
-        "img",
-        "files",
-        "download",
-        "downloads",
-        "blog",
-        "news",
-        "shop",
-        "store",
-        "auth",
+        "api",
+        "courses",
+        "educators",
+        "health",
         "login",
+        "members",
+        "rooms",
+        "semesters",
+        "settings",
         "signin",
         "signup",
-        "register",
-        "account",
-        "accounts",
-        "dashboard",
-        "console",
-        "panel",
-        "test",
-        "dev",
-        "staging",
-        "demo",
-        "sandbox"
+        "students",
+        "swagger",
+        "unauthorized"
     };
 }
 

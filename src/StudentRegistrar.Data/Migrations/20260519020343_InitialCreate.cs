@@ -105,6 +105,8 @@ namespace StudentRegistrar.Data.Migrations
                     Subdomain = table.Column<string>(type: "character varying(63)", maxLength: 63, nullable: false),
                     SubscriptionTier = table.Column<int>(type: "integer", nullable: false),
                     SubscriptionStatus = table.Column<int>(type: "integer", nullable: false),
+                    TrialEndsAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    IsComplimentary = table.Column<bool>(type: "boolean", nullable: false),
                     StripeCustomerId = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
                     StripeSubscriptionId = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
                     StripeSetupIntentId = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),

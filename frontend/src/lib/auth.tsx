@@ -47,6 +47,11 @@ export const useAuth = () => {
 
 const getKeycloak = () => getKeycloakConfig();
 
+const isLocalhostHost = (hostname: string): boolean => {
+  const normalizedHostname = hostname.toLowerCase();
+  return normalizedHostname === 'localhost' || normalizedHostname.endsWith('.localhost');
+};
+
 const getRedirectUri = (path = '/'): string => {
   if (typeof window === 'undefined') {
     return path;
@@ -87,12 +92,21 @@ const mapUserFromToken = (client: Keycloak): User | null => {
 const ensureKeycloakInitialized = async (): Promise<Keycloak> => {
   const client = getKeycloakClient();
   if (!keycloakInitPromise) {
-    keycloakInitPromise = client.init({
-      onLoad: 'check-sso',
-      pkceMethod: 'S256',
-      checkLoginIframe: false,
-      silentCheckSsoRedirectUri: getRedirectUri('/silent-check-sso.html'),
-    });
+    const runningOnLocalhost = typeof window !== 'undefined' && isLocalhostHost(window.location.hostname);
+
+    keycloakInitPromise = client.init(
+      runningOnLocalhost
+        ? {
+            pkceMethod: 'S256',
+            checkLoginIframe: false,
+          }
+        : {
+            onLoad: 'check-sso',
+            pkceMethod: 'S256',
+            checkLoginIframe: false,
+            silentCheckSsoRedirectUri: getRedirectUri('/silent-check-sso.html'),
+          }
+    );
   }
 
   await keycloakInitPromise;

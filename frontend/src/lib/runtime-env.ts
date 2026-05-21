@@ -2,7 +2,6 @@ export type RuntimeEnv = {
   NEXT_PUBLIC_KEYCLOAK_URL?: string;
   NEXT_PUBLIC_KEYCLOAK_REALM?: string;
   NEXT_PUBLIC_KEYCLOAK_CLIENT_ID?: string;
-  NEXT_PUBLIC_TENANCY_BASE_DOMAIN?: string;
   NEXT_PUBLIC_API_URL?: string;
   NEXT_PUBLIC_APP_VERSION?: string;
 };
@@ -43,12 +42,7 @@ export const getKeycloakConfig = () => {
     process.env.NEXT_PUBLIC_KEYCLOAK_REALM ||
     'student-registrar';
 
-  const baseDomain =
-    runtimeEnv?.NEXT_PUBLIC_TENANCY_BASE_DOMAIN ||
-    process.env.NEXT_PUBLIC_TENANCY_BASE_DOMAIN ||
-    '';
-
-  const tenantRealm = baseDomain ? getTenantRealmFromHost(baseDomain) : null;
+  const tenantRealm = getTenantRealmFromPath();
 
   return {
     url: runtimeEnv?.NEXT_PUBLIC_KEYCLOAK_URL || process.env.NEXT_PUBLIC_KEYCLOAK_URL || 'http://localhost:8080',
@@ -57,47 +51,55 @@ export const getKeycloakConfig = () => {
   };
 };
 
-const getTenantRealmFromHost = (baseDomain: string): string | null => {
+const getTenantRealmFromPath = (): string | null => {
   if (typeof window === 'undefined') {
     return null;
   }
 
-  const hostname = window.location.hostname.toLowerCase();
-
-  if (!hostname || hostname === 'localhost') {
+  const tenantSlug = getTenantSlugFromPath();
+  if (!tenantSlug) {
     return null;
   }
 
-  if (isIpAddress(hostname)) {
-    return null;
-  }
-
-  const subdomain = resolveSubdomain(hostname, baseDomain);
-  if (!subdomain || subdomain === 'www') {
-    return null;
-  }
-
-  return `${subdomain}-org`;
+  return `${tenantSlug}-org`;
 };
 
-const resolveSubdomain = (hostname: string, baseDomain: string): string | null => {
-  const normalizedBase = baseDomain.toLowerCase();
-  if (hostname === normalizedBase) {
+export const getTenantSlugFromPath = (): string | null => {
+  if (typeof window === 'undefined') {
     return null;
   }
 
-  if (hostname.endsWith(`.${normalizedBase}`)) {
-    const prefix = hostname.slice(0, -(normalizedBase.length + 1));
-    if (!prefix) {
-      return null;
-    }
+  const segments = window.location.pathname
+    .split('/')
+    .map(segment => segment.trim().toLowerCase())
+    .filter(Boolean);
 
-    return prefix.split('.')[0];
+  const candidate = segments[0];
+  if (!candidate || ReservedPathSegments.has(candidate) || !isValidTenantSlug(candidate)) {
+    return null;
   }
 
-  return null;
+  return candidate;
 };
 
-const isIpAddress = (hostname: string): boolean => {
-  return /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname) || hostname.includes(':');
+const isValidTenantSlug = (value: string): boolean => {
+  return /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(value);
 };
+
+const ReservedPathSegments = new Set([
+  '_next',
+  'account-holder',
+  'admin',
+  'api',
+  'courses',
+  'educators',
+  'env.js',
+  'favicon.ico',
+  'login',
+  'members',
+  'rooms',
+  'semesters',
+  'settings',
+  'students',
+  'unauthorized',
+]);

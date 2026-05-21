@@ -17,7 +17,7 @@ namespace StudentRegistrar.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.5")
+                .HasAnnotation("ProductVersion", "10.0.1")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -678,6 +678,9 @@ namespace StudentRegistrar.Data.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsComplimentary")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("KeycloakRealm")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -726,6 +729,9 @@ namespace StudentRegistrar.Data.Migrations
                     b.Property<string>("ThemeConfigJson")
                         .IsRequired()
                         .HasColumnType("jsonb");
+
+                    b.Property<DateTime?>("TrialEndsAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");

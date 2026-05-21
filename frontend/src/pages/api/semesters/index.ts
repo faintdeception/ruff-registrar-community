@@ -1,10 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getApiBaseUrl } from '@/lib/runtime-env';
+import { getTenantSlugFromRequest } from '@/lib/tenant-request';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const API_BASE_URL = getApiBaseUrl();
-  const forwardedHost = req.headers.host;
   const forwardedProto = (req.headers['x-forwarded-proto'] as string | undefined) ?? 'http';
+  const tenantSlug = getTenantSlugFromRequest(req);
   
   // Get token from Authorization header
   const authHeader = req.headers.authorization;
@@ -24,17 +25,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   else {
     requestHeaders = {
         'Authorization': authHeader,
-        'X-Forwarded-Host': forwardedHost ?? '',
         'X-Forwarded-Proto': forwardedProto,
         'Content-Type': 'application/json',
     };
   }
 
-  if ((!authHeader || !authHeader.startsWith('Bearer ')) && forwardedHost) {
+  if (tenantSlug) {
     requestHeaders = {
       ...requestHeaders,
-      'X-Forwarded-Host': forwardedHost,
-      'X-Forwarded-Proto': forwardedProto,
+      'X-Tenant-Slug': tenantSlug,
     };
   }
 

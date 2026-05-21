@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from './runtime-env';
+import { getApiBaseUrl, getTenantSlugFromPath } from './runtime-env';
 import { getAccessToken, getCurrentAccessToken } from './auth';
 
 interface ApiClientOptions extends RequestInit {
@@ -17,8 +17,9 @@ class ApiClient {
       ...(options.headers || {}),
     };
 
-    if (typeof window !== 'undefined' && shouldForwardTenantHost(requestUrl)) {
-      headers['X-Forwarded-Host'] = window.location.host;
+    const tenantSlug = getTenantSlugFromPath();
+    if (tenantSlug && shouldForwardTenantContext(requestUrl)) {
+      headers['X-Tenant-Slug'] = tenantSlug;
     }
     
     if (token) {
@@ -114,7 +115,7 @@ const resolveApiUrl = (url: string): string => {
   return url;
 };
 
-const shouldForwardTenantHost = (url: string): boolean => {
+const shouldForwardTenantContext = (url: string): boolean => {
   if (typeof window === 'undefined') {
     return false;
   }
