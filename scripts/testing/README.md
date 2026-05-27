@@ -6,6 +6,7 @@ This directory contains all scripts related to testing the Student Registrar app
 
 ```
 scripts/testing/
+├── run-e2e-tests.ps1      # 🎯 Windows-native E2E runner
 ├── run-e2e-tests.sh       # 🎯 Main E2E testing script (recommended)
 ├── setup-test-users.sh    # 👥 Creates test users in Keycloak
 ├── setup-test-users.ps1   # 👥 Windows/PowerShell test user setup
@@ -26,6 +27,17 @@ scripts/testing/
 
 # Setup test users and run all tests
 ./scripts/testing/run-e2e-tests.sh --setup-users
+```
+
+```powershell
+# Run all tests with browser visible
+./scripts/testing/run-e2e-tests.ps1
+
+# Run all tests in headless mode
+./scripts/testing/run-e2e-tests.ps1 -Headless
+
+# Setup test users and run all tests
+./scripts/testing/run-e2e-tests.ps1 -SetupUsers -AdminPassword 'admin123!'
 ```
 
 On Windows, prefer the PowerShell setup script before running E2E so Keycloak users and local database rows are synchronized with live Keycloak IDs:
@@ -124,6 +136,19 @@ Tests are organized by user roles to reflect real-world usage:
 
 ```bash
 ./scripts/testing/run-e2e-tests.sh --help  # See all options
+```
+
+### `run-e2e-tests.ps1`
+**Purpose**: Windows-native E2E testing workflow with setup and execution
+**Features**:
+- Mirrors the Bash runner options for headless mode, suite selection, and setup
+- Uses `setup-test-users.ps1` when `-SetupUsers` is requested
+- Sets and restores `SeleniumSettings__Headless` and `SeleniumSettings__BaseUrl`
+
+```powershell
+./scripts/testing/run-e2e-tests.ps1
+./scripts/testing/run-e2e-tests.ps1 -Headless -TestSuite admin
+./scripts/testing/run-e2e-tests.ps1 -SetupUsers -NoTests -AdminPassword 'admin123!'
 ```
 
 ### `setup-test-users.sh`

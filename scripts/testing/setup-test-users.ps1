@@ -242,6 +242,37 @@ function Set-UserPassword {
     }
 }
 
+function Remove-KeycloakUser {
+    param(
+        [Parameter(Mandatory)] [string]$UserId,
+        [Parameter(Mandatory)] [hashtable]$Headers
+    )
+
+    Invoke-KeycloakJson `
+        -Method Delete `
+        -Uri "$KeycloakUrl/admin/realms/$RealmName/users/$UserId" `
+        -Headers $Headers | Out-Null
+}
+
+function Test-IsPasswordHistoryError {
+    param([Parameter(Mandatory)] $ErrorRecord)
+
+    $fragments = @(
+        $ErrorRecord.ToString(),
+        $ErrorRecord.Exception?.Message,
+        $ErrorRecord.ErrorDetails?.Message
+    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+
+    foreach ($fragment in $fragments) {
+        if ($fragment.Contains('invalidPasswordHistoryMessage', [System.StringComparison]::OrdinalIgnoreCase) -or
+            $fragment.Contains('must not be equal to any of last 3 passwords', [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
 function Get-UserRealmRoles {
     param(
         [Parameter(Mandatory)] [string]$UserId,
@@ -333,7 +364,36 @@ function Ensure-TestUser {
         throw "Unable to find or create Keycloak user '$($User.Username)'."
     }
 
-    Set-UserPassword -UserId $existingUser.id -Username $User.Username -Password $User.Password -Headers $Headers
+    try {
+        Set-UserPassword -UserId $existingUser.id -Username $User.Username -Password $User.Password -Headers $Headers
+    } catch {
+        if (-not (Test-IsPasswordHistoryError -ErrorRecord $_)) {
+            throw
+        }
+
+        Write-Step "Recreating Keycloak user '$($User.Username)' to clear password history"
+        Remove-KeycloakUser -UserId $existingUser.id -Headers $Headers
+
+        Invoke-KeycloakJson `
+            -Method Post `
+            -Uri "$KeycloakUrl/admin/realms/$RealmName/users" `
+            -Headers $Headers `
+            -Body @{
+                username = $User.Username
+                enabled = $true
+                emailVerified = $true
+                firstName = $User.FirstName
+                lastName = $User.LastName
+                email = $User.Email
+            } | Out-Null
+
+        $existingUser = Get-KeycloakUser -Username $User.Username -Headers $Headers
+        if (-not $existingUser) {
+            throw "Unable to recreate Keycloak user '$($User.Username)' after password history rejection."
+        }
+
+        Set-UserPassword -UserId $existingUser.id -Username $User.Username -Password $User.Password -Headers $Headers
+    }
 
     foreach ($roleName in $User.Roles) {
         $role = Get-RealmRole -Name $roleName -Headers $Headers
