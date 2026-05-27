@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getApiBaseUrl } from '@/lib/runtime-env';
+import { withTenantSlugHeader } from '@/lib/tenant-request';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const API_BASE_URL = getApiBaseUrl();
@@ -15,10 +16,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Build the request options
     const fetchOptions: RequestInit = {
       method: req.method,
-      headers: {
+      headers: withTenantSlugHeader(req, {
         'Authorization': authHeader,
         'Content-Type': 'application/json',
-      }
+      })
     };
 
     // Only include body for non-GET requests

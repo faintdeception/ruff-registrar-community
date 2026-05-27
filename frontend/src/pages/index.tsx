@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
+import { useTenantPath } from '@/lib/tenant-path';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import api from '@/lib/api';
 import { 
@@ -13,6 +14,7 @@ import {
 
 export default function Home() {
   const { user } = useAuth();
+  const tenantPath = useTenantPath();
   const [stats, setStats] = useState({
     totalStudents: 0,
     totalCourses: 0,
@@ -167,7 +169,7 @@ export default function Home() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Link href="/account-holder" className="group">
+          <Link href={tenantPath('/account-holder')} className="group">
             <div className="card group-hover:shadow-lg transition-shadow">
               <div className="card-body text-center">
                 <UserGroupIcon className="h-12 w-12 text-primary-600 mx-auto mb-4" />
@@ -177,7 +179,7 @@ export default function Home() {
             </div>
           </Link>
 
-          <Link href="/courses" className="group">
+          <Link href={tenantPath('/courses')} className="group">
             <div className="card group-hover:shadow-lg transition-shadow">
               <div className="card-body text-center">
                 <BookOpenIcon className="h-12 w-12 text-primary-600 mx-auto mb-4" />
@@ -187,7 +189,7 @@ export default function Home() {
             </div>
           </Link>
 
-          <Link href="/Educators" className="group">
+          <Link href={tenantPath('/Educators')} className="group">
             <div className="card group-hover:shadow-lg transition-shadow">
               <div className="card-body text-center">
                 <ClipboardDocumentListIcon className="h-12 w-12 text-primary-600 mx-auto mb-4" />
@@ -198,7 +200,7 @@ export default function Home() {
           </Link>
 
           {user?.roles?.includes('Administrator') && (
-            <Link href="/members" className="group" data-testid="members-card">
+            <Link href={tenantPath('/members')} className="group" data-testid="members-card">
               <div className="card group-hover:shadow-lg transition-shadow">
                 <div className="card-body text-center">
                   <UserCircleIcon className="h-12 w-12 text-primary-600 mx-auto mb-4" />
@@ -209,7 +211,7 @@ export default function Home() {
             </Link>
           )}
 
-          <Link href="/rooms" className="group">
+          <Link href={tenantPath('/rooms')} className="group">
             <div className="card group-hover:shadow-lg transition-shadow">
               <div className="card-body text-center">
                 <ChartBarIcon className="h-12 w-12 text-primary-600 mx-auto mb-4" />

@@ -1,3 +1,5 @@
+import { extractTenantSlugFromPath } from './tenant-routing';
+
 export type RuntimeEnv = {
   NEXT_PUBLIC_KEYCLOAK_URL?: string;
   NEXT_PUBLIC_KEYCLOAK_REALM?: string;
@@ -69,37 +71,5 @@ export const getTenantSlugFromPath = (): string | null => {
     return null;
   }
 
-  const segments = window.location.pathname
-    .split('/')
-    .map(segment => segment.trim().toLowerCase())
-    .filter(Boolean);
-
-  const candidate = segments[0];
-  if (!candidate || ReservedPathSegments.has(candidate) || !isValidTenantSlug(candidate)) {
-    return null;
-  }
-
-  return candidate;
+  return extractTenantSlugFromPath(window.location.pathname);
 };
-
-const isValidTenantSlug = (value: string): boolean => {
-  return /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(value);
-};
-
-const ReservedPathSegments = new Set([
-  '_next',
-  'account-holder',
-  'admin',
-  'api',
-  'courses',
-  'educators',
-  'env.js',
-  'favicon.ico',
-  'login',
-  'members',
-  'rooms',
-  'semesters',
-  'settings',
-  'students',
-  'unauthorized',
-]);

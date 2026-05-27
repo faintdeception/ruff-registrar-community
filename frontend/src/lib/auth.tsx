@@ -1,7 +1,8 @@
 import Keycloak from 'keycloak-js';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { getKeycloakConfig } from './runtime-env';
+import { getKeycloakConfig, getTenantSlugFromPath } from './runtime-env';
+import { buildTenantPath } from './tenant-routing';
 
 interface User {
   id: string;
@@ -57,7 +58,7 @@ const getRedirectUri = (path = '/'): string => {
     return path;
   }
 
-  return new URL(path, window.location.origin).toString();
+  return new URL(buildTenantPath(path, getTenantSlugFromPath()), window.location.origin).toString();
 };
 
 const getKeycloakClient = (): Keycloak => {
@@ -133,7 +134,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         client.onAuthSuccess = () => {
           setUser(mapUserFromToken(client));
           if (router.pathname === '/login') {
-            void router.replace('/');
+            void router.replace(buildTenantPath('/', getTenantSlugFromPath()));
           }
         };
 
@@ -210,7 +211,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    void router.push('/login');
+    void router.push(buildTenantPath('/login', getTenantSlugFromPath()));
   };
 
   const value = {

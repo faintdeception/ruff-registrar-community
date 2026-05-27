@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
+import { useTenantPath } from '@/lib/tenant-path';
 import Layout from '@/components/Layout';
 import apiClient from '@/lib/api-client';
 import {
@@ -112,6 +113,7 @@ interface CreateCourseInstructorPayload {
 }
 
 export default function CoursesPage() {
+  const tenantPath = useTenantPath();
   const { user } = useAuth();
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -1185,7 +1187,7 @@ export default function CoursesPage() {
             {canCreateCourses && (
               <div className="flex space-x-3">
                 {isAdmin && (
-                  <Link href="/semesters" className="btn btn-secondary">
+                  <Link href={tenantPath('/semesters')} className="btn btn-secondary">
                     <CalendarIcon className="h-5 w-5" />
                     Manage Semesters
                   </Link>

@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getApiBaseUrl } from '@/lib/runtime-env';
+import { withTenantSlugHeader } from '@/lib/tenant-request';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const API_BASE_URL = getApiBaseUrl();
@@ -8,15 +9,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const authHeader = req.headers.authorization;
   let requestHeaders;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    requestHeaders = {
+    requestHeaders = withTenantSlugHeader(req, {
         'Content-Type': 'application/json',
-    };
+    });
   }
   else {
-    requestHeaders = {
+    requestHeaders = withTenantSlugHeader(req, {
         'Authorization': authHeader,
         'Content-Type': 'application/json',
-    };
+    });
   }
 
   try {

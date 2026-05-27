@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getApiBaseUrl } from '@/lib/runtime-env';
+import { withTenantSlugHeader } from '@/lib/tenant-request';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const API_BASE_URL = getApiBaseUrl();
@@ -19,10 +20,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Forward the request to the actual backend API
     const response = await fetch(`${API_BASE_URL}/api/courses/available-members`, {
       method: 'GET',
-      headers: {
+      headers: withTenantSlugHeader(req, {
         // 'Authorization': authHeader,
         'Content-Type': 'application/json',
-      }
+      })
     });
 
     // Check if response is JSON

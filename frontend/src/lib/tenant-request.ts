@@ -1,22 +1,5 @@
 import type { NextApiRequest } from 'next';
-
-const reservedPathSegments = new Set([
-  '_next',
-  'account-holder',
-  'admin',
-  'api',
-  'courses',
-  'educators',
-  'env.js',
-  'favicon.ico',
-  'login',
-  'members',
-  'rooms',
-  'semesters',
-  'settings',
-  'students',
-  'unauthorized',
-]);
+import { extractTenantSlugFromPath, isValidTenantSlug } from './tenant-routing';
 
 export const getTenantSlugFromRequest = (req: NextApiRequest): string | null => {
   const explicitHeader = req.headers['x-tenant-slug'];
@@ -27,7 +10,7 @@ export const getTenantSlugFromRequest = (req: NextApiRequest): string | null => 
     }
   }
 
-  const requestPath = typeof req.url === 'string' ? tryGetTenantSlugFromPath(req.url) : null;
+  const requestPath = typeof req.url === 'string' ? extractTenantSlugFromPath(req.url) : null;
   if (requestPath) {
     return requestPath;
   }
@@ -38,26 +21,23 @@ export const getTenantSlugFromRequest = (req: NextApiRequest): string | null => 
   }
 
   try {
-    return tryGetTenantSlugFromPath(new URL(referer).pathname);
+    return extractTenantSlugFromPath(new URL(referer).pathname);
   } catch {
     return null;
   }
 };
 
-const tryGetTenantSlugFromPath = (path: string): string | null => {
-  const candidate = path
-    .split('?')[0]
-    .split('/')
-    .map(segment => segment.trim().toLowerCase())
-    .filter(Boolean)[0];
-
-  if (!candidate || reservedPathSegments.has(candidate) || !isValidTenantSlug(candidate)) {
-    return null;
+export const withTenantSlugHeader = (
+  req: NextApiRequest,
+  headers: Record<string, string>
+): Record<string, string> => {
+  const tenantSlug = getTenantSlugFromRequest(req);
+  if (!tenantSlug) {
+    return headers;
   }
 
-  return candidate;
-};
-
-const isValidTenantSlug = (value: string): boolean => {
-  return /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(value);
+  return {
+    ...headers,
+    'X-Tenant-Slug': tenantSlug,
+  };
 };

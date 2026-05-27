@@ -1,4 +1,6 @@
 import { useAuth } from '@/lib/auth';
+import { buildTenantPath } from '@/lib/tenant-routing';
+import { getTenantSlugFromPath } from '@/lib/runtime-env';
 import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 import Layout from './Layout';
@@ -15,7 +17,7 @@ export default function ProtectedRoute({ children, roles, showLayout = true }: P
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push('/login');
+      router.push(buildTenantPath('/login', getTenantSlugFromPath()));
     }
   }, [isLoading, isAuthenticated, router]);
 
@@ -23,7 +25,7 @@ export default function ProtectedRoute({ children, roles, showLayout = true }: P
     if (user && roles && roles.length > 0) {
       const hasRequiredRole = roles.some(role => user.roles.includes(role));
       if (!hasRequiredRole) {
-        router.push('/unauthorized');
+        router.push(buildTenantPath('/unauthorized', getTenantSlugFromPath()));
       }
     }
   }, [user, roles, router]);

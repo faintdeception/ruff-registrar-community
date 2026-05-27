@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { EducatorDto, EducatorInfo } from '@/types';
-import { getApiBaseUrl } from '@/lib/runtime-env';
+import { getApiBaseUrl, getTenantSlugFromPath } from '@/lib/runtime-env';
 import { getAccessToken } from '@/lib/auth';
+import { buildTenantPath } from '@/lib/tenant-routing';
 
 interface CreateEducatorFormData {
   firstName: string;
@@ -66,7 +67,7 @@ const AdminEducatorsPage = () => {
     const initialize = async () => {
       const runtimeToken = await getAccessToken();
       if (!runtimeToken) {
-        void router.push('/login');
+        void router.push(buildTenantPath('/login', getTenantSlugFromPath()));
         return;
       }
 

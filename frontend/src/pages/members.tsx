@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../lib/auth';
+import { buildTenantPath } from '../lib/tenant-routing';
+import { getTenantSlugFromPath } from '../lib/runtime-env';
 import ProtectedRoute from '../components/ProtectedRoute';
 import apiClient from '../lib/api-client';
 import { PlusIcon, XMarkIcon, UserIcon, PhoneIcon, EnvelopeIcon, MapPinIcon, ClipboardDocumentIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
@@ -112,7 +114,7 @@ const MembersPage: React.FC = () => {
     
     // Only admins can view this page
     if (!user.roles?.includes('Administrator')) {
-      router.push('/');
+      router.push(buildTenantPath('/', getTenantSlugFromPath()));
       return;
     }
     
