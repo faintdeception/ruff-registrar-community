@@ -1,5 +1,4 @@
 using OpenQA.Selenium;
-using FluentAssertions;
 using StudentRegistrar.E2E.Tests.Base;
 using StudentRegistrar.E2E.Tests.Pages;
 using Xunit;
@@ -26,9 +25,9 @@ public class MemberTests : BaseTest
     WaitForUrlContains("/");
 
         // Assert - Should be logged in
-        Driver.Url.Should().NotContain("/login", "Member should be logged in");
+        Assert.DoesNotContain("/login", Driver.Url);
         var homePage = new HomePage(Driver);
-        homePage.IsLoggedIn().Should().BeTrue("Member should be authenticated");
+        Assert.True(homePage.IsLoggedIn());
     }
 
     [Fact]
@@ -44,8 +43,8 @@ public class MemberTests : BaseTest
         WaitForUrlContains("/account");
 
         // Assert - Should access family management
-        Driver.Url.Should().Contain("/account", "Should navigate to account page");
-        Driver.PageSource.Should().ContainEquivalentOf("account");
+        Assert.Contains("/account", Driver.Url);
+        Assert.Contains("account", Driver.PageSource, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -61,8 +60,8 @@ public class MemberTests : BaseTest
         WaitForUrlContains("/courses");
 
         // Assert - Should view available courses
-        Driver.Url.Should().Contain("/courses", "Should navigate to courses page");
-        Driver.PageSource.Should().ContainEquivalentOf("course");
+        Assert.Contains("/courses", Driver.Url);
+        Assert.Contains("course", Driver.PageSource, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -115,7 +114,7 @@ public class MemberTests : BaseTest
 
         var accountHolderPage = new AccountHolderPage(Driver);
         accountHolderPage.AddStudent(studentFirstName, studentLastName, "4");
-        accountHolderPage.IsStudentVisible(studentFirstName, studentLastName).Should().BeTrue("Member should be able to add a student before enrolling");
+        Assert.True(accountHolderPage.IsStudentVisible(studentFirstName, studentLastName));
 
         navigationPage.ClickCourses();
         WaitForPageLoad();
@@ -129,7 +128,7 @@ public class MemberTests : BaseTest
         WaitForUrlContains("/account");
         WaitUntil(_ => accountHolderPage.IsEnrollmentVisible(courseName), timeoutSeconds: 15, failureMessage: $"Enrollment for course '{courseName}' was not visible on the member account page");
 
-        accountHolderPage.IsEnrollmentVisible(courseName).Should().BeTrue("The newly enrolled course should appear for the member's student");
+        Assert.True(accountHolderPage.IsEnrollmentVisible(courseName));
     }
 
     // [Fact]
@@ -174,12 +173,12 @@ public class MemberTests : BaseTest
         var navigationPage = new NavigationPage(Driver);
         
         // Verify admin items are not present in DOM (most robust check)
-        navigationPage.IsStudentsPresent().Should().BeFalse("Students admin link should not exist for Members");
-        navigationPage.IsSemestersPresent().Should().BeFalse("Semesters admin link should not exist for Members");
+        Assert.False(navigationPage.IsStudentsPresent());
+        Assert.False(navigationPage.IsSemestersPresent());
         
         // Additional verification - check roles
-        navigationPage.HasAdminRole().Should().BeFalse("User should NOT have Admin role");
-        navigationPage.HasEducatorRole().Should().BeFalse("User should NOT have Educator role");
+        Assert.False(navigationPage.HasAdminRole());
+        Assert.False(navigationPage.HasEducatorRole());
         
         // Members should see Educators link (to contact/view) but not manage
         // This depends on your business rules - adjust as needed
@@ -205,13 +204,13 @@ public class MemberTests : BaseTest
         navigationPage.ClickAccount();
         WaitForPageLoad();
         WaitForUrlContains("/account");
-        Driver.Url.Should().Contain("/account", "Should navigate to account page");
+        Assert.Contains("/account", Driver.Url);
         
         // 2. Course Browsing
         navigationPage.ClickCourses();
         WaitForPageLoad();
         WaitForUrlContains("/courses");
-        Driver.Url.Should().Contain("/courses", "Should navigate to courses page");
+        Assert.Contains("/courses", Driver.Url);
         
         // 3. Enrollment Management (for children)
         // navigationPage.ClickEnrollments();
@@ -227,11 +226,11 @@ public class MemberTests : BaseTest
         navigationPage.ClickEducators();
         WaitForPageLoad();
         WaitForUrlContains("/educators");
-        Driver.Url.Should().Contain("/educators", "Should navigate to educators page");
+        Assert.Contains("/educators", Driver.Url);
 
         // Verify NO access to admin features using robust navigation page
-        navigationPage.IsStudentsPresent().Should().BeFalse("Members should not see admin Students link");
-        navigationPage.IsSemestersPresent().Should().BeFalse("Members should not see admin Semesters link");
+        Assert.False(navigationPage.IsStudentsPresent());
+        Assert.False(navigationPage.IsSemestersPresent());
     }
 
     [Fact]
@@ -244,17 +243,17 @@ public class MemberTests : BaseTest
         var navigationPage = new NavigationPage(Driver);
 
         // Should have access to member-appropriate features
-        navigationPage.IsNavItemVisible("account").Should().BeTrue("Members should see Account link");
-        navigationPage.IsNavItemVisible("courses").Should().BeTrue("Members should see Courses link");        
-        navigationPage.IsNavItemVisible("educators").Should().BeTrue("Members should see Educators link");
+        Assert.True(navigationPage.IsNavItemVisible("account"));
+        Assert.True(navigationPage.IsNavItemVisible("courses"));        
+        Assert.True(navigationPage.IsNavItemVisible("educators"));
 
         // Should NOT have access to admin-only features
-        navigationPage.IsStudentsPresent().Should().BeFalse("Members should not see Students admin link");
-        navigationPage.IsSemestersPresent().Should().BeFalse("Members should not see Semesters admin link");
+        Assert.False(navigationPage.IsStudentsPresent());
+        Assert.False(navigationPage.IsSemestersPresent());
         
         // Verify role context
-        navigationPage.HasAdminRole().Should().BeFalse("Members should not have Admin role");
-        navigationPage.HasEducatorRole().Should().BeFalse("Members should not have Educator role");
+        Assert.False(navigationPage.HasAdminRole());
+        Assert.False(navigationPage.HasEducatorRole());
     }
 
     #region Helper Methods
@@ -274,7 +273,7 @@ public class MemberTests : BaseTest
         Thread.Sleep(2000);
 
     var homePage = new HomePage(Driver);
-    homePage.IsLoggedIn().Should().BeTrue("Member login should succeed");
+    Assert.True(homePage.IsLoggedIn());
     }
 
     private void LoginAsAdmin()
@@ -292,13 +291,13 @@ public class MemberTests : BaseTest
         WaitForUrlContains("/");
 
         var homePage = new HomePage(Driver);
-        homePage.IsLoggedIn().Should().BeTrue("Admin login should succeed for member workflow setup");
+        Assert.True(homePage.IsLoggedIn());
     }
 
     private void Logout()
     {
         var homePage = new HomePage(Driver);
-        homePage.HasLogoutButton().Should().BeTrue("Logout requires an authenticated session");
+        Assert.True(homePage.HasLogoutButton());
         homePage.ClickLogout();
         WaitForPageLoad();
         WaitForUrlContains("/login");
@@ -316,7 +315,7 @@ public class MemberTests : BaseTest
         WaitForPageLoad();
 
         // Verify navigation
-        Driver.Url.Should().Contain(expectedUrlPart, $"Member should access {linkText} page");
+        Assert.Contains(expectedUrlPart, Driver.Url);
     }
 
     #endregion

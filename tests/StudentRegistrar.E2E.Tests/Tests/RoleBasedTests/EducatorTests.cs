@@ -1,5 +1,4 @@
 using OpenQA.Selenium;
-using FluentAssertions;
 using StudentRegistrar.E2E.Tests.Base;
 using StudentRegistrar.E2E.Tests.Pages;
 using Xunit;
@@ -26,9 +25,9 @@ public class EducatorTests : BaseTest
     WaitForUrlContains("/");
 
         // Assert - Should be logged in
-        Driver.Url.Should().NotContain("/login", "Educator should be logged in");
+        Assert.DoesNotContain("/login", Driver.Url);
         var homePage = new HomePage(Driver);
-        homePage.IsLoggedIn().Should().BeTrue("Educator should be authenticated");
+        Assert.True(homePage.IsLoggedIn());
     }
 
     [Fact]
@@ -43,8 +42,8 @@ public class EducatorTests : BaseTest
         WaitForPageLoad();
 
         // Assert - Should access family management
-        Driver.Url.Should().Contain("/account", "Should navigate to account page");
-        Driver.PageSource.Should().ContainEquivalentOf("account");
+        Assert.Contains("/account", Driver.Url);
+        Assert.Contains("account", Driver.PageSource, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -60,8 +59,8 @@ public class EducatorTests : BaseTest
         WaitForUrlContains("/courses");
 
         // Assert - Should access courses (to create/manage their own)
-        Driver.Url.Should().Contain("/courses", "Should navigate to courses page");
-        Driver.PageSource.Should().ContainEquivalentOf("course");
+        Assert.Contains("/courses", Driver.Url);
+        Assert.Contains("course", Driver.PageSource, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -78,8 +77,8 @@ public class EducatorTests : BaseTest
         WaitForUrlContains("/educators");
 
         // Assert - Should access educators section
-        Driver.Url.Should().Contain("/educators", "Should navigate to educators page");
-        Driver.PageSource.Should().ContainEquivalentOf("educator");
+        Assert.Contains("/educators", Driver.Url);
+        Assert.Contains("educator", Driver.PageSource, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -93,12 +92,12 @@ public class EducatorTests : BaseTest
         navigationPage.VerifyEducatorNavigation();
         
         // Additional verification - check roles
-        navigationPage.HasEducatorRole().Should().BeTrue("User should have Educator role");
-        navigationPage.HasAdminRole().Should().BeFalse("User should NOT have Admin role");
+        Assert.True(navigationPage.HasEducatorRole());
+        Assert.False(navigationPage.HasAdminRole());
         
         // Verify admin items are not present in DOM (most robust check)
-        navigationPage.IsStudentsPresent().Should().BeFalse("Students admin link should not exist for Educators");
-        navigationPage.IsSemestersPresent().Should().BeFalse("Semesters admin link should not exist for Educators");
+        Assert.False(navigationPage.IsStudentsPresent());
+        Assert.False(navigationPage.IsSemestersPresent());
     }
 
     [Fact]
@@ -126,13 +125,13 @@ public class EducatorTests : BaseTest
         navigationPage.ClickAccount();
         WaitForPageLoad();
         WaitForUrlContains("/account");
-        Driver.Url.Should().Contain("/account", "Should navigate to account page");
+        Assert.Contains("/account", Driver.Url);
         
         // 2. Course Management (create own courses)
         navigationPage.ClickCourses();
         WaitForPageLoad();
         WaitForUrlContains("/courses");
-        Driver.Url.Should().Contain("/courses", "Should navigate to courses page");
+        Assert.Contains("/courses", Driver.Url);
         
         // 3. Enrollment Management (own courses + children)
         // navigationPage.ClickEnrollments();
@@ -148,10 +147,10 @@ public class EducatorTests : BaseTest
         navigationPage.ClickEducators();
         WaitForPageLoad();
         WaitForUrlContains("/educators");
-        Driver.Url.Should().Contain("/educators", "Should navigate to educators page");
+        Assert.Contains("/educators", Driver.Url);
 
         // Final verification - ensure proper role context
-        navigationPage.GetUserRoles().Should().Contain("Educator", "User should be identified as Educator");
+        Assert.Contains("Educator", navigationPage.GetUserRoles());
     }
 
     #region Helper Methods
@@ -171,7 +170,7 @@ public class EducatorTests : BaseTest
     WaitForUrlContains("/");
 
         var homePage = new HomePage(Driver);
-        homePage.IsLoggedIn().Should().BeTrue("Educator login should succeed");
+        Assert.True(homePage.IsLoggedIn());
     }
 
     private void VerifyCanAccessPage(string linkText, string expectedUrlPart)
@@ -186,7 +185,7 @@ public class EducatorTests : BaseTest
         WaitForPageLoad();
 
         // Verify navigation
-        Driver.Url.Should().Contain(expectedUrlPart, $"Educator should access {linkText} page");
+        Assert.Contains(expectedUrlPart, Driver.Url);
     }
 
     #endregion

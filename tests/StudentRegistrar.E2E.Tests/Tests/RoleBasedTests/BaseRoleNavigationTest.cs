@@ -1,6 +1,6 @@
-using FluentAssertions;
 using StudentRegistrar.E2E.Tests.Base;
 using StudentRegistrar.E2E.Tests.Pages;
+using Xunit;
 
 namespace StudentRegistrar.E2E.Tests.Tests.RoleBasedTests;
 
@@ -15,7 +15,7 @@ public abstract class BaseRoleNavigationTest : BaseTest
     /// <summary>
     /// Verifies that a user can navigate to a specific page using the navigation menu
     /// </summary>
-    protected void VerifyCanNavigateToPage(string navItem, string expectedUrlPart, string description = null)
+    protected void VerifyCanNavigateToPage(string navItem, string expectedUrlPart, string? description = null)
     {
         description ??= $"Should be able to navigate to {navItem}";
         
@@ -28,54 +28,54 @@ public abstract class BaseRoleNavigationTest : BaseTest
         WaitForPageLoad();
         
         // Verify navigation succeeded
-        Driver.Url.Should().Contain(expectedUrlPart, description);
+        Assert.Contains(expectedUrlPart, Driver.Url);
     }
 
     /// <summary>
     /// Verifies that a navigation item is visible to the current user
     /// </summary>
-    protected void VerifyNavItemVisible(string navItem, string description = null)
+    protected void VerifyNavItemVisible(string navItem, string? description = null)
     {
         description ??= $"{navItem} navigation should be visible";
-        NavigationPage.IsNavItemVisible(navItem).Should().BeTrue(description);
+        Assert.True(NavigationPage.IsNavItemVisible(navItem), description);
     }
 
     /// <summary>
     /// Verifies that a navigation item is NOT visible to the current user
     /// </summary>
-    protected void VerifyNavItemNotVisible(string navItem, string description = null)
+    protected void VerifyNavItemNotVisible(string navItem, string? description = null)
     {
         description ??= $"{navItem} navigation should NOT be visible";
-        NavigationPage.IsNavItemVisible(navItem).Should().BeFalse(description);
+        Assert.False(NavigationPage.IsNavItemVisible(navItem), description);
     }
 
     /// <summary>
     /// Verifies that a navigation item is NOT present in the DOM (not just hidden)
     /// </summary>
-    protected void VerifyNavItemNotPresent(string navItem, string description = null)
+    protected void VerifyNavItemNotPresent(string navItem, string? description = null)
     {
         description ??= $"{navItem} navigation should NOT be present in DOM";
-        NavigationPage.IsNavItemPresent(navItem).Should().BeFalse(description);
+        Assert.False(NavigationPage.IsNavItemPresent(navItem), description);
     }
 
     /// <summary>
     /// Verifies user role information in the navigation
     /// </summary>
-    protected void VerifyUserRole(string expectedRole, string description = null)
+    protected void VerifyUserRole(string expectedRole, string? description = null)
     {
         description ??= $"User should have {expectedRole} role";
         var userRoles = NavigationPage.GetUserRoles();
-        userRoles.Should().Contain(expectedRole, description);
+        Assert.Contains(expectedRole, userRoles);
     }
 
     /// <summary>
     /// Verifies user does NOT have a specific role
     /// </summary>
-    protected void VerifyUserDoesNotHaveRole(string unexpectedRole, string description = null)
+    protected void VerifyUserDoesNotHaveRole(string unexpectedRole, string? description = null)
     {
         description ??= $"User should NOT have {unexpectedRole} role";
         var userRoles = NavigationPage.GetUserRoles();
-        userRoles.Should().NotContain(unexpectedRole, description);
+        Assert.DoesNotContain(unexpectedRole, userRoles);
     }
 
     #region Login Methods
@@ -98,7 +98,7 @@ public abstract class BaseRoleNavigationTest : BaseTest
         WaitForUrlContains("/");
 
         var homePage = new HomePage(Driver);
-        homePage.IsLoggedIn().Should().BeTrue("Admin login should succeed");
+        Assert.True(homePage.IsLoggedIn());
     }
 
     /// <summary>
@@ -119,7 +119,7 @@ public abstract class BaseRoleNavigationTest : BaseTest
         WaitForUrlContains("/");
 
         var homePage = new HomePage(Driver);
-        homePage.IsLoggedIn().Should().BeTrue("Educator login should succeed");
+        Assert.True(homePage.IsLoggedIn());
     }
 
     /// <summary>
@@ -140,7 +140,7 @@ public abstract class BaseRoleNavigationTest : BaseTest
         WaitForUrlContains("/");
 
         var homePage = new HomePage(Driver);
-        homePage.IsLoggedIn().Should().BeTrue("Member login should succeed");
+        Assert.True(homePage.IsLoggedIn());
     }
 
     #endregion

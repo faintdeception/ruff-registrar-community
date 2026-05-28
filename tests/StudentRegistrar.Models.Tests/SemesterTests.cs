@@ -1,4 +1,3 @@
-using FluentAssertions;
 using StudentRegistrar.Models;
 using System.Text.Json;
 using Xunit;
@@ -12,21 +11,24 @@ public class SemesterTests
     {
         // Act
         var semester = new Semester();
+        var now = DateTime.UtcNow;
 
         // Assert
-        semester.Id.Should().NotBeEmpty();
-        semester.Name.Should().BeEmpty();
-        semester.Code.Should().BeEmpty();
-        semester.StartDate.Should().Be(default);
-        semester.EndDate.Should().Be(default);
-        semester.RegistrationStartDate.Should().Be(default);
-        semester.RegistrationEndDate.Should().Be(default);
-        semester.IsActive.Should().BeTrue();
-        semester.PeriodConfigJson.Should().Be("{}");
-        semester.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
-        semester.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
-        semester.Courses.Should().NotBeNull().And.BeEmpty();
-        semester.Enrollments.Should().NotBeNull().And.BeEmpty();
+        Assert.NotEqual(Guid.Empty, semester.Id);
+        Assert.Equal(string.Empty, semester.Name);
+        Assert.Equal(string.Empty, semester.Code);
+        Assert.Equal(default, semester.StartDate);
+        Assert.Equal(default, semester.EndDate);
+        Assert.Equal(default, semester.RegistrationStartDate);
+        Assert.Equal(default, semester.RegistrationEndDate);
+        Assert.True(semester.IsActive);
+        Assert.Equal("{}", semester.PeriodConfigJson);
+        Assert.InRange(semester.CreatedAt, now - TimeSpan.FromSeconds(1), now + TimeSpan.FromSeconds(1));
+        Assert.InRange(semester.UpdatedAt, now - TimeSpan.FromSeconds(1), now + TimeSpan.FromSeconds(1));
+        Assert.NotNull(semester.Courses);
+        Assert.Empty(semester.Courses);
+        Assert.NotNull(semester.Enrollments);
+        Assert.Empty(semester.Enrollments);
     }
 
     [Fact]
@@ -41,7 +43,7 @@ public class SemesterTests
         };
 
         // Act & Assert
-        semester.IsRegistrationOpen.Should().BeTrue();
+        Assert.True(semester.IsRegistrationOpen);
     }
 
     [Fact]
@@ -56,7 +58,7 @@ public class SemesterTests
         };
 
         // Act & Assert
-        semester.IsRegistrationOpen.Should().BeFalse();
+        Assert.False(semester.IsRegistrationOpen);
     }
 
     [Fact]
@@ -71,7 +73,7 @@ public class SemesterTests
         };
 
         // Act & Assert
-        semester.IsRegistrationOpen.Should().BeFalse();
+        Assert.False(semester.IsRegistrationOpen);
     }
 
     [Fact]
@@ -86,7 +88,7 @@ public class SemesterTests
         };
 
         // Act & Assert
-        semester.IsRegistrationOpen.Should().BeFalse();
+        Assert.False(semester.IsRegistrationOpen);
     }
 
     [Fact]
@@ -137,20 +139,20 @@ public class SemesterTests
         var retrievedConfig = semester.GetPeriodConfiguration();
 
         // Assert
-        retrievedConfig.Should().NotBeNull();
-        retrievedConfig.Periods.Should().HaveCount(2);
+        Assert.NotNull(retrievedConfig);
+        Assert.Equal(2, retrievedConfig.Periods.Count);
         
         var period1 = retrievedConfig.Periods.First();
-        period1.Name.Should().Be("Period 1");
-        period1.Code.Should().Be("P1");
-        period1.IsActive.Should().BeTrue();
-        period1.Description.Should().Be("First period of semester");
+        Assert.Equal("Period 1", period1.Name);
+        Assert.Equal("P1", period1.Code);
+        Assert.True(period1.IsActive);
+        Assert.Equal("First period of semester", period1.Description);
         
-        retrievedConfig.Holidays.Should().HaveCount(2);
+        Assert.Equal(2, retrievedConfig.Holidays.Count);
         var laborDay = retrievedConfig.Holidays.First();
-        laborDay.Name.Should().Be("Labor Day");
-        laborDay.Date.Should().Be(new DateTime(2024, 9, 2));
-        laborDay.Description.Should().Be("Federal holiday");
+        Assert.Equal("Labor Day", laborDay.Name);
+        Assert.Equal(new DateTime(2024, 9, 2), laborDay.Date);
+        Assert.Equal("Federal holiday", laborDay.Description);
     }
 
     [Fact]
@@ -166,9 +168,11 @@ public class SemesterTests
         var config = semester.GetPeriodConfiguration();
 
         // Assert
-        config.Should().NotBeNull();
-        config.Periods.Should().NotBeNull().And.BeEmpty();
-        config.Holidays.Should().NotBeNull().And.BeEmpty();
+        Assert.NotNull(config);
+        Assert.NotNull(config.Periods);
+        Assert.Empty(config.Periods);
+        Assert.NotNull(config.Holidays);
+        Assert.Empty(config.Holidays);
     }
 
     [Fact]
@@ -192,15 +196,15 @@ public class SemesterTests
         semester.SetPeriodConfiguration(config);
 
         // Assert
-        semester.PeriodConfigJson.Should().NotBe("{}");
+        Assert.NotEqual("{}", semester.PeriodConfigJson);
         
         // Verify we can deserialize it back
         var deserializedConfig = JsonSerializer.Deserialize<PeriodConfiguration>(semester.PeriodConfigJson);
-        deserializedConfig.Should().NotBeNull();
-        deserializedConfig!.Periods.Should().HaveCount(1);
-        deserializedConfig.Periods.First().Name.Should().Be("Test Period");
-        deserializedConfig.Holidays.Should().HaveCount(1);
-        deserializedConfig.Holidays.First().Name.Should().Be("Test Holiday");
+        Assert.NotNull(deserializedConfig);
+        Assert.Single(deserializedConfig!.Periods);
+        Assert.Equal("Test Period", deserializedConfig.Periods.First().Name);
+        Assert.Single(deserializedConfig.Holidays);
+        Assert.Equal("Test Holiday", deserializedConfig.Holidays.First().Name);
     }
 
     [Fact]
@@ -210,8 +214,10 @@ public class SemesterTests
         var config = new PeriodConfiguration();
 
         // Assert
-        config.Periods.Should().NotBeNull().And.BeEmpty();
-        config.Holidays.Should().NotBeNull().And.BeEmpty();
+        Assert.NotNull(config.Periods);
+        Assert.Empty(config.Periods);
+        Assert.NotNull(config.Holidays);
+        Assert.Empty(config.Holidays);
     }
 
     [Fact]
@@ -221,12 +227,12 @@ public class SemesterTests
         var period = new Period();
 
         // Assert
-        period.Name.Should().BeEmpty();
-        period.Code.Should().BeEmpty();
-        period.StartDate.Should().Be(default);
-        period.EndDate.Should().Be(default);
-        period.IsActive.Should().BeTrue();
-        period.Description.Should().BeNull();
+        Assert.Equal(string.Empty, period.Name);
+        Assert.Equal(string.Empty, period.Code);
+        Assert.Equal(default, period.StartDate);
+        Assert.Equal(default, period.EndDate);
+        Assert.True(period.IsActive);
+        Assert.Null(period.Description);
     }
 
     [Fact]
@@ -236,9 +242,9 @@ public class SemesterTests
         var holiday = new Holiday();
 
         // Assert
-        holiday.Name.Should().BeEmpty();
-        holiday.Date.Should().Be(default);
-        holiday.Description.Should().BeNull();
+        Assert.Equal(string.Empty, holiday.Name);
+        Assert.Equal(default, holiday.Date);
+        Assert.Null(holiday.Description);
     }
 
     [Theory]
@@ -255,7 +261,7 @@ public class SemesterTests
         semester.Name = semesterName;
 
         // Assert
-        semester.Name.Should().Be(semesterName);
+        Assert.Equal(semesterName, semester.Name);
     }
 
     [Theory]
@@ -272,7 +278,7 @@ public class SemesterTests
         semester.Code = semesterCode;
 
         // Assert
-        semester.Code.Should().Be(semesterCode);
+        Assert.Equal(semesterCode, semester.Code);
     }
 
     [Fact]
@@ -288,13 +294,13 @@ public class SemesterTests
         };
 
         // Assert - Basic validation that dates are set correctly
-        semester.StartDate.Should().Be(new DateTime(2024, 9, 1));
-        semester.EndDate.Should().Be(new DateTime(2024, 12, 15));
-        semester.RegistrationStartDate.Should().Be(new DateTime(2024, 8, 1));
-        semester.RegistrationEndDate.Should().Be(new DateTime(2024, 8, 31));
+        Assert.Equal(new DateTime(2024, 9, 1), semester.StartDate);
+        Assert.Equal(new DateTime(2024, 12, 15), semester.EndDate);
+        Assert.Equal(new DateTime(2024, 8, 1), semester.RegistrationStartDate);
+        Assert.Equal(new DateTime(2024, 8, 31), semester.RegistrationEndDate);
         
         // Registration should typically end before semester starts
-        semester.RegistrationEndDate.Should().BeBefore(semester.StartDate);
+        Assert.True(semester.RegistrationEndDate < semester.StartDate);
     }
 
     [Fact]
@@ -304,12 +310,12 @@ public class SemesterTests
         var semester = new Semester();
 
         // Default should be active
-        semester.IsActive.Should().BeTrue();
+        Assert.True(semester.IsActive);
 
         // Act - deactivate
         semester.IsActive = false;
 
         // Assert
-        semester.IsActive.Should().BeFalse();
+        Assert.False(semester.IsActive);
     }
 }

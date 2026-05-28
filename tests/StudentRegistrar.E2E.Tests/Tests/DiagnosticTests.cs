@@ -1,4 +1,3 @@
-using FluentAssertions;
 using OpenQA.Selenium;
 using StudentRegistrar.E2E.Tests.Base;
 using Xunit;

@@ -1,6 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -65,8 +64,8 @@ public class CourseInstructorsControllerTests
 
         var result = await _controller.GetCourseInstructors();
 
-        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().BeEquivalentTo(instructors);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Same(instructors, okResult.Value);
     }
 
     // -------------------------------------------------------------------------
@@ -82,8 +81,8 @@ public class CourseInstructorsControllerTests
 
         var result = await _controller.GetCourseInstructor(id);
 
-        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().BeEquivalentTo(dto);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Same(dto, okResult.Value);
     }
 
     [Fact]
@@ -94,7 +93,7 @@ public class CourseInstructorsControllerTests
 
         var result = await _controller.GetCourseInstructor(Guid.NewGuid());
 
-        result.Result.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(result.Result);
     }
 
     // -------------------------------------------------------------------------
@@ -110,8 +109,8 @@ public class CourseInstructorsControllerTests
 
         var result = await _controller.GetCourseInstructorsByCourse(courseId);
 
-        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().BeEquivalentTo(instructors);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Same(instructors, okResult.Value);
     }
 
     // -------------------------------------------------------------------------
@@ -137,10 +136,10 @@ public class CourseInstructorsControllerTests
 
         var result = await _controller.CreateCourseInstructor(createDto);
 
-        var createdResult = result.Result.Should().BeOfType<CreatedAtActionResult>().Subject;
-        createdResult.StatusCode.Should().Be(201);
-        createdResult.ActionName.Should().Be(nameof(CourseInstructorsController.GetCourseInstructor));
-        createdResult.Value.Should().BeEquivalentTo(created);
+        var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
+        Assert.Equal(201, createdResult.StatusCode);
+        Assert.Equal(nameof(CourseInstructorsController.GetCourseInstructor), createdResult.ActionName);
+        Assert.Same(created, createdResult.Value);
     }
 
     [Fact]
@@ -152,7 +151,7 @@ public class CourseInstructorsControllerTests
             CourseId = Guid.NewGuid(), FirstName = "X", LastName = "Y"
         });
 
-        result.Result.Should().BeOfType<ForbidResult>();
+        Assert.IsType<ForbidResult>(result.Result);
         _mockService.Verify(s => s.CreateCourseInstructorAsync(It.IsAny<CreateCourseInstructorDto>()), Times.Never);
     }
 
@@ -171,8 +170,8 @@ public class CourseInstructorsControllerTests
 
         var result = await _controller.UpdateCourseInstructor(id, updateDto);
 
-        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().BeEquivalentTo(updated);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Same(updated, okResult.Value);
     }
 
     [Fact]
@@ -187,7 +186,7 @@ public class CourseInstructorsControllerTests
             FirstName = "X", LastName = "Y"
         });
 
-        result.Result.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(result.Result);
     }
 
     [Fact]
@@ -198,7 +197,7 @@ public class CourseInstructorsControllerTests
             FirstName = "X", LastName = "Y"
         });
 
-        result.Result.Should().BeOfType<ForbidResult>();
+        Assert.IsType<ForbidResult>(result.Result);
         _mockService.Verify(s => s.UpdateCourseInstructorAsync(It.IsAny<Guid>(), It.IsAny<UpdateCourseInstructorDto>()), Times.Never);
     }
 
@@ -215,7 +214,7 @@ public class CourseInstructorsControllerTests
 
         var result = await _controller.DeleteCourseInstructor(id);
 
-        result.Should().BeOfType<NoContentResult>();
+        Assert.IsType<NoContentResult>(result);
     }
 
     [Fact]
@@ -226,7 +225,7 @@ public class CourseInstructorsControllerTests
 
         var result = await _controller.DeleteCourseInstructor(Guid.NewGuid());
 
-        result.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(result);
     }
 
     [Fact]
@@ -234,7 +233,7 @@ public class CourseInstructorsControllerTests
     {
         var result = await _controller.DeleteCourseInstructor(Guid.NewGuid());
 
-        result.Should().BeOfType<ForbidResult>();
+        Assert.IsType<ForbidResult>(result);
         _mockService.Verify(s => s.DeleteCourseInstructorAsync(It.IsAny<Guid>()), Times.Never);
     }
 }

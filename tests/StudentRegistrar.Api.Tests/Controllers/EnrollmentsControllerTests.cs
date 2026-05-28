@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -35,7 +34,7 @@ public class EnrollmentsControllerTests
         // No Authorization header → GetUserRole returns "" → not Administrator
         var result = await _controller.GetEnrollments();
 
-        result.Should().BeOfType<ForbidResult>();
+        Assert.IsType<ForbidResult>(result);
     }
 
     // -------------------------------------------------------------------------
@@ -48,7 +47,7 @@ public class EnrollmentsControllerTests
         // No claims → GetKeycloakUserId returns "" → Unauthorized
         var result = await _controller.GetMyEnrollments();
 
-        result.Should().BeOfType<UnauthorizedObjectResult>();
+        Assert.IsType<UnauthorizedObjectResult>(result);
     }
 
     [Fact]
@@ -62,7 +61,7 @@ public class EnrollmentsControllerTests
 
         var result = await _controller.GetMyEnrollments();
 
-        result.Should().BeOfType<NotFoundObjectResult>();
+        Assert.IsType<NotFoundObjectResult>(result);
     }
 
     [Fact]
@@ -76,8 +75,8 @@ public class EnrollmentsControllerTests
 
         var result = await _controller.GetMyEnrollments();
 
-        var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-        objectResult.StatusCode.Should().Be(500);
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(500, objectResult.StatusCode);
     }
 
     [Fact]
@@ -96,8 +95,8 @@ public class EnrollmentsControllerTests
 
         var result = await _controller.GetMyEnrollments();
 
-        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().BeEquivalentTo(enrollments);
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        Assert.Same(enrollments, okResult.Value);
     }
 
     // -------------------------------------------------------------------------
@@ -116,7 +115,7 @@ public class EnrollmentsControllerTests
 
         var result = await _controller.Withdraw(id, null);
 
-        result.Should().BeOfType<NotFoundObjectResult>();
+        Assert.IsType<NotFoundObjectResult>(result);
     }
 
     [Fact]
@@ -131,7 +130,7 @@ public class EnrollmentsControllerTests
 
         var result = await _controller.Withdraw(id, null);
 
-        result.Should().BeOfType<BadRequestObjectResult>();
+        Assert.IsType<BadRequestObjectResult>(result);
     }
 
     [Fact]
@@ -146,7 +145,7 @@ public class EnrollmentsControllerTests
 
         var result = await _controller.Withdraw(id, null);
 
-        result.Should().BeOfType<ForbidResult>();
+        Assert.IsType<ForbidResult>(result);
     }
 
     [Fact]
@@ -162,8 +161,8 @@ public class EnrollmentsControllerTests
 
         var result = await _controller.Withdraw(id, null);
 
-        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().BeEquivalentTo(dto);
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        Assert.Same(dto, okResult.Value);
     }
 
     // -------------------------------------------------------------------------
@@ -175,7 +174,7 @@ public class EnrollmentsControllerTests
     {
         var result = await _controller.Cancel(Guid.NewGuid());
 
-        result.Should().BeOfType<ForbidResult>();
+        Assert.IsType<ForbidResult>(result);
     }
 
     // -------------------------------------------------------------------------
@@ -187,7 +186,7 @@ public class EnrollmentsControllerTests
     {
         var result = await _controller.Promote(Guid.NewGuid());
 
-        result.Should().BeOfType<ForbidResult>();
+        Assert.IsType<ForbidResult>(result);
     }
 
     // -------------------------------------------------------------------------

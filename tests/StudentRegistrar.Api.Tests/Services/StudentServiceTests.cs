@@ -1,5 +1,4 @@
 using AutoMapper;
-using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using StudentRegistrar.Api.DTOs;
@@ -53,7 +52,7 @@ public class StudentServiceTests
 
         var result = await _service.DeleteStudentAsync(id);
 
-        result.Should().BeTrue();
+        Assert.True(result);
         _studentRepository.Verify(r => r.DeleteAsync(id), Times.Once);
     }
 
@@ -70,7 +69,7 @@ public class StudentServiceTests
 
         var result = await _service.DeleteStudentAsync(id);
 
-        result.Should().BeTrue();
+        Assert.True(result);
         _studentRepository.Verify(r => r.DeleteAsync(id), Times.Once);
     }
 
@@ -83,9 +82,8 @@ public class StudentServiceTests
             new() { StudentId = id, EnrollmentType = EnrollmentType.Enrolled }
         });
 
-        await _service.Invoking(s => s.DeleteStudentAsync(id))
-            .Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*active enrollments*");
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.DeleteStudentAsync(id));
+        Assert.Contains("active enrollments", exception.Message);
 
         _studentRepository.Verify(r => r.DeleteAsync(It.IsAny<Guid>()), Times.Never);
     }
@@ -99,9 +97,8 @@ public class StudentServiceTests
             new() { StudentId = id, EnrollmentType = EnrollmentType.Waitlisted }
         });
 
-        await _service.Invoking(s => s.DeleteStudentAsync(id))
-            .Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*active enrollments*");
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.DeleteStudentAsync(id));
+        Assert.Contains("active enrollments", exception.Message);
 
         _studentRepository.Verify(r => r.DeleteAsync(It.IsAny<Guid>()), Times.Never);
     }
@@ -116,8 +113,7 @@ public class StudentServiceTests
             new() { StudentId = id, EnrollmentType = EnrollmentType.Enrolled }
         });
 
-        await _service.Invoking(s => s.DeleteStudentAsync(id))
-            .Should().ThrowAsync<InvalidOperationException>();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.DeleteStudentAsync(id));
 
         _studentRepository.Verify(r => r.DeleteAsync(It.IsAny<Guid>()), Times.Never);
     }

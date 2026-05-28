@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -42,9 +41,8 @@ public class PaymentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(expectedPayments);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Same(expectedPayments, okResult.Value);
     }
 
     [Fact]
@@ -68,9 +66,8 @@ public class PaymentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(expectedPayment);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Same(expectedPayment, okResult.Value);
     }
 
     [Fact]
@@ -88,7 +85,7 @@ public class PaymentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(actionResult);
     }
 
     [Fact]
@@ -110,9 +107,8 @@ public class PaymentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(expectedPayments);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Same(expectedPayments, okResult.Value);
     }
 
     [Fact]
@@ -134,9 +130,8 @@ public class PaymentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(expectedPayments);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Same(expectedPayments, okResult.Value);
     }
 
     [Fact]
@@ -158,9 +153,8 @@ public class PaymentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(expectedPayments);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Same(expectedPayments, okResult.Value);
     }
 
     [Fact]
@@ -184,9 +178,8 @@ public class PaymentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(expectedPayments);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Same(expectedPayments, okResult.Value);
     }
 
     [Fact]
@@ -208,9 +201,8 @@ public class PaymentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(expectedPayments);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Same(expectedPayments, okResult.Value);
     }
 
     [Fact]
@@ -229,9 +221,8 @@ public class PaymentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().Be(expectedTotal);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Equal(expectedTotal, okResult.Value);
     }
 
     [Fact]
@@ -251,9 +242,8 @@ public class PaymentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().Be(expectedTotal);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Equal(expectedTotal, okResult.Value);
     }
 
     [Fact]
@@ -272,9 +262,8 @@ public class PaymentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().Be(expectedTotal);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Equal(expectedTotal, okResult.Value);
     }
 
     [Fact]
@@ -308,9 +297,8 @@ public class PaymentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<CreatedAtActionResult>();
-        var createdResult = actionResult as CreatedAtActionResult;
-        createdResult!.Value.Should().BeEquivalentTo(createdPayment);
+        var createdResult = Assert.IsType<CreatedAtActionResult>(actionResult);
+        Assert.Same(createdPayment, createdResult.Value);
     }
 
     [Fact]
@@ -334,9 +322,8 @@ public class PaymentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<BadRequestObjectResult>();
-        var badRequestResult = actionResult as BadRequestObjectResult;
-        badRequestResult!.Value.Should().Be("Error creating payment");
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(actionResult);
+        Assert.Equal("Error creating payment", badRequestResult.Value);
     }
 
     [Fact]
@@ -366,9 +353,8 @@ public class PaymentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(updatedPayment);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Same(updatedPayment, okResult.Value);
     }
 
     [Fact]
@@ -390,7 +376,7 @@ public class PaymentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(actionResult);
     }
 
     [Fact]
@@ -407,7 +393,7 @@ public class PaymentsControllerTests
         var result = await _controller.DeletePayment(paymentId);
 
         // Assert
-        result.Should().BeOfType<NoContentResult>();
+        Assert.IsType<NoContentResult>(result);
     }
 
     [Fact]
@@ -424,6 +410,6 @@ public class PaymentsControllerTests
         var result = await _controller.DeletePayment(paymentId);
 
         // Assert
-        result.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(result);
     }
 }

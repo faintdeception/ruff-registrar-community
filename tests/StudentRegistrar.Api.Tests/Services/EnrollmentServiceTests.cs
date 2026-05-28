@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Moq;
 using StudentRegistrar.Api.Services;
 using StudentRegistrar.Data.Repositories;
@@ -38,7 +37,7 @@ public class EnrollmentServiceTests
 
         var result = await _service.GetAllAsync();
 
-        result.Should().HaveCount(2);
+        Assert.Equal(2, result.Count());
     }
 
     [Fact]
@@ -50,8 +49,8 @@ public class EnrollmentServiceTests
 
         var result = await _service.GetAllAsync(type: EnrollmentType.Enrolled);
 
-        result.Should().HaveCount(1);
-        result.First().EnrollmentType.Should().Be("Enrolled");
+        var enrollment = Assert.Single(result);
+        Assert.Equal("Enrolled", enrollment.EnrollmentType);
     }
 
     // -------------------------------------------------------------------------
@@ -67,9 +66,9 @@ public class EnrollmentServiceTests
 
         var result = await _service.GetByIdAsync(id);
 
-        result.Should().NotBeNull();
-        result!.Id.Should().Be(id.ToString());
-        result.EnrollmentType.Should().Be("Enrolled");
+        Assert.NotNull(result);
+        Assert.Equal(id.ToString(), result!.Id);
+        Assert.Equal("Enrolled", result.EnrollmentType);
     }
 
     [Fact]
@@ -79,7 +78,7 @@ public class EnrollmentServiceTests
 
         var result = await _service.GetByIdAsync(Guid.NewGuid());
 
-        result.Should().BeNull();
+        Assert.Null(result);
     }
 
     // -------------------------------------------------------------------------
@@ -98,8 +97,8 @@ public class EnrollmentServiceTests
 
         var result = await _service.WithdrawAsync(id, keycloakUserId: null, reason: "Schedule conflict");
 
-        result.EnrollmentType.Should().Be("Withdrawn");
-        result.Notes.Should().Be("Schedule conflict");
+        Assert.Equal("Withdrawn", result.EnrollmentType);
+        Assert.Equal("Schedule conflict", result.Notes);
         _enrollmentRepo.Verify(r => r.UpdateAsync(It.Is<Enrollment>(e =>
             e.EnrollmentType == EnrollmentType.Withdrawn)), Times.Once);
     }
@@ -117,7 +116,7 @@ public class EnrollmentServiceTests
 
         var result = await _service.WithdrawAsync(id, keycloakUserId: null, reason: null);
 
-        result.EnrollmentType.Should().Be("Withdrawn");
+        Assert.Equal("Withdrawn", result.EnrollmentType);
     }
 
     [Fact]
@@ -127,8 +126,7 @@ public class EnrollmentServiceTests
         var enrollment = MakeEnrollment(id, EnrollmentType.Withdrawn);
         _enrollmentRepo.Setup(r => r.GetByIdAsync(id)).ReturnsAsync(enrollment);
 
-        await _service.Invoking(s => s.WithdrawAsync(id, null, null))
-            .Should().ThrowAsync<InvalidOperationException>();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.WithdrawAsync(id, null, null));
     }
 
     [Fact]
@@ -136,8 +134,7 @@ public class EnrollmentServiceTests
     {
         _enrollmentRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((Enrollment?)null);
 
-        await _service.Invoking(s => s.WithdrawAsync(Guid.NewGuid(), null, null))
-            .Should().ThrowAsync<KeyNotFoundException>();
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.WithdrawAsync(Guid.NewGuid(), null, null));
     }
 
     [Fact]
@@ -165,7 +162,7 @@ public class EnrollmentServiceTests
 
         var result = await _service.WithdrawAsync(id, keycloakUserId, reason: null);
 
-        result.EnrollmentType.Should().Be("Withdrawn");
+        Assert.Equal("Withdrawn", result.EnrollmentType);
     }
 
     [Fact]
@@ -186,8 +183,7 @@ public class EnrollmentServiceTests
         _enrollmentRepo.Setup(r => r.GetByIdAsync(id)).ReturnsAsync(enrollment);
         _accountHolderRepo.Setup(r => r.GetByKeycloakUserIdAsync(keycloakUserId)).ReturnsAsync(accountHolder);
 
-        await _service.Invoking(s => s.WithdrawAsync(id, keycloakUserId, null))
-            .Should().ThrowAsync<UnauthorizedAccessException>();
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _service.WithdrawAsync(id, keycloakUserId, null));
     }
 
     // -------------------------------------------------------------------------
@@ -206,7 +202,7 @@ public class EnrollmentServiceTests
 
         var result = await _service.CancelAsync(id);
 
-        result.EnrollmentType.Should().Be("Cancelled");
+        Assert.Equal("Cancelled", result.EnrollmentType);
     }
 
     [Fact]
@@ -216,8 +212,7 @@ public class EnrollmentServiceTests
         var enrollment = MakeEnrollment(id, EnrollmentType.Cancelled);
         _enrollmentRepo.Setup(r => r.GetByIdAsync(id)).ReturnsAsync(enrollment);
 
-        await _service.Invoking(s => s.CancelAsync(id))
-            .Should().ThrowAsync<InvalidOperationException>();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.CancelAsync(id));
     }
 
     // -------------------------------------------------------------------------
@@ -252,10 +247,10 @@ public class EnrollmentServiceTests
 
         var result = await _service.PromoteFromWaitlistAsync(id);
 
-        result.EnrollmentType.Should().Be("Enrolled");
-        result.FeeAmount.Should().Be(150m);
-        result.PaymentStatus.Should().Be("Pending");
-        result.WaitlistPosition.Should().BeNull();
+        Assert.Equal("Enrolled", result.EnrollmentType);
+        Assert.Equal(150m, result.FeeAmount);
+        Assert.Equal("Pending", result.PaymentStatus);
+        Assert.Null(result.WaitlistPosition);
     }
 
     [Fact]
@@ -265,8 +260,7 @@ public class EnrollmentServiceTests
         var enrollment = MakeEnrollment(id, EnrollmentType.Enrolled);
         _enrollmentRepo.Setup(r => r.GetByIdAsync(id)).ReturnsAsync(enrollment);
 
-        await _service.Invoking(s => s.PromoteFromWaitlistAsync(id))
-            .Should().ThrowAsync<InvalidOperationException>();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.PromoteFromWaitlistAsync(id));
     }
 
     [Fact]

@@ -1,4 +1,3 @@
-using FluentAssertions;
 using StudentRegistrar.Models;
 using System.Text.Json;
 using Xunit;
@@ -12,25 +11,28 @@ public class CourseTests
     {
         // Act
         var course = new Course();
+        var now = DateTime.UtcNow;
 
         // Assert
-        course.Id.Should().NotBeEmpty();
-        course.SemesterId.Should().BeEmpty();
-        course.Name.Should().BeEmpty();
-        course.Code.Should().BeNull();
-        course.Description.Should().BeNull();
-        course.Room.Should().BeNull();
-        course.MaxCapacity.Should().Be(0);
-        course.Fee.Should().Be(0);
-        course.PeriodCode.Should().BeNull();
-        course.StartTime.Should().BeNull();
-        course.EndTime.Should().BeNull();
-        course.CourseConfigJson.Should().Be("{}");
-        course.AgeGroup.Should().BeEmpty();
-        course.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
-        course.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
-        course.CourseInstructors.Should().NotBeNull().And.BeEmpty();
-        course.Enrollments.Should().NotBeNull().And.BeEmpty();
+        Assert.NotEqual(Guid.Empty, course.Id);
+        Assert.Equal(Guid.Empty, course.SemesterId);
+        Assert.Equal(string.Empty, course.Name);
+        Assert.Null(course.Code);
+        Assert.Null(course.Description);
+        Assert.Null(course.Room);
+        Assert.Equal(0, course.MaxCapacity);
+        Assert.Equal(0, course.Fee);
+        Assert.Null(course.PeriodCode);
+        Assert.Null(course.StartTime);
+        Assert.Null(course.EndTime);
+        Assert.Equal("{}", course.CourseConfigJson);
+        Assert.Equal(string.Empty, course.AgeGroup);
+        Assert.InRange(course.CreatedAt, now - TimeSpan.FromSeconds(1), now + TimeSpan.FromSeconds(1));
+        Assert.InRange(course.UpdatedAt, now - TimeSpan.FromSeconds(1), now + TimeSpan.FromSeconds(1));
+        Assert.NotNull(course.CourseInstructors);
+        Assert.Empty(course.CourseInstructors);
+        Assert.NotNull(course.Enrollments);
+        Assert.Empty(course.Enrollments);
     }
 
     [Fact]
@@ -51,7 +53,7 @@ public class CourseTests
             .SetValue(course, enrollments);
 
         // Act & Assert
-        course.CurrentEnrollment.Should().Be(2);
+        Assert.Equal(2, course.CurrentEnrollment);
     }
 
     [Fact]
@@ -70,7 +72,7 @@ public class CourseTests
             .SetValue(course, enrollments);
 
         // Act & Assert
-        course.AvailableSpots.Should().Be(17);
+        Assert.Equal(17, course.AvailableSpots);
     }
 
     [Fact]
@@ -88,7 +90,7 @@ public class CourseTests
             .SetValue(course, enrollments);
 
         // Act & Assert
-        course.IsFull.Should().BeTrue();
+        Assert.True(course.IsFull);
     }
 
     [Fact]
@@ -105,7 +107,7 @@ public class CourseTests
             .SetValue(course, enrollments);
 
         // Act & Assert
-        course.IsFull.Should().BeFalse();
+        Assert.False(course.IsFull);
     }
 
     [Fact]
@@ -119,7 +121,7 @@ public class CourseTests
         };
 
         // Act & Assert
-        course.TimeSlot.Should().Be("09:00 - 10:30");
+        Assert.Equal("09:00 - 10:30", course.TimeSlot);
     }
 
     [Fact]
@@ -129,7 +131,7 @@ public class CourseTests
         var course = new Course();
 
         // Act & Assert
-        course.TimeSlot.Should().Be("Time TBD");
+        Assert.Equal("Time TBD", course.TimeSlot);
     }
 
     [Fact]
@@ -143,7 +145,7 @@ public class CourseTests
         };
 
         // Act & Assert
-        course.TimeSlot.Should().Be("Time TBD");
+        Assert.Equal("Time TBD", course.TimeSlot);
     }
 
     [Fact]
@@ -165,17 +167,17 @@ public class CourseTests
         var retrievedConfig = course.GetCourseConfiguration();
 
         // Assert
-        retrievedConfig.Should().NotBeNull();
-        retrievedConfig.Prerequisites.Should().HaveCount(2);
-        retrievedConfig.Prerequisites.Should().Contain("Basic Math");
-        retrievedConfig.Prerequisites.Should().Contain("Reading");
-        retrievedConfig.Materials.Should().Contain("Textbook");
-        retrievedConfig.Materials.Should().Contain("Calculator");
-        retrievedConfig.DaysOfWeek.Should().HaveCount(3);
-        retrievedConfig.DaysOfWeek.Should().Contain("Monday");
-        retrievedConfig.GradeRange.Should().Be("6-8");
-        retrievedConfig.CustomFields.Should().ContainKey("SpecialNote");
-        retrievedConfig.CustomFields["SpecialNote"].Should().Be("Outdoor class");
+        Assert.NotNull(retrievedConfig);
+        Assert.Equal(2, retrievedConfig.Prerequisites.Count);
+        Assert.Contains("Basic Math", retrievedConfig.Prerequisites);
+        Assert.Contains("Reading", retrievedConfig.Prerequisites);
+        Assert.Contains("Textbook", retrievedConfig.Materials);
+        Assert.Contains("Calculator", retrievedConfig.Materials);
+        Assert.Equal(3, retrievedConfig.DaysOfWeek.Count);
+        Assert.Contains("Monday", retrievedConfig.DaysOfWeek);
+        Assert.Equal("6-8", retrievedConfig.GradeRange);
+        Assert.Contains("SpecialNote", retrievedConfig.CustomFields.Keys);
+        Assert.Equal("Outdoor class", retrievedConfig.CustomFields["SpecialNote"]);
     }
 
     [Fact]
@@ -191,12 +193,16 @@ public class CourseTests
         var config = course.GetCourseConfiguration();
 
         // Assert
-        config.Should().NotBeNull();
-        config.Prerequisites.Should().NotBeNull().And.BeEmpty();
-        config.Materials.Should().NotBeNull().And.BeEmpty();
-        config.DaysOfWeek.Should().NotBeNull().And.BeEmpty();
-        config.GradeRange.Should().BeNull();
-        config.CustomFields.Should().NotBeNull().And.BeEmpty();
+        Assert.NotNull(config);
+        Assert.NotNull(config.Prerequisites);
+        Assert.Empty(config.Prerequisites);
+        Assert.NotNull(config.Materials);
+        Assert.Empty(config.Materials);
+        Assert.NotNull(config.DaysOfWeek);
+        Assert.Empty(config.DaysOfWeek);
+        Assert.Null(config.GradeRange);
+        Assert.NotNull(config.CustomFields);
+        Assert.Empty(config.CustomFields);
     }
 
     [Fact]
@@ -214,13 +220,13 @@ public class CourseTests
         course.SetCourseConfiguration(config);
 
         // Assert
-        course.CourseConfigJson.Should().NotBe("{}");
+        Assert.NotEqual("{}", course.CourseConfigJson);
         
         // Verify we can deserialize it back
         var deserializedConfig = JsonSerializer.Deserialize<CourseConfiguration>(course.CourseConfigJson);
-        deserializedConfig.Should().NotBeNull();
-        deserializedConfig!.Prerequisites.Should().Contain("Test Prerequisite");
-        deserializedConfig.GradeRange.Should().Be("K-2");
+        Assert.NotNull(deserializedConfig);
+        Assert.Contains("Test Prerequisite", deserializedConfig!.Prerequisites);
+        Assert.Equal("K-2", deserializedConfig.GradeRange);
     }
 
     [Fact]
@@ -230,10 +236,14 @@ public class CourseTests
         var config = new CourseConfiguration();
 
         // Assert
-        config.Prerequisites.Should().NotBeNull().And.BeEmpty();
-        config.Materials.Should().NotBeNull().And.BeEmpty();
-        config.DaysOfWeek.Should().NotBeNull().And.BeEmpty();
-        config.CustomFields.Should().NotBeNull().And.BeEmpty();
+        Assert.NotNull(config.Prerequisites);
+        Assert.Empty(config.Prerequisites);
+        Assert.NotNull(config.Materials);
+        Assert.Empty(config.Materials);
+        Assert.NotNull(config.DaysOfWeek);
+        Assert.Empty(config.DaysOfWeek);
+        Assert.NotNull(config.CustomFields);
+        Assert.Empty(config.CustomFields);
     }
 
     [Fact]
@@ -247,7 +257,7 @@ public class CourseTests
         course.Fee = fee;
 
         // Assert
-        course.Fee.Should().Be(fee);
+        Assert.Equal(fee, course.Fee);
     }
 
     [Fact]
@@ -261,8 +271,8 @@ public class CourseTests
         course.SemesterId = semesterId;
 
         // Assert
-        course.SemesterId.Should().Be(semesterId);
-        course.SemesterId.Should().NotBeEmpty();
+        Assert.Equal(semesterId, course.SemesterId);
+        Assert.NotEqual(Guid.Empty, course.SemesterId);
     }
 
     [Theory]
@@ -280,7 +290,7 @@ public class CourseTests
         course.AgeGroup = ageGroup;
 
         // Assert
-        course.AgeGroup.Should().Be(ageGroup);
+        Assert.Equal(ageGroup, course.AgeGroup);
     }
 
     [Fact]
@@ -294,7 +304,7 @@ public class CourseTests
         course.MaxCapacity = largeCapacity;
 
         // Assert
-        course.MaxCapacity.Should().Be(largeCapacity);
+        Assert.Equal(largeCapacity, course.MaxCapacity);
     }
 
     [Fact]
@@ -304,8 +314,8 @@ public class CourseTests
         var course = new Course { MaxCapacity = 0 };
 
         // Act & Assert
-        course.MaxCapacity.Should().Be(0);
-        course.AvailableSpots.Should().Be(0);
-        course.IsFull.Should().BeTrue(); // 0 enrollments in 0 capacity means "full" (can't enroll more)
+        Assert.Equal(0, course.MaxCapacity);
+        Assert.Equal(0, course.AvailableSpots);
+        Assert.True(course.IsFull); // 0 enrollments in 0 capacity means "full" (can't enroll more)
     }
 }

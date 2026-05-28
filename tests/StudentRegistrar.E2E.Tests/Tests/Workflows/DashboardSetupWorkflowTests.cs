@@ -1,4 +1,3 @@
-using FluentAssertions;
 using StudentRegistrar.E2E.Tests.Base;
 using StudentRegistrar.E2E.Tests.Pages;
 using Xunit;
@@ -41,8 +40,8 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
         roomsPage.NavigateToRooms(BaseUrl);
         roomsPage.CreateRoom(roomOneName, "Classroom", "20", "Primary workflow classroom");
         roomsPage.CreateRoom(roomTwoName, "Lab", "15", "Workflow lab space");
-        roomsPage.IsRoomVisible(roomOneName).Should().BeTrue("first room should be visible after creation");
-        roomsPage.IsRoomVisible(roomTwoName).Should().BeTrue("second room should be visible after creation");
+        Assert.True(roomsPage.IsRoomVisible(roomOneName));
+        Assert.True(roomsPage.IsRoomVisible(roomTwoName));
 
         var educatorsPage = new EducatorsPage(Driver);
         educatorsPage.NavigateToEducators(BaseUrl);
@@ -61,8 +60,8 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
             "Humanities",
             "Secondary workflow educator.");
 
-        educatorsPage.IsEducatorVisible($"{educatorOneFirstName} {educatorOneLastName}").Should().BeTrue("first educator should be visible after creation");
-        educatorsPage.IsEducatorVisible($"{educatorTwoFirstName} {educatorTwoLastName}").Should().BeTrue("second educator should be visible after creation");
+        Assert.True(educatorsPage.IsEducatorVisible($"{educatorOneFirstName} {educatorOneLastName}"));
+        Assert.True(educatorsPage.IsEducatorVisible($"{educatorTwoFirstName} {educatorTwoLastName}"));
     }
 
     [Fact]
@@ -100,8 +99,8 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
             "Arts",
             "Invited educator workflow user.");
 
-        credentials.Username.Should().Contain("invited-educator");
-        credentials.TemporaryPassword.Should().NotBeNullOrWhiteSpace();
+        Assert.Contains("invited-educator", credentials.Username);
+        Assert.False(string.IsNullOrWhiteSpace(credentials.TemporaryPassword));
 
         Logout();
         Login(credentials.Username, credentials.TemporaryPassword, "educator login should succeed after invitation");
@@ -118,8 +117,8 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
             "MW 10:00",
             "Priced course created by an invited educator.");
 
-        coursesPage.IsCourseVisible(courseName).Should().BeTrue("the invited educator should be able to create a course");
-        coursesPage.IsCourseFeeVisible(courseName, "$125.50").Should().BeTrue("the invited educator should be able to set a course price");
+        Assert.True(coursesPage.IsCourseVisible(courseName));
+        Assert.True(coursesPage.IsCourseFeeVisible(courseName, "$125.50"));
     }
 
     [Fact]
@@ -159,9 +158,9 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
             "Parent Educators",
             "Existing parent authorized as an educator.");
 
-        educatorsPage.GetInviteMessage().Should().Contain("authorized");
-        educatorsPage.HasTemporaryCredentials().Should().BeFalse("existing parents should keep their current credentials");
-        educatorsPage.IsEducatorVisible(parentFullName).Should().BeTrue("the selected parent should appear in the educators list");
+        Assert.Contains("authorized", educatorsPage.GetInviteMessage());
+        Assert.False(educatorsPage.HasTemporaryCredentials());
+        Assert.True(educatorsPage.IsEducatorVisible(parentFullName));
 
         Logout();
         LoginAsParentEducator("parent should keep the same member credentials after educator authorization");
@@ -178,8 +177,8 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
             "TR 09:00",
             "Priced course created by an existing parent educator.");
 
-        coursesPage.IsCourseVisible(courseName).Should().BeTrue("the authorized parent should be able to create a course");
-        coursesPage.IsCourseFeeVisible(courseName, "$95.25").Should().BeTrue("the authorized parent should be able to set a course price");
+        Assert.True(coursesPage.IsCourseVisible(courseName));
+        Assert.True(coursesPage.IsCourseFeeVisible(courseName, "$95.25"));
     }
 
     [Fact]
@@ -221,7 +220,7 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
             88.75m,
             "MW 13:00",
             "Paid course used to verify parent signup and payment recording.");
-        coursesPage.IsCourseFeeVisible(courseName, "$88.75").Should().BeTrue("the course price should be visible before member signup");
+        Assert.True(coursesPage.IsCourseFeeVisible(courseName, "$88.75"));
 
         Logout();
         LoginAsMember("member should be able to sign in before adding a child and signing up for a course");
@@ -229,21 +228,21 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
         var accountPage = new AccountHolderPage(Driver);
         accountPage.NavigateToAccount(BaseUrl);
         accountPage.AddStudent(studentFirstName, studentLastName, "4");
-        accountPage.IsStudentVisible(studentFirstName, studentLastName).Should().BeTrue("the new child should appear on the member account");
+        Assert.True(accountPage.IsStudentVisible(studentFirstName, studentLastName));
 
         coursesPage.NavigateToCourses(BaseUrl);
         coursesPage.SelectSemester(semesterName);
-        coursesPage.GetSignupButtonText(courseName).Should().Be("Pay & Sign Up", "paid courses should prompt parents to pay while signing up");
+        Assert.Equal("Pay & Sign Up", coursesPage.GetSignupButtonText(courseName));
         coursesPage.SignUpStudentForCourse(courseName, studentFullName);
-        coursesPage.GetSuccessMessage().Should().Contain("payment was recorded", "paid course signup should confirm payment recording");
-        coursesPage.GetSignupButtonText(courseName).Should().Be("Signed Up", "the enrolled student's course card should reflect the completed signup");
+        Assert.Contains("payment was recorded", coursesPage.GetSuccessMessage());
+        Assert.Equal("Signed Up", coursesPage.GetSignupButtonText(courseName));
 
         accountPage.NavigateToAccount(BaseUrl);
         WaitUntil(_ => accountPage.IsEnrollmentVisible(courseName), 15, 300, "The signed-up course did not appear on the member account.");
-        accountPage.IsEnrollmentVisible(courseName).Should().BeTrue("the new enrollment should be reflected on the member account page");
-        accountPage.GetEnrollmentState(courseName).Should().Be("Active", "the member account should show the enrollment as active after a successful signup");
-        accountPage.GetEnrollmentPaymentStatus(courseName).Should().Be("Paid", "the member account should surface the payment state after a paid signup");
-        accountPage.GetEnrollmentSummary(courseName).Should().Contain("Paid in full", "the member account should show that the course fee was fully paid");
+        Assert.True(accountPage.IsEnrollmentVisible(courseName));
+        Assert.Equal("Active", accountPage.GetEnrollmentState(courseName));
+        Assert.Equal("Paid", accountPage.GetEnrollmentPaymentStatus(courseName));
+        Assert.Contains("Paid in full", accountPage.GetEnrollmentSummary(courseName));
     }
 
     private void LoginAsAdmin()
@@ -288,7 +287,7 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
         NavigateToUrl($"{BaseUrl.TrimEnd('/')}/account-holder");
         WaitUntil(d => d.PageSource.Contains("Sarah Johnson") || d.PageSource.Contains("No account holder data found"), 15, 300,
             "parent educator account holder page did not finish loading");
-        Driver.PageSource.Should().Contain("Sarah Johnson", "the parent educator workflow requires an existing member account holder");
+        Assert.Contains("Sarah Johnson", Driver.PageSource);
         Logout();
     }
 
@@ -304,13 +303,13 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
         WaitForUrlContains("/");
 
         var homePage = new HomePage(Driver);
-        homePage.IsLoggedIn().Should().BeTrue(because);
+        Assert.True(homePage.IsLoggedIn(), because);
     }
 
     private void Logout()
     {
         var homePage = new HomePage(Driver);
-        homePage.HasLogoutButton().Should().BeTrue("workflow logout expects an authenticated session with a visible logout control");
+        Assert.True(homePage.HasLogoutButton());
         homePage.ClickLogout();
         WaitForPageLoad();
         WaitForUrlContains("/login");

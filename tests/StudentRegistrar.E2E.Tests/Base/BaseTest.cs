@@ -71,7 +71,7 @@ public abstract class BaseTest : IDisposable
         var wait = new OpenQA.Selenium.Support.UI.WebDriverWait(Driver, TimeSpan.FromSeconds(timeoutSeconds));
         try
         {
-            wait.Until(driver => ((IJavaScriptExecutor)driver).ExecuteScript("return document.readyState").Equals("complete"));
+            wait.Until(driver => string.Equals(((IJavaScriptExecutor)driver).ExecuteScript("return document.readyState")?.ToString(), "complete", StringComparison.Ordinal));
         }
         catch (Exception)
         {

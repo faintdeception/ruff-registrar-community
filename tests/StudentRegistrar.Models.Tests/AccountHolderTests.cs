@@ -1,4 +1,3 @@
-using FluentAssertions;
 using StudentRegistrar.Models;
 using System.Text.Json;
 using Xunit;
@@ -12,22 +11,25 @@ public class AccountHolderTests
     {
         // Act
         var accountHolder = new AccountHolder();
+        var now = DateTime.UtcNow;
 
         // Assert
-        accountHolder.Id.Should().NotBeEmpty();
-        accountHolder.FirstName.Should().BeEmpty();
-        accountHolder.LastName.Should().BeEmpty();
-        accountHolder.EmailAddress.Should().BeEmpty();
-        accountHolder.KeycloakUserId.Should().BeEmpty();
-        accountHolder.MembershipDuesOwed.Should().Be(0);
-        accountHolder.MembershipDuesReceived.Should().Be(0);
-        accountHolder.AddressJson.Should().Be("{}");
-        accountHolder.EmergencyContactJson.Should().Be("{}");
-        accountHolder.MemberSince.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
-        accountHolder.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
-        accountHolder.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
-        accountHolder.Students.Should().NotBeNull().And.BeEmpty();
-        accountHolder.Payments.Should().NotBeNull().And.BeEmpty();
+        Assert.NotEqual(Guid.Empty, accountHolder.Id);
+        Assert.Equal(string.Empty, accountHolder.FirstName);
+        Assert.Equal(string.Empty, accountHolder.LastName);
+        Assert.Equal(string.Empty, accountHolder.EmailAddress);
+        Assert.Equal(string.Empty, accountHolder.KeycloakUserId);
+        Assert.Equal(0, accountHolder.MembershipDuesOwed);
+        Assert.Equal(0, accountHolder.MembershipDuesReceived);
+        Assert.Equal("{}", accountHolder.AddressJson);
+        Assert.Equal("{}", accountHolder.EmergencyContactJson);
+        Assert.InRange(accountHolder.MemberSince, now - TimeSpan.FromSeconds(1), now + TimeSpan.FromSeconds(1));
+        Assert.InRange(accountHolder.CreatedAt, now - TimeSpan.FromSeconds(1), now + TimeSpan.FromSeconds(1));
+        Assert.InRange(accountHolder.UpdatedAt, now - TimeSpan.FromSeconds(1), now + TimeSpan.FromSeconds(1));
+        Assert.NotNull(accountHolder.Students);
+        Assert.Empty(accountHolder.Students);
+        Assert.NotNull(accountHolder.Payments);
+        Assert.Empty(accountHolder.Payments);
     }
 
     [Fact]
@@ -41,7 +43,7 @@ public class AccountHolderTests
         };
 
         // Act & Assert
-        accountHolder.FullName.Should().Be("John Doe");
+        Assert.Equal("John Doe", accountHolder.FullName);
     }
 
     [Fact]
@@ -55,7 +57,7 @@ public class AccountHolderTests
         };
 
         // Act & Assert
-        accountHolder.MembershipDuesBalance.Should().Be(25.25m);
+        Assert.Equal(25.25m, accountHolder.MembershipDuesBalance);
     }
 
     [Fact]
@@ -77,12 +79,12 @@ public class AccountHolderTests
         var retrievedAddress = accountHolder.GetAddress();
 
         // Assert
-        retrievedAddress.Should().NotBeNull();
-        retrievedAddress.Street.Should().Be("123 Main St");
-        retrievedAddress.City.Should().Be("Springfield");
-        retrievedAddress.State.Should().Be("IL");
-        retrievedAddress.PostalCode.Should().Be("62701");
-        retrievedAddress.Country.Should().Be("US");
+        Assert.NotNull(retrievedAddress);
+        Assert.Equal("123 Main St", retrievedAddress.Street);
+        Assert.Equal("Springfield", retrievedAddress.City);
+        Assert.Equal("IL", retrievedAddress.State);
+        Assert.Equal("62701", retrievedAddress.PostalCode);
+        Assert.Equal("US", retrievedAddress.Country);
     }
 
     [Fact]
@@ -98,12 +100,12 @@ public class AccountHolderTests
         var address = accountHolder.GetAddress();
 
         // Assert
-        address.Should().NotBeNull();
-        address.Street.Should().BeEmpty();
-        address.City.Should().BeEmpty();
-        address.State.Should().BeEmpty();
-        address.PostalCode.Should().BeEmpty();
-        address.Country.Should().Be("US");
+        Assert.NotNull(address);
+        Assert.Equal(string.Empty, address.Street);
+        Assert.Equal(string.Empty, address.City);
+        Assert.Equal(string.Empty, address.State);
+        Assert.Equal(string.Empty, address.PostalCode);
+        Assert.Equal("US", address.Country);
     }
 
     [Fact]
@@ -123,13 +125,13 @@ public class AccountHolderTests
         accountHolder.SetAddress(address);
 
         // Assert
-        accountHolder.AddressJson.Should().NotBe("{}");
+        Assert.NotEqual("{}", accountHolder.AddressJson);
         
         // Verify we can deserialize it back
         var deserializedAddress = JsonSerializer.Deserialize<Address>(accountHolder.AddressJson);
-        deserializedAddress.Should().NotBeNull();
-        deserializedAddress!.Street.Should().Be("456 Oak Ave");
-        deserializedAddress.City.Should().Be("Chicago");
+        Assert.NotNull(deserializedAddress);
+        Assert.Equal("456 Oak Ave", deserializedAddress!.Street);
+        Assert.Equal("Chicago", deserializedAddress.City);
     }
 
     [Fact]
@@ -151,14 +153,14 @@ public class AccountHolderTests
         var retrievedContact = accountHolder.GetEmergencyContact();
 
         // Assert
-        retrievedContact.Should().NotBeNull();
-        retrievedContact.FirstName.Should().Be("Jane");
-        retrievedContact.LastName.Should().Be("Smith");
-        retrievedContact.MobilePhone.Should().Be("555-0123");
-        retrievedContact.Email.Should().Be("jane.smith@example.com");
-        retrievedContact.FullName.Should().Be("Jane Smith");
-        retrievedContact.Address.Should().NotBeNull();
-        retrievedContact.Address.Street.Should().Be("789 Pine St");
+        Assert.NotNull(retrievedContact);
+        Assert.Equal("Jane", retrievedContact.FirstName);
+        Assert.Equal("Smith", retrievedContact.LastName);
+        Assert.Equal("555-0123", retrievedContact.MobilePhone);
+        Assert.Equal("jane.smith@example.com", retrievedContact.Email);
+        Assert.Equal("Jane Smith", retrievedContact.FullName);
+        Assert.NotNull(retrievedContact.Address);
+        Assert.Equal("789 Pine St", retrievedContact.Address.Street);
     }
 
     [Fact]
@@ -174,11 +176,11 @@ public class AccountHolderTests
         var contact = accountHolder.GetEmergencyContact();
 
         // Assert
-        contact.Should().NotBeNull();
-        contact.FirstName.Should().BeEmpty();
-        contact.LastName.Should().BeEmpty();
-        contact.FullName.Should().Be(" ");
-        contact.Address.Should().NotBeNull();
+        Assert.NotNull(contact);
+        Assert.Equal(string.Empty, contact.FirstName);
+        Assert.Equal(string.Empty, contact.LastName);
+        Assert.Equal(" ", contact.FullName);
+        Assert.NotNull(contact.Address);
     }
 
     [Theory]
@@ -196,7 +198,7 @@ public class AccountHolderTests
         };
 
         // Act & Assert
-        accountHolder.FullName.Should().Be(expected);
+        Assert.Equal(expected, accountHolder.FullName);
     }
 
     [Fact]
@@ -206,7 +208,7 @@ public class AccountHolderTests
         var address = new Address();
 
         // Assert
-        address.Country.Should().Be("US");
+        Assert.Equal("US", address.Country);
     }
 
     [Fact]
@@ -220,7 +222,7 @@ public class AccountHolderTests
         };
 
         // Act & Assert
-        contact.FullName.Should().Be("Emergency Contact");
+        Assert.Equal("Emergency Contact", contact.FullName);
     }
 
     [Fact]
@@ -230,7 +232,7 @@ public class AccountHolderTests
         var contact = new EmergencyContact();
 
         // Assert
-        contact.Address.Should().NotBeNull();
-        contact.Address.Country.Should().Be("US");
+        Assert.NotNull(contact.Address);
+        Assert.Equal("US", contact.Address.Country);
     }
 }

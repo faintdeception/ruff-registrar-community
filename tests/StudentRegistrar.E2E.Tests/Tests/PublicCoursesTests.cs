@@ -1,4 +1,3 @@
-using FluentAssertions;
 using StudentRegistrar.E2E.Tests.Base;
 using StudentRegistrar.E2E.Tests.Pages;
 using Xunit;
@@ -20,18 +19,18 @@ public class PublicCoursesTests : BaseTest
         WaitUntil(d => d.PageSource.Contains("Courses") && d.Url.Contains("/courses"));
 
         // Assert - URL stays on /courses (not redirected to /login)
-        Driver.Url.Should().Contain("/courses", "Courses page should be accessible publicly");
-        Driver.Url.Should().NotContain("/login", "Guest should not be forced to login for courses");
+        Assert.Contains("/courses", Driver.Url);
+        Assert.DoesNotContain("/login", Driver.Url);
 
         // Courses navigation link should be visible
         var nav = new NavigationPage(Driver);
-        nav.IsCoursesVisible().Should().BeTrue("Courses nav item should be visible to guests");
-        nav.IsGuestUser().Should().BeTrue("Guest menu should be present");
+        Assert.True(nav.IsCoursesVisible());
+        Assert.True(nav.IsGuestUser());
 
         // Ensure create / admin actions are NOT visible (buttons contain text Add Course / Add First Course / Edit)
-        Driver.PageSource.Contains("Add Course").Should().BeFalse("Guest should not see Add Course button");
-        Driver.PageSource.Contains("Add First Course").Should().BeFalse("Guest should not see Add First Course button");
-        Driver.PageSource.Contains(">Edit<").Should().BeFalse("Guest should not see Edit buttons");
+        Assert.DoesNotContain("Add Course", Driver.PageSource);
+        Assert.DoesNotContain("Add First Course", Driver.PageSource);
+        Assert.DoesNotContain(">Edit<", Driver.PageSource);
     }
 
     [Fact]
@@ -45,9 +44,9 @@ public class PublicCoursesTests : BaseTest
         var page = new CoursesPage(Driver);
         var courseCount = page.GetCourseCount();
 
-        courseCount.Should().BeGreaterThan(-1, "Page should render even with zero courses");
+        Assert.True(courseCount > -1);
 
         // Guest should NOT have create capability
-        page.CanSeeCreateButton().Should().BeFalse("Guest should not see course creation button");
+        Assert.False(page.CanSeeCreateButton());
     }
 }

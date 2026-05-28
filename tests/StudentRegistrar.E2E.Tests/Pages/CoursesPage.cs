@@ -625,7 +625,7 @@ public class CoursesPage
             .Where(option => !string.IsNullOrWhiteSpace(option.Text) && 
                            option.Text != "Select a semester..." &&
                            !string.IsNullOrWhiteSpace(option.GetDomAttribute("value")))
-            .Select(option => (option.Text, option.GetDomAttribute("value")))
+            .Select(option => (option.Text, option.GetDomAttribute("value")!))
             .ToList();
     }
 

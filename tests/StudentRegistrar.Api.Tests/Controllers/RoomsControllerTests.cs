@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -42,9 +41,8 @@ public class RoomsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(expectedRooms);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Same(expectedRooms, okResult.Value);
     }
 
     [Fact]
@@ -71,9 +69,8 @@ public class RoomsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(expectedRoom);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Same(expectedRoom, okResult.Value);
     }
 
     [Fact]
@@ -89,7 +86,7 @@ public class RoomsControllerTests
         var result = await _controller.GetRoom(roomId);
 
         // Assert
-        result.Result.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(result.Result);
     }
 
     [Fact]
@@ -112,9 +109,8 @@ public class RoomsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(expectedRooms);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Same(expectedRooms, okResult.Value);
     }
 
     [Fact]
@@ -150,11 +146,10 @@ public class RoomsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<CreatedAtActionResult>();
-        var createdResult = actionResult as CreatedAtActionResult;
-        createdResult!.Value.Should().BeEquivalentTo(expectedRoom);
-        createdResult.ActionName.Should().Be(nameof(RoomsController.GetRoom));
-        createdResult.RouteValues!["id"].Should().Be(expectedRoom.Id);
+        var createdResult = Assert.IsType<CreatedAtActionResult>(actionResult);
+        Assert.Same(expectedRoom, createdResult.Value);
+        Assert.Equal(nameof(RoomsController.GetRoom), createdResult.ActionName);
+        Assert.Equal(expectedRoom.Id, createdResult.RouteValues!["id"]);
     }
 
     [Fact]
@@ -178,9 +173,8 @@ public class RoomsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<BadRequestObjectResult>();
-        var badRequestResult = actionResult as BadRequestObjectResult;
-        badRequestResult!.Value.Should().Be(errorMessage);
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(actionResult);
+        Assert.Equal(errorMessage, badRequestResult.Value);
     }
 
     [Fact]
@@ -217,9 +211,8 @@ public class RoomsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(expectedRoom);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Same(expectedRoom, okResult.Value);
     }
 
     [Fact]
@@ -242,7 +235,7 @@ public class RoomsControllerTests
         var result = await _controller.UpdateRoom(roomId, updateDto);
 
         // Assert
-        result.Result.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(result.Result);
     }
 
     [Fact]
@@ -267,9 +260,8 @@ public class RoomsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<BadRequestObjectResult>();
-        var badRequestResult = actionResult as BadRequestObjectResult;
-        badRequestResult!.Value.Should().Be(errorMessage);
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(actionResult);
+        Assert.Equal(errorMessage, badRequestResult.Value);
     }
 
     [Fact]
@@ -285,7 +277,7 @@ public class RoomsControllerTests
         var result = await _controller.DeleteRoom(roomId);
 
         // Assert
-        result.Should().BeOfType<NoContentResult>();
+        Assert.IsType<NoContentResult>(result);
     }
 
     [Fact]
@@ -301,7 +293,7 @@ public class RoomsControllerTests
         var result = await _controller.DeleteRoom(roomId);
 
         // Assert
-        result.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(result);
     }
 
     [Fact]
@@ -318,9 +310,8 @@ public class RoomsControllerTests
         var result = await _controller.DeleteRoom(roomId);
 
         // Assert
-        result.Should().BeOfType<BadRequestObjectResult>();
-        var badRequestResult = result as BadRequestObjectResult;
-        badRequestResult!.Value.Should().Be(errorMessage);
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal(errorMessage, badRequestResult.Value);
     }
 
     [Fact]
@@ -338,8 +329,7 @@ public class RoomsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().Be(expectedResult);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Equal(expectedResult, okResult.Value);
     }
 }

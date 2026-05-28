@@ -1,5 +1,4 @@
 using AutoMapper;
-using FluentAssertions;
 using Moq;
 using StudentRegistrar.Api.DTOs;
 using StudentRegistrar.Api.Services;
@@ -111,13 +110,13 @@ public class CourseServiceV2Tests
             PaymentMethod = PaymentMethod.CreditCard
         }, keycloakUserId);
 
-        result.StudentId.Should().Be(studentId.ToString());
-        result.CourseId.Should().Be(courseId.ToString());
-        result.EnrollmentType.Should().Be(nameof(EnrollmentType.Enrolled));
-        result.FeeAmount.Should().Be(45m);
-        result.AmountPaid.Should().Be(45m);
-        result.PaymentStatus.Should().Be(nameof(PaymentStatus.Paid));
-        result.PaymentId.Should().NotBeNullOrWhiteSpace();
+        Assert.Equal(studentId.ToString(), result.StudentId);
+        Assert.Equal(courseId.ToString(), result.CourseId);
+        Assert.Equal(nameof(EnrollmentType.Enrolled), result.EnrollmentType);
+        Assert.Equal(45m, result.FeeAmount);
+        Assert.Equal(45m, result.AmountPaid);
+        Assert.Equal(nameof(PaymentStatus.Paid), result.PaymentStatus);
+        Assert.False(string.IsNullOrWhiteSpace(result.PaymentId));
 
         _paymentRepository.Verify(r => r.CreateAsync(It.Is<Payment>(p =>
             p.AccountHolderId == accountHolderId &&
@@ -149,8 +148,8 @@ public class CourseServiceV2Tests
             StudentId = Guid.NewGuid()
         }, accountHolder.KeycloakUserId);
 
-        await act.Should().ThrowAsync<UnauthorizedAccessException>()
-            .WithMessage("Student does not belong to the current account.");
+        var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(act);
+        Assert.Equal("Student does not belong to the current account.", exception.Message);
 
         _enrollmentRepository.Verify(r => r.CreateAsync(It.IsAny<Enrollment>()), Times.Never);
         _paymentRepository.Verify(r => r.CreateAsync(It.IsAny<Payment>()), Times.Never);
@@ -179,8 +178,8 @@ public class CourseServiceV2Tests
 
         var act = () => _service.EnrollStudentAsync(courseId, new CreateCourseEnrollmentDto { StudentId = studentId }, keycloakUserId);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*already signed up*");
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(act);
+        Assert.Contains("already signed up", exception.Message);
         _enrollmentRepository.Verify(r => r.CreateAsync(It.IsAny<Enrollment>()), Times.Never);
     }
 
@@ -208,8 +207,8 @@ public class CourseServiceV2Tests
 
         var act = () => _service.EnrollStudentAsync(courseId, new CreateCourseEnrollmentDto { StudentId = studentId }, keycloakUserId);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*already signed up*");
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(act);
+        Assert.Contains("already signed up", exception.Message);
         _enrollmentRepository.Verify(r => r.CreateAsync(It.IsAny<Enrollment>()), Times.Never);
     }
 
@@ -242,8 +241,8 @@ public class CourseServiceV2Tests
 
         var result = await _service.EnrollStudentAsync(courseId, new CreateCourseEnrollmentDto { StudentId = studentId }, keycloakUserId);
 
-        result.StudentId.Should().Be(studentId.ToString());
-        result.EnrollmentType.Should().Be(nameof(EnrollmentType.Enrolled));
+        Assert.Equal(studentId.ToString(), result.StudentId);
+        Assert.Equal(nameof(EnrollmentType.Enrolled), result.EnrollmentType);
         _enrollmentRepository.Verify(r => r.CreateAsync(It.IsAny<Enrollment>()), Times.Once);
     }
 
@@ -294,10 +293,10 @@ public class CourseServiceV2Tests
 
         var result = await _service.AddInstructorAsync(request);
 
-        result.AccountHolderId.Should().Be(accountHolderId);
-        result.FirstName.Should().Be(accountHolder.FirstName);
-        result.LastName.Should().Be(accountHolder.LastName);
-        result.Email.Should().Be(accountHolder.EmailAddress);
+        Assert.Equal(accountHolderId, result.AccountHolderId);
+        Assert.Equal(accountHolder.FirstName, result.FirstName);
+        Assert.Equal(accountHolder.LastName, result.LastName);
+        Assert.Equal(accountHolder.EmailAddress, result.Email);
 
         _keycloakService.Verify(s => s.UpdateUserRoleAsync(keycloakUserId, UserRole.Educator), Times.Once);
         _educatorRepository.Verify(r => r.CreateAsync(It.Is<Educator>(e =>
@@ -370,7 +369,7 @@ public class CourseServiceV2Tests
 
         var result = await _service.AddInstructorAsync(request);
 
-        result.AccountHolderId.Should().Be(accountHolderId);
+        Assert.Equal(accountHolderId, result.AccountHolderId);
 
         _keycloakService.Verify(s => s.UpdateUserRoleAsync(keycloakUserId, UserRole.Educator), Times.Once);
         _educatorRepository.Verify(r => r.CreateAsync(It.IsAny<Educator>()), Times.Never);

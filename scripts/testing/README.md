@@ -15,7 +15,33 @@ scripts/testing/
 └── Dockerfile             # 🐳 Docker container for E2E tests
 ```
 
+The aligned smoke-test entrypoints live at the repo root: `./run-smoke-tests.sh` for Bash/WSL/Linux and `./run-smoke-tests.ps1` for Windows PowerShell.
+
 ## 🚀 Quick Start
+
+Important:
+- For the default non-E2E core confidence lane, use `./run-tests.sh` on Bash/WSL/Linux or `./run-tests.ps1` on Windows PowerShell. These aligned entrypoints run only the models and API test projects.
+- For the smoke lane, use `./run-smoke-tests.sh` on Bash/WSL/Linux or `./run-smoke-tests.ps1` on Windows PowerShell.
+- `run-e2e-tests.ps1` and `run-e2e-tests.sh` are for the core self-hosted app stack.
+- Do not point the full core E2E suite at the SaaS AppHost on `http://localhost:3001`; that is a different app shape and many admin workflows will fail for the wrong reason.
+- For SaaS local validation, use the root-level compatibility runner instead: `saas/scripts/testing/run-local-core-saas-compatibility.ps1` on Windows or `run-local-core-saas-compatibility.sh` on Bash.
+
+### Default Core Test Lane
+```bash
+./run-tests.sh
+```
+
+```powershell
+./run-tests.ps1
+```
+
+This runs:
+- `tests/StudentRegistrar.Models.Tests`
+- `tests/StudentRegistrar.Api.Tests`
+
+It does not invoke:
+- `tests/StudentRegistrar.E2E.Tests`
+- `tests/StudentRegistrar.Smoke.Tests`
 
 ### Run All E2E Tests (Recommended)
 ```bash
@@ -78,6 +104,7 @@ Remove-Item Env:SeleniumSettings__Headless
 1. **Application Running**: Student Registrar must be running at `http://localhost:3001`
    - Recommended: `dotnet run --project src/StudentRegistrar.AppHost`
    - Or via Docker Compose: `docker-compose up frontend`
+   - This is the self-hosted core app stack, not the SaaS AppHost.
 
 2. **Keycloak Running**: For user management (if using `--setup-users`)
    - If using Aspire: Keycloak starts with the AppHost

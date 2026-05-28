@@ -1,5 +1,4 @@
 using AutoMapper;
-using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using StudentRegistrar.Api.DTOs;
@@ -52,8 +51,9 @@ public class SemesterServiceTests
 
         var result = await _service.GetAllSemestersAsync();
 
-        result.Should().HaveCount(2);
-        result.Select(s => s.Code).Should().Contain(new[] { "F26", "S27" });
+        Assert.Equal(2, result.Count());
+        Assert.Contains("F26", result.Select(s => s.Code));
+        Assert.Contains("S27", result.Select(s => s.Code));
     }
 
     // -------------------------------------------------------------------------
@@ -69,9 +69,9 @@ public class SemesterServiceTests
 
         var result = await _service.GetSemesterByIdAsync(id);
 
-        result.Should().NotBeNull();
-        result!.Id.Should().Be(id);
-        result.Code.Should().Be("F26");
+        Assert.NotNull(result);
+        Assert.Equal(id, result!.Id);
+        Assert.Equal("F26", result.Code);
     }
 
     [Fact]
@@ -81,7 +81,7 @@ public class SemesterServiceTests
 
         var result = await _service.GetSemesterByIdAsync(Guid.NewGuid());
 
-        result.Should().BeNull();
+        Assert.Null(result);
     }
 
     // -------------------------------------------------------------------------
@@ -96,8 +96,8 @@ public class SemesterServiceTests
 
         var result = await _service.GetActiveSemesterAsync();
 
-        result.Should().NotBeNull();
-        result!.IsActive.Should().BeTrue();
+        Assert.NotNull(result);
+        Assert.True(result!.IsActive);
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public class SemesterServiceTests
 
         var result = await _service.GetActiveSemesterAsync();
 
-        result.Should().BeNull();
+        Assert.Null(result);
     }
 
     // -------------------------------------------------------------------------
@@ -134,9 +134,9 @@ public class SemesterServiceTests
 
         var result = await _service.CreateSemesterAsync(createDto);
 
-        result.Name.Should().Be("Fall 2026");
-        result.Code.Should().Be("F26");
-        result.IsActive.Should().BeTrue();
+        Assert.Equal("Fall 2026", result.Name);
+        Assert.Equal("F26", result.Code);
+        Assert.True(result.IsActive);
 
         _semesterRepository.Verify(r => r.CreateAsync(It.Is<Semester>(s =>
             s.Name == "Fall 2026" && s.Code == "F26")), Times.Once);
@@ -167,8 +167,8 @@ public class SemesterServiceTests
 
         var result = await _service.UpdateSemesterAsync(id, updateDto);
 
-        result.Should().NotBeNull();
-        result!.Id.Should().Be(id);
+        Assert.NotNull(result);
+        Assert.Equal(id, result!.Id);
         _semesterRepository.Verify(r => r.UpdateAsync(existing), Times.Once);
     }
 
@@ -182,7 +182,7 @@ public class SemesterServiceTests
             Name = "X", Code = "X"
         });
 
-        result.Should().BeNull();
+        Assert.Null(result);
         _semesterRepository.Verify(r => r.UpdateAsync(It.IsAny<Semester>()), Times.Never);
     }
 
@@ -201,7 +201,7 @@ public class SemesterServiceTests
 
         var result = await _service.DeleteSemesterAsync(id);
 
-        result.Should().BeTrue();
+        Assert.True(result);
     }
 
     [Fact]
@@ -212,8 +212,7 @@ public class SemesterServiceTests
         semester.Courses.Add(new Course { Id = Guid.NewGuid(), SemesterId = id });
         _semesterRepository.Setup(r => r.GetByIdAsync(id)).ReturnsAsync(semester);
 
-        await _service.Invoking(s => s.DeleteSemesterAsync(id))
-            .Should().ThrowAsync<InvalidOperationException>();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.DeleteSemesterAsync(id));
 
         _semesterRepository.Verify(r => r.DeleteAsync(It.IsAny<Guid>()), Times.Never);
     }
@@ -225,6 +224,6 @@ public class SemesterServiceTests
 
         var result = await _service.DeleteSemesterAsync(Guid.NewGuid());
 
-        result.Should().BeFalse();
+        Assert.False(result);
     }
 }

@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -88,8 +87,8 @@ public class AccountHoldersControllerTests
 
         var result = await _controller.GetAllAccountHolders();
 
-        var ok = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        ok.Value.Should().BeEquivalentTo(dtos);
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Same(dtos, ok.Value);
     }
 
     // -------------------------------------------------------------------------
@@ -106,8 +105,8 @@ public class AccountHoldersControllerTests
 
         var result = await _controller.GetAccountHolder(id);
 
-        var ok = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        ok.Value.Should().BeEquivalentTo(dto);
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Same(dto, ok.Value);
     }
 
     [Fact]
@@ -118,7 +117,7 @@ public class AccountHoldersControllerTests
 
         var result = await _controller.GetAccountHolder(Guid.NewGuid());
 
-        result.Result.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(result.Result);
     }
 
     // -------------------------------------------------------------------------
@@ -134,8 +133,8 @@ public class AccountHoldersControllerTests
 
         var result = await _controller.GetMyAccountHolder();
 
-        var ok = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        ok.Value.Should().BeEquivalentTo(dto);
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Same(dto, ok.Value);
     }
 
     [Fact]
@@ -148,8 +147,8 @@ public class AccountHoldersControllerTests
 
         var result = await _controller.GetMyAccountHolder();
 
-        var ok = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        ok.Value.Should().BeEquivalentTo(dto);
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Same(dto, ok.Value);
     }
 
     // -------------------------------------------------------------------------
@@ -179,11 +178,11 @@ public class AccountHoldersControllerTests
 
         var result = await _controller.CreateAccountHolder(createDto);
 
-        var created = result.Result.Should().BeOfType<CreatedAtActionResult>().Subject;
-        created.StatusCode.Should().Be(201);
-        created.ActionName.Should().Be(nameof(_controller.GetAccountHolder));
-        var response = created.Value.Should().BeOfType<CreateAccountHolderResponse>().Subject;
-        response.AccountHolder.Should().BeEquivalentTo(createdDto);
+        var created = Assert.IsType<CreatedAtActionResult>(result.Result);
+        Assert.Equal(201, created.StatusCode);
+        Assert.Equal(nameof(_controller.GetAccountHolder), created.ActionName);
+        var response = Assert.IsType<CreateAccountHolderResponse>(created.Value);
+        Assert.Same(createdDto, response.AccountHolder);
     }
 
     // -------------------------------------------------------------------------
@@ -203,8 +202,8 @@ public class AccountHoldersControllerTests
 
         var result = await _controller.UpdateAccountHolder(id, new UpdateAccountHolderDto { FirstName = "Updated" });
 
-        var ok = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        ok.Value.Should().BeEquivalentTo(myDto);
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Same(myDto, ok.Value);
     }
 
     [Fact]
@@ -219,7 +218,7 @@ public class AccountHoldersControllerTests
 
         var result = await _controller.UpdateAccountHolder(id, new UpdateAccountHolderDto());
 
-        result.Result.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(result.Result);
     }
 
     [Fact]
@@ -233,7 +232,7 @@ public class AccountHoldersControllerTests
 
         var result = await _controller.UpdateAccountHolder(id, new UpdateAccountHolderDto());
 
-        result.Result.Should().BeOfType<ForbidResult>();
+        Assert.IsType<ForbidResult>(result.Result);
     }
 
     // -------------------------------------------------------------------------
@@ -253,7 +252,7 @@ public class AccountHoldersControllerTests
 
         var result = await _controller.RemoveStudentFromMyAccount(studentId);
 
-        result.Should().BeOfType<NoContentResult>();
+        Assert.IsType<NoContentResult>(result);
     }
 
     [Fact]
@@ -269,7 +268,7 @@ public class AccountHoldersControllerTests
 
         var result = await _controller.RemoveStudentFromMyAccount(studentId);
 
-        result.Should().BeOfType<NotFoundObjectResult>();
+        Assert.IsType<NotFoundObjectResult>(result);
     }
 
     // -------------------------------------------------------------------------
@@ -286,7 +285,7 @@ public class AccountHoldersControllerTests
 
         var result = await _controller.RemoveStudentFromAccount(accountHolderId, studentId);
 
-        result.Should().BeOfType<NoContentResult>();
+        Assert.IsType<NoContentResult>(result);
     }
 
     [Fact]
@@ -299,6 +298,6 @@ public class AccountHoldersControllerTests
 
         var result = await _controller.RemoveStudentFromAccount(accountHolderId, studentId);
 
-        result.Should().BeOfType<NotFoundObjectResult>();
+        Assert.IsType<NotFoundObjectResult>(result);
     }
 }

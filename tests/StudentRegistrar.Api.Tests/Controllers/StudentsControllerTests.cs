@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using StudentRegistrar.Api.Controllers;
@@ -38,9 +37,8 @@ public class StudentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(expectedStudents);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Same(expectedStudents, okResult.Value);
     }
 
     [Fact]
@@ -64,9 +62,8 @@ public class StudentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(expectedStudent);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Same(expectedStudent, okResult.Value);
     }
 
     [Fact]
@@ -84,7 +81,7 @@ public class StudentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(actionResult);
     }
 
     [Fact]
@@ -117,9 +114,8 @@ public class StudentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<CreatedAtActionResult>();
-        var createdResult = actionResult as CreatedAtActionResult;
-        createdResult!.Value.Should().BeEquivalentTo(createdStudent);
+        var createdResult = Assert.IsType<CreatedAtActionResult>(actionResult);
+        Assert.Same(createdStudent, createdResult.Value);
     }
 
     [Fact]
@@ -153,9 +149,8 @@ public class StudentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(updatedStudent);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Same(updatedStudent, okResult.Value);
     }
 
     [Fact]
@@ -180,7 +175,7 @@ public class StudentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(actionResult);
     }
 
     [Fact]
@@ -197,7 +192,7 @@ public class StudentsControllerTests
         var result = await _controller.DeleteStudent(studentId);
 
         // Assert
-        result.Should().BeOfType<NoContentResult>();
+        Assert.IsType<NoContentResult>(result);
     }
 
     [Fact]
@@ -214,7 +209,7 @@ public class StudentsControllerTests
         var result = await _controller.DeleteStudent(studentId);
 
         // Assert
-        result.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(result);
     }
 
     [Fact]
@@ -237,8 +232,7 @@ public class StudentsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(expectedStudents);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Same(expectedStudents, okResult.Value);
     }
 }

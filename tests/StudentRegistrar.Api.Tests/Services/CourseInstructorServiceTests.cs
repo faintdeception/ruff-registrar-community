@@ -1,5 +1,4 @@
 using AutoMapper;
-using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using StudentRegistrar.Api.DTOs;
@@ -51,8 +50,9 @@ public class CourseInstructorServiceTests
 
         var result = await _service.GetAllCourseInstructorsAsync();
 
-        result.Should().HaveCount(2);
-        result.Select(i => i.FirstName).Should().Contain(new[] { "Alice", "Bob" });
+        Assert.Equal(2, result.Count());
+        Assert.Contains("Alice", result.Select(i => i.FirstName));
+        Assert.Contains("Bob", result.Select(i => i.FirstName));
     }
 
     // -------------------------------------------------------------------------
@@ -68,9 +68,9 @@ public class CourseInstructorServiceTests
 
         var result = await _service.GetCourseInstructorByIdAsync(id);
 
-        result.Should().NotBeNull();
-        result!.Id.Should().Be(id);
-        result.FirstName.Should().Be("Alice");
+        Assert.NotNull(result);
+        Assert.Equal(id, result!.Id);
+        Assert.Equal("Alice", result.FirstName);
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public class CourseInstructorServiceTests
 
         var result = await _service.GetCourseInstructorByIdAsync(Guid.NewGuid());
 
-        result.Should().BeNull();
+        Assert.Null(result);
     }
 
     // -------------------------------------------------------------------------
@@ -96,8 +96,8 @@ public class CourseInstructorServiceTests
 
         var result = await _service.GetCourseInstructorsByCourseIdAsync(courseId);
 
-        result.Should().HaveCount(1);
-        result.First().CourseId.Should().Be(courseId);
+        var instructor = Assert.Single(result);
+        Assert.Equal(courseId, instructor.CourseId);
     }
 
     // -------------------------------------------------------------------------
@@ -122,9 +122,9 @@ public class CourseInstructorServiceTests
 
         var result = await _service.CreateCourseInstructorAsync(createDto);
 
-        result.FirstName.Should().Be("Carol");
-        result.LastName.Should().Be("White");
-        result.IsPrimary.Should().BeTrue();
+        Assert.Equal("Carol", result.FirstName);
+        Assert.Equal("White", result.LastName);
+        Assert.True(result.IsPrimary);
 
         _repo.Verify(r => r.CreateAsync(It.Is<CourseInstructor>(ci =>
             ci.FirstName == "Carol" && ci.CourseId == courseId)), Times.Once);
@@ -151,8 +151,8 @@ public class CourseInstructorServiceTests
 
         var result = await _service.UpdateCourseInstructorAsync(id, updateDto);
 
-        result.Should().NotBeNull();
-        result!.Id.Should().Be(id);
+        Assert.NotNull(result);
+        Assert.Equal(id, result!.Id);
         _repo.Verify(r => r.UpdateAsync(existing), Times.Once);
     }
 
@@ -166,7 +166,7 @@ public class CourseInstructorServiceTests
             FirstName = "X", LastName = "Y"
         });
 
-        result.Should().BeNull();
+        Assert.Null(result);
         _repo.Verify(r => r.UpdateAsync(It.IsAny<CourseInstructor>()), Times.Never);
     }
 
@@ -182,7 +182,7 @@ public class CourseInstructorServiceTests
 
         var result = await _service.DeleteCourseInstructorAsync(id);
 
-        result.Should().BeTrue();
+        Assert.True(result);
     }
 
     [Fact]
@@ -192,6 +192,6 @@ public class CourseInstructorServiceTests
 
         var result = await _service.DeleteCourseInstructorAsync(Guid.NewGuid());
 
-        result.Should().BeFalse();
+        Assert.False(result);
     }
 }

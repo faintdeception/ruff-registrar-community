@@ -111,6 +111,9 @@ The setup script will:
    ```bash
    dotnet run --project src/StudentRegistrar.AppHost
    ```
+   ```powershell
+   dotnet run --project src/StudentRegistrar.AppHost
+   ```
 2. Bootstrap Keycloak + the confidential application client:
    ```bash
    ./setup-keycloak.sh
@@ -118,13 +121,22 @@ The setup script will:
    > **Local dev only.** This script sets up Keycloak for Aspire/docker-compose and does not apply
    > cloud-level hardening (password policy, PKCE, brute-force protection). For cloud deployments
    > use `scripts/keycloak/bootstrap-keycloak.sh` + `scripts/keycloak/harden-realm.sh` instead.
+   ```powershell
+   ./scripts/keycloak/bootstrap-keycloak.ps1 -KeycloakUrl http://localhost:8080 -AdminUsername admin -Realm student-registrar
+   ```
 3. Configure the public SPA client (required for frontend login):
    ```bash
    ./scripts/keycloak/add-spa-client.sh
    ```
+   ```powershell
+   ./scripts/keycloak/add-spa-client.ps1 -KeycloakUrl http://localhost:8080 -AdminUsername admin -Realm student-registrar
+   ```
 4. Add the confidential client secret to AppHost settings:
    ```bash
    cp src/StudentRegistrar.AppHost/appsettings.example.json src/StudentRegistrar.AppHost/appsettings.json
+   ```
+   ```powershell
+   Copy-Item src/StudentRegistrar.AppHost/appsettings.example.json src/StudentRegistrar.AppHost/appsettings.json
    ```
    Update `Keycloak:ClientSecret` using the value printed by `setup-keycloak.sh`.
 
@@ -151,9 +163,14 @@ This will start all services and open the Aspire dashboard.
 
 ```bash
 # Terminal 1: Start the API
+```
+
+```powershell
+./scripts/testing/run-e2e-tests.ps1
 cd src/StudentRegistrar.Api
 dotnet run
 
+./scripts/testing/run-e2e-tests.ps1 -SetupUsers -AdminPassword 'admin123!'
 # Terminal 2: Start the frontend
 cd frontend
 npm run dev
@@ -165,6 +182,11 @@ npm run dev
 student-registrar/
 ├── src/
 │   ├── StudentRegistrar.AppHost/          # .NET Aspire orchestration
+```
+
+```powershell
+./run-smoke-tests.ps1
+```
 │   ├── StudentRegistrar.ServiceDefaults/  # Shared service configuration
 │   ├── StudentRegistrar.Api/              # Web API project
 │   ├── StudentRegistrar.Data/             # Entity Framework DbContext
@@ -349,6 +371,17 @@ The application includes comprehensive E2E tests organized by user roles using S
 ./scripts/testing/run-e2e-tests.sh --setup-users
 ```
 
+```powershell
+# Run all E2E tests with browser visible
+./scripts/testing/run-e2e-tests.ps1
+
+# Run tests in headless mode (CI/CD)
+./scripts/testing/run-e2e-tests.ps1 -Headless
+
+# Setup test users and run all tests
+./scripts/testing/run-e2e-tests.ps1 -SetupUsers -AdminPassword 'admin123!'
+```
+
 #### Role-Based Test Suites
 ```bash
 # Run only admin tests
@@ -362,6 +395,20 @@ The application includes comprehensive E2E tests organized by user roles using S
 
 # Run only login tests
 ./scripts/testing/run-e2e-tests.sh --test-suite login
+```
+
+```powershell
+# Run only admin tests
+./scripts/testing/run-e2e-tests.ps1 -TestSuite admin
+
+# Run only educator tests
+./scripts/testing/run-e2e-tests.ps1 -TestSuite educator
+
+# Run only member tests
+./scripts/testing/run-e2e-tests.ps1 -TestSuite member
+
+# Run only login tests
+./scripts/testing/run-e2e-tests.ps1 -TestSuite login
 ```
 
 #### Test Organization

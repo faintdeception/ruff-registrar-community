@@ -1,4 +1,3 @@
-using FluentAssertions;
 using StudentRegistrar.Models;
 using System.Text.Json;
 using Xunit;
@@ -12,19 +11,21 @@ public class StudentTests
     {
         // Act
         var student = new Student();
+        var now = DateTime.UtcNow;
 
         // Assert
-        student.Id.Should().NotBeEmpty();
-        student.AccountHolderId.Should().BeEmpty();
-        student.FirstName.Should().BeEmpty();
-        student.LastName.Should().BeEmpty();
-        student.Grade.Should().BeNull();
-        student.DateOfBirth.Should().BeNull();
-        student.StudentInfoJson.Should().Be("{}");
-        student.Notes.Should().BeNull();
-        student.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
-        student.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
-        student.Enrollments.Should().NotBeNull().And.BeEmpty();
+        Assert.NotEqual(Guid.Empty, student.Id);
+        Assert.Equal(Guid.Empty, student.AccountHolderId);
+        Assert.Equal(string.Empty, student.FirstName);
+        Assert.Equal(string.Empty, student.LastName);
+        Assert.Null(student.Grade);
+        Assert.Null(student.DateOfBirth);
+        Assert.Equal("{}", student.StudentInfoJson);
+        Assert.Null(student.Notes);
+        Assert.InRange(student.CreatedAt, now - TimeSpan.FromSeconds(1), now + TimeSpan.FromSeconds(1));
+        Assert.InRange(student.UpdatedAt, now - TimeSpan.FromSeconds(1), now + TimeSpan.FromSeconds(1));
+        Assert.NotNull(student.Enrollments);
+        Assert.Empty(student.Enrollments);
     }
 
     [Fact]
@@ -38,7 +39,7 @@ public class StudentTests
         };
 
         // Act & Assert
-        student.FullName.Should().Be("Alice Johnson");
+        Assert.Equal("Alice Johnson", student.FullName);
     }
 
     [Fact]
@@ -62,18 +63,18 @@ public class StudentTests
         var retrievedInfo = student.GetStudentInfo();
 
         // Assert
-        retrievedInfo.Should().NotBeNull();
-        retrievedInfo.SpecialConditions.Should().HaveCount(2);
-        retrievedInfo.SpecialConditions.Should().Contain("ADHD");
-        retrievedInfo.SpecialConditions.Should().Contain("Needs extra time");
-        retrievedInfo.LearningDisabilities.Should().Contain("Dyslexia");
-        retrievedInfo.Allergies.Should().HaveCount(2);
-        retrievedInfo.Allergies.Should().Contain("Peanuts");
-        retrievedInfo.Allergies.Should().Contain("Shellfish");
-        retrievedInfo.Medications.Should().Contain("Inhaler");
-        retrievedInfo.PreferredName.Should().Be("Al");
-        retrievedInfo.ParentNotes.Should().Be("Please call if issues arise");
-        retrievedInfo.TeacherNotes.Should().Be("Very bright student");
+        Assert.NotNull(retrievedInfo);
+        Assert.Equal(2, retrievedInfo.SpecialConditions.Count);
+        Assert.Contains("ADHD", retrievedInfo.SpecialConditions);
+        Assert.Contains("Needs extra time", retrievedInfo.SpecialConditions);
+        Assert.Contains("Dyslexia", retrievedInfo.LearningDisabilities);
+        Assert.Equal(2, retrievedInfo.Allergies.Count);
+        Assert.Contains("Peanuts", retrievedInfo.Allergies);
+        Assert.Contains("Shellfish", retrievedInfo.Allergies);
+        Assert.Contains("Inhaler", retrievedInfo.Medications);
+        Assert.Equal("Al", retrievedInfo.PreferredName);
+        Assert.Equal("Please call if issues arise", retrievedInfo.ParentNotes);
+        Assert.Equal("Very bright student", retrievedInfo.TeacherNotes);
     }
 
     [Fact]
@@ -89,14 +90,18 @@ public class StudentTests
         var info = student.GetStudentInfo();
 
         // Assert
-        info.Should().NotBeNull();
-        info.SpecialConditions.Should().NotBeNull().And.BeEmpty();
-        info.LearningDisabilities.Should().NotBeNull().And.BeEmpty();
-        info.Allergies.Should().NotBeNull().And.BeEmpty();
-        info.Medications.Should().NotBeNull().And.BeEmpty();
-        info.PreferredName.Should().BeNull();
-        info.ParentNotes.Should().BeNull();
-        info.TeacherNotes.Should().BeNull();
+        Assert.NotNull(info);
+        Assert.NotNull(info.SpecialConditions);
+        Assert.Empty(info.SpecialConditions);
+        Assert.NotNull(info.LearningDisabilities);
+        Assert.Empty(info.LearningDisabilities);
+        Assert.NotNull(info.Allergies);
+        Assert.Empty(info.Allergies);
+        Assert.NotNull(info.Medications);
+        Assert.Empty(info.Medications);
+        Assert.Null(info.PreferredName);
+        Assert.Null(info.ParentNotes);
+        Assert.Null(info.TeacherNotes);
     }
 
     [Fact]
@@ -114,13 +119,13 @@ public class StudentTests
         student.SetStudentInfo(studentInfo);
 
         // Assert
-        student.StudentInfoJson.Should().NotBe("{}");
+        Assert.NotEqual("{}", student.StudentInfoJson);
         
         // Verify we can deserialize it back
         var deserializedInfo = JsonSerializer.Deserialize<StudentInfo>(student.StudentInfoJson);
-        deserializedInfo.Should().NotBeNull();
-        deserializedInfo!.SpecialConditions.Should().Contain("Test condition");
-        deserializedInfo.PreferredName.Should().Be("TestName");
+        Assert.NotNull(deserializedInfo);
+        Assert.Contains("Test condition", deserializedInfo!.SpecialConditions);
+        Assert.Equal("TestName", deserializedInfo.PreferredName);
     }
 
     [Theory]
@@ -138,7 +143,7 @@ public class StudentTests
         };
 
         // Act & Assert
-        student.FullName.Should().Be(expected);
+        Assert.Equal(expected, student.FullName);
     }
 
     [Fact]
@@ -152,7 +157,7 @@ public class StudentTests
         foreach (var grade in validGrades)
         {
             student.Grade = grade;
-            student.Grade.Should().Be(grade);
+            Assert.Equal(grade, student.Grade);
         }
     }
 
@@ -163,10 +168,14 @@ public class StudentTests
         var studentInfo = new StudentInfo();
 
         // Assert
-        studentInfo.SpecialConditions.Should().NotBeNull().And.BeEmpty();
-        studentInfo.LearningDisabilities.Should().NotBeNull().And.BeEmpty();
-        studentInfo.Allergies.Should().NotBeNull().And.BeEmpty();
-        studentInfo.Medications.Should().NotBeNull().And.BeEmpty();
+        Assert.NotNull(studentInfo.SpecialConditions);
+        Assert.Empty(studentInfo.SpecialConditions);
+        Assert.NotNull(studentInfo.LearningDisabilities);
+        Assert.Empty(studentInfo.LearningDisabilities);
+        Assert.NotNull(studentInfo.Allergies);
+        Assert.Empty(studentInfo.Allergies);
+        Assert.NotNull(studentInfo.Medications);
+        Assert.Empty(studentInfo.Medications);
     }
 
     [Fact]
@@ -180,7 +189,7 @@ public class StudentTests
         student.DateOfBirth = birthDate;
 
         // Assert
-        student.DateOfBirth.Should().Be(birthDate);
+        Assert.Equal(birthDate, student.DateOfBirth);
     }
 
     [Fact]
@@ -194,7 +203,7 @@ public class StudentTests
         student.Notes = notes;
 
         // Assert
-        student.Notes.Should().Be(notes);
+        Assert.Equal(notes, student.Notes);
     }
 
     [Fact]
@@ -208,7 +217,7 @@ public class StudentTests
         student.AccountHolderId = accountHolderId;
 
         // Assert
-        student.AccountHolderId.Should().Be(accountHolderId);
-        student.AccountHolderId.Should().NotBeEmpty();
+        Assert.Equal(accountHolderId, student.AccountHolderId);
+        Assert.NotEqual(Guid.Empty, student.AccountHolderId);
     }
 }

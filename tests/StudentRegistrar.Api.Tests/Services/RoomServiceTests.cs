@@ -1,5 +1,4 @@
 using AutoMapper;
-using FluentAssertions;
 using Moq;
 using StudentRegistrar.Api.DTOs;
 using StudentRegistrar.Api.Services;
@@ -50,7 +49,7 @@ public class RoomServiceTests
         var result = await _service.GetAllRoomsAsync();
 
         // Assert
-        result.Should().BeEquivalentTo(expectedDtos);
+        Assert.Same(expectedDtos, result);
     }
 
     [Fact]
@@ -73,7 +72,7 @@ public class RoomServiceTests
         var result = await _service.GetRoomByIdAsync(roomId);
 
         // Assert
-        result.Should().BeEquivalentTo(expectedDto);
+        Assert.Same(expectedDto, result);
     }
 
     [Fact]
@@ -89,7 +88,7 @@ public class RoomServiceTests
         var result = await _service.GetRoomByIdAsync(roomId);
 
         // Assert
-        result.Should().BeNull();
+        Assert.Null(result);
     }
 
     [Fact]
@@ -121,7 +120,7 @@ public class RoomServiceTests
         var result = await _service.GetRoomsByTypeAsync(roomType);
 
         // Assert
-        result.Should().BeEquivalentTo(expectedDtos);
+        Assert.Same(expectedDtos, result);
     }
 
     [Fact]
@@ -187,7 +186,7 @@ public class RoomServiceTests
         var result = await _service.CreateRoomAsync(createDto);
 
         // Assert
-        result.Should().BeEquivalentTo(expectedDto);
+        Assert.Same(expectedDto, result);
     }
 
     [Fact]
@@ -211,7 +210,7 @@ public class RoomServiceTests
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => 
             _service.CreateRoomAsync(createDto));
         
-        exception.Message.Should().Contain("already exists");
+        Assert.Contains("already exists", exception.Message);
     }
 
     [Fact]
@@ -281,7 +280,7 @@ public class RoomServiceTests
         var result = await _service.UpdateRoomAsync(roomId, updateDto);
 
         // Assert
-        result.Should().BeEquivalentTo(expectedDto);
+        Assert.Same(expectedDto, result);
     }
 
     [Fact]
@@ -304,7 +303,7 @@ public class RoomServiceTests
         var result = await _service.UpdateRoomAsync(roomId, updateDto);
 
         // Assert
-        result.Should().BeNull();
+        Assert.Null(result);
     }
 
     [Fact]
@@ -339,7 +338,7 @@ public class RoomServiceTests
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => 
             _service.UpdateRoomAsync(roomId, updateDto));
         
-        exception.Message.Should().Contain("already exists");
+        Assert.Contains("already exists", exception.Message);
     }
 
     [Fact]
@@ -360,7 +359,7 @@ public class RoomServiceTests
         var result = await _service.DeleteRoomAsync(roomId);
 
         // Assert
-        result.Should().BeTrue();
+        Assert.True(result);
     }
 
     [Fact]
@@ -377,7 +376,7 @@ public class RoomServiceTests
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => 
             _service.DeleteRoomAsync(roomId));
         
-        exception.Message.Should().Contain("currently assigned to one or more courses");
+        Assert.Contains("currently assigned to one or more courses", exception.Message);
     }
 
     [Fact]
@@ -395,6 +394,6 @@ public class RoomServiceTests
         var result = await _service.IsRoomInUseAsync(roomId);
 
         // Assert
-        result.Should().Be(expectedResult);
+        Assert.Equal(expectedResult, result);
     }
 }

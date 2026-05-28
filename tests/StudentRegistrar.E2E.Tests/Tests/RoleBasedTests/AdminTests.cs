@@ -1,6 +1,5 @@
 using OpenQA.Selenium;
 using OpenQA.Selenium.Support.UI;
-using FluentAssertions;
 using StudentRegistrar.E2E.Tests.Base;
 using StudentRegistrar.E2E.Tests.Pages;
 using Xunit;
@@ -28,13 +27,13 @@ public class AdminTests : BaseTest
     WaitForUrlContains("/");
 
         // Assert - Should be logged in and see admin navigation
-        Driver.Url.Should().NotContain("/login", "Admin should be logged in");
+        Assert.DoesNotContain("/login", Driver.Url);
         var homePage = new HomePage(Driver);
-        homePage.IsLoggedIn().Should().BeTrue("Admin should be authenticated");
+        Assert.True(homePage.IsLoggedIn());
         
         // Verify admin-specific navigation is visible
-        Driver.PageSource.Should().Contain("Students", "Admin should see Students link");
-        Driver.PageSource.Should().Contain("Semesters", "Admin should see Semesters link");
+        Assert.Contains("Students", Driver.PageSource);
+        Assert.Contains("Semesters", Driver.PageSource);
     }
 
     [Fact]
@@ -50,8 +49,8 @@ public class AdminTests : BaseTest
     WaitUntil(d => d.Url.Contains("/members") && d.PageSource.Contains("Members Management"));
 
         // Assert - Should be on members page
-        Driver.Url.Should().Contain("/members", "Should navigate to members page");
-        Driver.PageSource.Should().Contain("Members Management", "Should see members management page");
+        Assert.Contains("/members", Driver.Url);
+        Assert.Contains("Members Management", Driver.PageSource);
 
         // Click Create Member button
         var createMemberButton = Driver.FindElement(By.Id("create-member-button"));
@@ -132,11 +131,11 @@ public class AdminTests : BaseTest
             // Check what type of message we got
             if (messageElement != null && messageElement.GetDomAttribute("data-testid") == "success-message")
             {
-                messageElement.Text.Should().Contain("Member created successfully!", "Should show correct success message");
+                Assert.Contains("Member created successfully!", messageElement.Text);
                 
                 // Verify the new member appears in the list
-                Driver.PageSource.Should().Contain($"Test Member{timestamp}", "New member should appear in the list");
-                Driver.PageSource.Should().Contain($"testmember{timestamp}@example.com", "Member email should appear in the list");
+                Assert.Contains($"Test Member{timestamp}", Driver.PageSource);
+                Assert.Contains($"testmember{timestamp}@example.com", Driver.PageSource);
             }
             else if (messageElement != null && messageElement.GetDomAttribute("id") == "error-message")
             {
@@ -198,8 +197,8 @@ public class AdminTests : BaseTest
         WaitUntil(d => d.Url.Contains("/semesters") || d.PageSource.Contains("semester", StringComparison.OrdinalIgnoreCase));
 
         // Assert - Should be on semesters page
-        Driver.Url.Should().Contain("/semesters", "Should navigate to semesters page");
-        Driver.PageSource.Should().ContainEquivalentOf("semester");
+        Assert.Contains("/semesters", Driver.Url);
+        Assert.Contains("semester", Driver.PageSource, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -234,7 +233,7 @@ public class AdminTests : BaseTest
             WaitForUrlContains(expectedUrl);
 
             // Verify navigation worked
-            Driver.Url.Should().Contain(expectedUrl, $"Should navigate to {testId} page");
+            Assert.Contains(expectedUrl, Driver.Url);
         }
     }
 
@@ -247,7 +246,7 @@ public class AdminTests : BaseTest
         semestersPage.NavigateToSemesters();
 
         // Verify we can access the semesters page
-        semestersPage.IsOnSemestersPage().Should().BeTrue("Admin should access semesters page");
+        Assert.True(semestersPage.IsOnSemestersPage());
 
         // Get initial semester count
         var initialCount = semestersPage.GetSemesterCount();
@@ -283,20 +282,20 @@ public class AdminTests : BaseTest
     WaitUntil(d => d.PageSource.Contains(semesterName), 15, 300, "Semester name did not appear after creation");
 
         // Check if we're back on the semesters list page
-        semestersPage.IsOnSemestersPage().Should().BeTrue("Should return to semesters list after creation");
+        Assert.True(semestersPage.IsOnSemestersPage());
 
         // Verify the semester appears in the list
-        semestersPage.IsSemesterVisible(semesterName).Should().BeTrue($"Created semester '{semesterName}' should appear in the list");
+        Assert.True(semestersPage.IsSemesterVisible(semesterName));
 
         // Verify semester count increased
         var finalCount = semestersPage.GetSemesterCount();
-        finalCount.Should().BeGreaterThan(initialCount, "Semester count should increase after creation");
+        Assert.True(finalCount > initialCount);
 
         // Check for success message (if displayed)
         var successMessage = semestersPage.GetSuccessMessage();
         if (!string.IsNullOrEmpty(successMessage))
         {
-            successMessage.ToLower().Should().Contain("success", "Should show success message");
+            Assert.Contains("success", successMessage.ToLowerInvariant());
         }
     }
 
@@ -309,8 +308,8 @@ public class AdminTests : BaseTest
         semestersPage.NavigateToSemesters();
 
         // Act & Assert - Verify admin can see the create button
-        semestersPage.IsOnSemestersPage().Should().BeTrue("Should be on semesters page");
-        semestersPage.CanSeeCreateButton().Should().BeTrue("Admin should see create semester button");
+        Assert.True(semestersPage.IsOnSemestersPage());
+        Assert.True(semestersPage.CanSeeCreateButton());
     }
 
     [Fact]
@@ -345,11 +344,11 @@ public class AdminTests : BaseTest
     WaitForPageLoad();
     WaitUntil(d => d.PageSource.Contains("Create New Semester") || !d.Url.Contains("/semesters/create"));
 
-        semestersPage.IsOnSemestersPage().Should().BeTrue("Should return to semesters list after cancel");
-        semestersPage.IsSemesterVisible("Test Cancel Semester").Should().BeFalse("Cancelled semester should not appear in list");
+        Assert.True(semestersPage.IsOnSemestersPage());
+        Assert.False(semestersPage.IsSemesterVisible("Test Cancel Semester"));
 
         var finalCount = semestersPage.GetSemesterCount();
-        finalCount.Should().Be(initialCount, "Semester count should remain unchanged after cancel");
+        Assert.Equal(initialCount, finalCount);
     }
 
     [Fact]
@@ -400,12 +399,12 @@ public class AdminTests : BaseTest
                 throw new Exception($"Semester creation failed for '{semester.Name}' ({semester.Code}): {errorMessage}");
             }
 
-            semestersPage.IsSemesterVisible(semester.Name).Should().BeTrue($"Created semester '{semester.Name}' should appear in the list");
+            Assert.True(semestersPage.IsSemesterVisible(semester.Name));
         }
 
         // Assert - Verify all semesters were created
         var finalCount = semestersPage.GetSemesterCount();
-        finalCount.Should().BeGreaterThan(initialCount + semesters.Length - 1, "All semesters should be created");
+        Assert.True(finalCount > initialCount + semesters.Length - 1);
     }
 
     [Fact]
@@ -458,10 +457,10 @@ public class AdminTests : BaseTest
         }
 
         // Assert - Verify semester was created
-        semestersPage.IsSemesterVisible(semesterName).Should().BeTrue($"Semester '{semesterName}' should be visible");
+        Assert.True(semestersPage.IsSemesterVisible(semesterName));
         
         var finalCount = semestersPage.GetSemesterCount();
-        finalCount.Should().BeGreaterThan(initialCount, "Semester count should increase");
+        Assert.True(finalCount > initialCount);
     }
 
     [Fact]
@@ -492,10 +491,10 @@ public class AdminTests : BaseTest
         semestersPage.CancelCreate();
 
         // Assert - Verify no semester was created
-        semestersPage.IsSemesterVisible("Cancel Test").Should().BeFalse("Cancelled semester should not appear");
+        Assert.False(semestersPage.IsSemesterVisible("Cancel Test"));
         
         var finalCount = semestersPage.GetSemesterCount();
-        finalCount.Should().Be(initialCount, "Semester count should remain unchanged");
+        Assert.Equal(initialCount, finalCount);
     }
 
     [Fact]
@@ -524,7 +523,7 @@ public class AdminTests : BaseTest
     WaitUntil(d => semestersPage.IsErrorDisplayed());
 
         // Assert - Should show error and stay on form
-        semestersPage.IsErrorDisplayed().Should().BeTrue("Should show validation error for invalid dates");
+        Assert.True(semestersPage.IsErrorDisplayed());
         // semestersPage.IsCreateFormVisible().Should().BeTrue("Should remain on create form after validation error");
     }
 
@@ -557,7 +556,7 @@ public class AdminTests : BaseTest
     WaitUntil(d => semestersPage.IsSemesterVisible(originalName) || semestersPage.IsErrorDisplayed());
         
         // Verify it was created
-        semestersPage.IsSemesterVisible(originalName).Should().BeTrue("Original semester should be created");
+        Assert.True(semestersPage.IsSemesterVisible(originalName));
 
         // Act - Edit the semester
         semestersPage.EditSemester(originalName);
@@ -565,7 +564,7 @@ public class AdminTests : BaseTest
         
         // Verify edit modal opens
         // semestersPage.IsCreateFormVisible().Should().BeTrue("Edit form should be visible");
-        semestersPage.GetModalTitle().Should().Be("Edit Semester");
+        Assert.Equal("Edit Semester", semestersPage.GetModalTitle());
         
         // Change the name
         semestersPage.FillSemesterForm(
@@ -581,8 +580,8 @@ public class AdminTests : BaseTest
     WaitUntil(d => semestersPage.IsSemesterVisible(updatedName) || semestersPage.IsErrorDisplayed());
 
         // Assert - Verify the semester was updated
-        semestersPage.IsSemesterVisible(updatedName).Should().BeTrue("Updated semester should be visible");
-        semestersPage.IsSemesterVisible(originalName).Should().BeFalse("Original semester name should be gone");
+        Assert.True(semestersPage.IsSemesterVisible(updatedName));
+        Assert.False(semestersPage.IsSemesterVisible(originalName));
     }
 
     [Fact]
@@ -597,8 +596,8 @@ public class AdminTests : BaseTest
         WaitForPageLoad();
 
         // Assert - Should be on courses page
-        Driver.Url.Should().Contain("/courses", "Should navigate to courses page");
-        Driver.PageSource.Should().ContainEquivalentOf("course");
+        Assert.Contains("/courses", Driver.Url);
+        Assert.Contains("course", Driver.PageSource, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -631,7 +630,7 @@ public class AdminTests : BaseTest
     WaitUntil(d => semestersPage.IsSemesterVisible(semesterName) || semestersPage.IsErrorDisplayed());
 
         // Verify semester was created
-        semestersPage.IsSemesterVisible(semesterName).Should().BeTrue("Semester should be created first");
+        Assert.True(semestersPage.IsSemesterVisible(semesterName));
 
         // Navigate to courses page
         var coursesPage = new CoursesPage(Driver);
@@ -646,7 +645,7 @@ public class AdminTests : BaseTest
         
         // Click create course
         coursesPage.ClickCreateCourse();
-        coursesPage.IsCreateFormVisible().Should().BeTrue("Create course form should be visible");
+        Assert.True(coursesPage.IsCreateFormVisible());
 
         var availableRooms = coursesPage.GetAvailableRooms();
         if (availableRooms.Count == 0)
@@ -665,11 +664,11 @@ public class AdminTests : BaseTest
             coursesPage.SelectSemester(semesterName);
 
             coursesPage.ClickCreateCourse();
-            coursesPage.IsCreateFormVisible().Should().BeTrue("Create course form should be visible");
+            Assert.True(coursesPage.IsCreateFormVisible());
             availableRooms = coursesPage.GetAvailableRooms();
         }
 
-        availableRooms.Should().NotBeEmpty("at least one room should be available in the room options");
+        Assert.NotEmpty(availableRooms);
         var selectedRoom = availableRooms.First();
 
         // Fill course form
@@ -690,7 +689,7 @@ public class AdminTests : BaseTest
     WaitUntil(d => coursesPage.IsCourseVisible(courseName) || d.PageSource.Contains("error"));
 
         // Assert - Verify course was created
-        coursesPage.IsCourseVisible(courseName).Should().BeTrue($"Course '{courseName}' should be visible");
+        Assert.True(coursesPage.IsCourseVisible(courseName));
     }
 
     [Fact]
@@ -737,7 +736,7 @@ public class AdminTests : BaseTest
 
         // Act - Create each course
         coursesPage.ClickCreateCourse();
-        coursesPage.IsCreateFormVisible().Should().BeTrue("Create form should be visible");
+        Assert.True(coursesPage.IsCreateFormVisible());
 
         var availableRooms = coursesPage.GetAvailableRooms();
         if (availableRooms.Count == 0)
@@ -756,16 +755,16 @@ public class AdminTests : BaseTest
             coursesPage.SelectSemester(semesterName);
 
             coursesPage.ClickCreateCourse();
-            coursesPage.IsCreateFormVisible().Should().BeTrue("Create form should be visible");
+            Assert.True(coursesPage.IsCreateFormVisible());
             availableRooms = coursesPage.GetAvailableRooms();
         }
 
-        availableRooms.Should().NotBeEmpty("at least one room should be available in the room options");
+        Assert.NotEmpty(availableRooms);
 
         foreach (var course in courses)
         {
             coursesPage.ClickCreateCourse();
-            coursesPage.IsCreateFormVisible().Should().BeTrue($"Create form should be visible for {course.Name}");
+            Assert.True(coursesPage.IsCreateFormVisible());
 
             var selectedRoom = availableRooms[Array.IndexOf(courses, course) % availableRooms.Count];
 
@@ -782,7 +781,7 @@ public class AdminTests : BaseTest
             WaitUntil(d => coursesPage.IsCourseVisible(course.Name) || d.PageSource.Contains("error"));
 
             // Verify each course was created
-            coursesPage.IsCourseVisible(course.Name).Should().BeTrue($"Course '{course.Name}' should be created");
+            Assert.True(coursesPage.IsCourseVisible(course.Name));
         }
 
         // Assert - Verify all courses were created (visibility checks above)
@@ -807,7 +806,7 @@ public class AdminTests : BaseTest
 
         // Act - Start creating course but cancel
         coursesPage.ClickCreateCourse();
-        coursesPage.IsCreateFormVisible().Should().BeTrue("Create form should be visible");
+        Assert.True(coursesPage.IsCreateFormVisible());
 
         // Fill some data
         coursesPage.FillCourseForm(
@@ -828,7 +827,7 @@ public class AdminTests : BaseTest
             coursesPage.SelectSemester(availableSemesters.First());
         }
 
-        coursesPage.IsCourseVisible(cancelCourseName).Should().BeFalse("Cancelled course should not appear");
+        Assert.False(coursesPage.IsCourseVisible(cancelCourseName));
     }
 
     [Fact]
@@ -869,11 +868,11 @@ public class AdminTests : BaseTest
         var courseCode = $"PROG{timestamp.Substring(8)}";
 
         coursesPage.ClickCreateCourse();
-        coursesPage.IsCreateFormVisible().Should().BeTrue("Create course form should be visible");
+        Assert.True(coursesPage.IsCreateFormVisible());
 
         // Verify rooms are available in dropdown while modal is open
         var availableRooms = coursesPage.GetAvailableRooms();
-        availableRooms.Should().NotBeEmpty("at least one room should be available in the room options");
+        Assert.NotEmpty(availableRooms);
 
         var selectedRoom = availableRooms.FirstOrDefault(room =>
             room.Contains("Classroom B", StringComparison.OrdinalIgnoreCase) && room.Contains("20"))
@@ -896,11 +895,11 @@ public class AdminTests : BaseTest
     WaitUntil(d => coursesPage.IsCourseVisible(courseName) || d.PageSource.Contains("error"));
 
         // Assert - Verify course was created with all details
-        coursesPage.IsCourseVisible(courseName).Should().BeTrue($"Course '{courseName}' should be visible");
+        Assert.True(coursesPage.IsCourseVisible(courseName));
         
         // Verify course appears in the list with basic info
-        Driver.PageSource.Should().Contain(courseCode, "Course code should be visible");
-        Driver.PageSource.Should().Contain("$150.00", "Fee should be visible");
+        Assert.Contains(courseCode, Driver.PageSource);
+        Assert.Contains("$150.00", Driver.PageSource);
     }
 
     [Fact]
@@ -920,7 +919,7 @@ public class AdminTests : BaseTest
 
         // Act - Try to create course without required fields
         coursesPage.ClickCreateCourse();
-        coursesPage.IsCreateFormVisible().Should().BeTrue("Create form should be visible");
+        Assert.True(coursesPage.IsCreateFormVisible());
 
         // Try to save without filling required fields
         coursesPage.SaveCourse(waitForClose: false);
@@ -930,7 +929,7 @@ public class AdminTests : BaseTest
 
         // Assert - Should show validation error and stay on form
         // Note: This depends on how the frontend handles validation
-        coursesPage.IsCreateFormVisible().Should().BeTrue("Should remain on create form after validation error");
+        Assert.True(coursesPage.IsCreateFormVisible());
     }
 
     #region Helper Methods
@@ -950,7 +949,7 @@ public class AdminTests : BaseTest
     WaitUntil(d => !d.Url.Contains("/login", StringComparison.OrdinalIgnoreCase) && new HomePage(d).IsLoggedIn(), 20);
 
         var homePage = new HomePage(Driver);
-        homePage.IsLoggedIn().Should().BeTrue("Admin login should succeed");
+        Assert.True(homePage.IsLoggedIn());
     }
 
     private void VerifyCanAccessPage(string linkText, string expectedUrlPart)
@@ -965,7 +964,7 @@ public class AdminTests : BaseTest
         WaitForPageLoad();
 
         // Verify navigation
-        Driver.Url.Should().Contain(expectedUrlPart, $"Admin should access {linkText} page");
+        Assert.Contains(expectedUrlPart, Driver.Url);
     }
 
     #region Room Management Tests
@@ -982,8 +981,8 @@ public class AdminTests : BaseTest
         WaitForPageLoad();
 
         // Assert - Should be on rooms page
-        Driver.Url.Should().Contain("/rooms", "Should navigate to rooms page");
-        Driver.PageSource.Should().Contain("Room Management", "Should see room management header");
+        Assert.Contains("/rooms", Driver.Url);
+        Assert.Contains("Room Management", Driver.PageSource);
     }
 
     [Fact]
@@ -995,8 +994,8 @@ public class AdminTests : BaseTest
 
         // Act & Assert - Should see create button
         var createButton = WaitForCreateRoomButton();
-        createButton.Should().NotBeNull("Create room button should be visible");
-        createButton.Text.Should().Contain("Create");
+        Assert.NotNull(createButton);
+        Assert.Contains("Create", createButton.Text);
     }
 
     [Fact]
@@ -1036,9 +1035,9 @@ public class AdminTests : BaseTest
     WaitUntil(d => d.PageSource.Contains(uniqueName));
 
         // Assert - Room should be created and visible
-        Driver.PageSource.Should().Contain(uniqueName, "New room should appear on the page");
-        Driver.PageSource.Should().Contain("Lab", "Room type should be displayed");
-        Driver.PageSource.Should().Contain("25", "Room capacity should be displayed");
+        Assert.Contains(uniqueName, Driver.PageSource);
+        Assert.Contains("Lab", Driver.PageSource);
+        Assert.Contains("25", Driver.PageSource);
     }
 
     [Fact]
@@ -1064,12 +1063,11 @@ public class AdminTests : BaseTest
         WaitForPageLoad();
 
         // Assert - Modal should close and room should not be created
-        Driver.PageSource.Should().NotContain("Cancelled Room", "Cancelled room should not appear");
+        Assert.DoesNotContain("Cancelled Room", Driver.PageSource);
         
         // Modal should be closed
-        var exception = Assert.Throws<NoSuchElementException>(() => 
+        Assert.Throws<NoSuchElementException>(() => 
             Driver.FindElement(By.Id("room-modal")));
-        exception.Should().NotBeNull("Modal should be closed");
     }
 
     [Fact]
@@ -1111,8 +1109,8 @@ public class AdminTests : BaseTest
             WaitUntil(d => d.PageSource.Contains("EDITED"));
 
             // Assert - Changes should be reflected
-            Driver.PageSource.Should().Contain($"{uniqueName} EDITED", "Updated room name should appear");
-            Driver.PageSource.Should().Contain("30", "Updated capacity should be displayed");
+            Assert.Contains($"{uniqueName} EDITED", Driver.PageSource);
+            Assert.Contains("30", Driver.PageSource);
         }
     }
 
@@ -1136,10 +1134,10 @@ public class AdminTests : BaseTest
 
         // Assert - Should show validation errors (browser validation or custom)
         var nameInput = Driver.FindElement(By.Id("room-name-input"));
-        nameInput.GetDomAttribute("required").Should().NotBeNull("Name field should be required");
+        Assert.NotNull(nameInput.GetDomAttribute("required"));
 
         var capacityInput = Driver.FindElement(By.Id("room-capacity-input"));
-        capacityInput.GetDomAttribute("required").Should().NotBeNull("Capacity field should be required");
+        Assert.NotNull(capacityInput.GetDomAttribute("required"));
     }
 
     [Fact]
@@ -1159,8 +1157,8 @@ public class AdminTests : BaseTest
             CreateTestRoom(uniqueName, roomType, 25, $"Test {roomType.ToLower()}");
 
             // Assert - Room should appear with correct type
-            Driver.PageSource.Should().Contain(uniqueName, $"{roomType} room should be created");
-            Driver.PageSource.Should().Contain(roomType, $"Room type {roomType} should be displayed");
+            Assert.Contains(uniqueName, Driver.PageSource);
+            Assert.Contains(roomType, Driver.PageSource);
         }
     }
 

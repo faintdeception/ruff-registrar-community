@@ -1,5 +1,4 @@
 using AutoMapper;
-using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using StudentRegistrar.Api.DTOs;
@@ -54,9 +53,9 @@ public class GradeServiceTests
 
         var result = await _service.GetAllGradesAsync();
 
-        result.Should().HaveCount(1);
-        result.First().LetterGrade.Should().Be("A");
-        result.First().NumericGrade.Should().Be(95m);
+        var grade = Assert.Single(result);
+        Assert.Equal("A", grade.LetterGrade);
+        Assert.Equal(95m, grade.NumericGrade);
     }
 
     // -------------------------------------------------------------------------
@@ -84,9 +83,9 @@ public class GradeServiceTests
 
         var result = await _service.GetGradeByIdAsync(gradeId);
 
-        result.Should().NotBeNull();
-        result!.Id.Should().Be(gradeId);
-        result.LetterGrade.Should().Be("B+");
+        Assert.NotNull(result);
+        Assert.Equal(gradeId, result!.Id);
+        Assert.Equal("B+", result.LetterGrade);
     }
 
     [Fact]
@@ -96,7 +95,7 @@ public class GradeServiceTests
 
         var result = await _service.GetGradeByIdAsync(Guid.NewGuid());
 
-        result.Should().BeNull();
+        Assert.Null(result);
     }
 
     // -------------------------------------------------------------------------
@@ -126,8 +125,8 @@ public class GradeServiceTests
 
         var result = await _service.GetGradesByStudentAsync(studentId);
 
-        result.Should().HaveCount(1);
-        result.First().StudentId.Should().Be(studentId);
+        var grade = Assert.Single(result);
+        Assert.Equal(studentId, grade.StudentId);
     }
 
     // -------------------------------------------------------------------------
@@ -157,8 +156,8 @@ public class GradeServiceTests
 
         var result = await _service.GetGradesByCourseAsync(courseId);
 
-        result.Should().HaveCount(1);
-        result.First().CourseId.Should().Be(courseId);
+        var grade = Assert.Single(result);
+        Assert.Equal(courseId, grade.CourseId);
     }
 
     // -------------------------------------------------------------------------
@@ -192,10 +191,10 @@ public class GradeServiceTests
 
         var result = await _service.CreateGradeAsync(createDto);
 
-        result.StudentId.Should().Be(studentId);
-        result.CourseId.Should().Be(courseId);
-        result.LetterGrade.Should().Be("A");
-        result.NumericGrade.Should().Be(97m);
+        Assert.Equal(studentId, result.StudentId);
+        Assert.Equal(courseId, result.CourseId);
+        Assert.Equal("A", result.LetterGrade);
+        Assert.Equal(97m, result.NumericGrade);
 
         _gradeRepository.Verify(r => r.CreateAsync(It.Is<GradeRecord>(g =>
             g.StudentId == studentId &&
@@ -237,9 +236,9 @@ public class GradeServiceTests
 
         var result = await _service.UpdateGradeAsync(gradeId, updateDto);
 
-        result.Should().NotBeNull();
-        result!.Id.Should().Be(gradeId);
-        result.LetterGrade.Should().Be("A");
+        Assert.NotNull(result);
+        Assert.Equal(gradeId, result!.Id);
+        Assert.Equal("A", result.LetterGrade);
 
         _gradeRepository.Verify(r => r.UpdateAsync(existing), Times.Once);
     }
@@ -256,7 +255,7 @@ public class GradeServiceTests
             GradeDate = DateTime.UtcNow
         });
 
-        result.Should().BeNull();
+        Assert.Null(result);
         _gradeRepository.Verify(r => r.UpdateAsync(It.IsAny<GradeRecord>()), Times.Never);
     }
 
@@ -272,7 +271,7 @@ public class GradeServiceTests
 
         var result = await _service.DeleteGradeAsync(id);
 
-        result.Should().BeTrue();
+        Assert.True(result);
     }
 
     [Fact]
@@ -282,6 +281,6 @@ public class GradeServiceTests
 
         var result = await _service.DeleteGradeAsync(Guid.NewGuid());
 
-        result.Should().BeFalse();
+        Assert.False(result);
     }
 }

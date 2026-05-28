@@ -1,6 +1,5 @@
 using AutoMapper;
 using Microsoft.Extensions.DependencyInjection;
-using FluentAssertions;
 using Moq;
 using StudentRegistrar.Api.DTOs;
 using StudentRegistrar.Api.Services;
@@ -51,9 +50,9 @@ public class AccountHolderServiceTests
 
         var result = await _service.LinkAccountHolderToUserAsync(accountHolder.EmailAddress, "current-token-sub");
 
-        result.Should().NotBeNull();
-        result!.Id.Should().Be(accountHolder.Id.ToString());
-        result.EmailAddress.Should().Be(accountHolder.EmailAddress);
+        Assert.NotNull(result);
+        Assert.Equal(accountHolder.Id.ToString(), result!.Id);
+        Assert.Equal(accountHolder.EmailAddress, result.EmailAddress);
 
         _accountHolderRepository.Verify(r => r.UpdateAsync(It.Is<AccountHolder>(a =>
             a.Id == accountHolder.Id &&
@@ -69,7 +68,7 @@ public class AccountHolderServiceTests
 
         var result = await _service.LinkAccountHolderToUserAsync("missing@example.com", "current-token-sub");
 
-        result.Should().BeNull();
+        Assert.Null(result);
         _accountHolderRepository.Verify(r => r.UpdateAsync(It.IsAny<AccountHolder>()), Times.Never);
     }
 
@@ -89,7 +88,7 @@ public class AccountHolderServiceTests
 
         var result = await _service.GetAllAccountHoldersAsync();
 
-        result.Should().HaveCount(2);
+        Assert.Equal(2, result.Count());
     }
 
     // -------------------------------------------------------------------------
@@ -104,7 +103,7 @@ public class AccountHolderServiceTests
 
         var result = await _service.GetAccountHolderByUserIdAsync("kc-abc");
 
-        result.Should().NotBeNull();
+        Assert.NotNull(result);
     }
 
     [Fact]
@@ -114,7 +113,7 @@ public class AccountHolderServiceTests
 
         var result = await _service.GetAccountHolderByUserIdAsync("kc-missing");
 
-        result.Should().BeNull();
+        Assert.Null(result);
     }
 
     // -------------------------------------------------------------------------
@@ -130,7 +129,7 @@ public class AccountHolderServiceTests
 
         var result = await _service.GetAccountHolderByIdAsync(id);
 
-        result.Should().NotBeNull();
+        Assert.NotNull(result);
     }
 
     [Fact]
@@ -140,7 +139,7 @@ public class AccountHolderServiceTests
 
         var result = await _service.GetAccountHolderByIdAsync(Guid.NewGuid());
 
-        result.Should().BeNull();
+        Assert.Null(result);
     }
 
     // -------------------------------------------------------------------------
@@ -157,7 +156,7 @@ public class AccountHolderServiceTests
 
         var result = await _service.CreateAccountHolderAsync(dto, keycloakId);
 
-        result.Should().NotBeNull();
+        Assert.NotNull(result);
         _accountHolderRepository.Verify(
             r => r.CreateAsync(It.Is<AccountHolder>(h => h.KeycloakUserId == keycloakId)),
             Times.Once);
@@ -178,7 +177,7 @@ public class AccountHolderServiceTests
 
         var result = await _service.UpdateAccountHolderAsync(id, new UpdateAccountHolderDto { FirstName = "Janet" });
 
-        result.Should().NotBeNull();
+        Assert.NotNull(result);
         _accountHolderRepository.Verify(r => r.UpdateAsync(It.IsAny<AccountHolder>()), Times.Once);
     }
 
@@ -189,7 +188,7 @@ public class AccountHolderServiceTests
 
         var result = await _service.UpdateAccountHolderAsync(Guid.NewGuid(), new UpdateAccountHolderDto());
 
-        result.Should().BeNull();
+        Assert.Null(result);
         _accountHolderRepository.Verify(r => r.UpdateAsync(It.IsAny<AccountHolder>()), Times.Never);
     }
 
@@ -204,6 +203,6 @@ public class AccountHolderServiceTests
 
         var result = await _service.RemoveStudentFromAccountAsync(Guid.NewGuid(), Guid.NewGuid());
 
-        result.Should().BeFalse();
+        Assert.False(result);
     }
 }

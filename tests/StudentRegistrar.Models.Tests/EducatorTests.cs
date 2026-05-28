@@ -1,4 +1,3 @@
-using FluentAssertions;
 using StudentRegistrar.Models;
 using System.Text.Json;
 using Xunit;
@@ -12,17 +11,18 @@ public class EducatorTests
     {
         // Act
         var educator = new Educator();
+        var now = DateTime.UtcNow;
 
         // Assert
-        educator.Id.Should().NotBeEmpty();
-        educator.FirstName.Should().BeEmpty();
-        educator.LastName.Should().BeEmpty();
-        educator.Email.Should().BeNull();
-        educator.Phone.Should().BeNull();
-        educator.IsActive.Should().BeTrue();
-        educator.EducatorInfoJson.Should().Be("{}");
-        educator.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
-        educator.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
+        Assert.NotEqual(Guid.Empty, educator.Id);
+        Assert.Equal(string.Empty, educator.FirstName);
+        Assert.Equal(string.Empty, educator.LastName);
+        Assert.Null(educator.Email);
+        Assert.Null(educator.Phone);
+        Assert.True(educator.IsActive);
+        Assert.Equal("{}", educator.EducatorInfoJson);
+        Assert.InRange(educator.CreatedAt, now - TimeSpan.FromSeconds(1), now + TimeSpan.FromSeconds(1));
+        Assert.InRange(educator.UpdatedAt, now - TimeSpan.FromSeconds(1), now + TimeSpan.FromSeconds(1));
     }
 
     [Fact]
@@ -36,7 +36,7 @@ public class EducatorTests
         };
 
         // Act & Assert
-        educator.FullName.Should().Be("Dr. Sarah Wilson");
+        Assert.Equal("Dr. Sarah Wilson", educator.FullName);
     }
 
     [Fact]
@@ -62,20 +62,20 @@ public class EducatorTests
         var retrievedInfo = educator.GetEducatorInfo();
 
         // Assert
-        retrievedInfo.Should().NotBeNull();
-        retrievedInfo.Bio.Should().Be("Experienced mathematics teacher with 15 years in education");
-        retrievedInfo.Qualifications.Should().HaveCount(3);
-        retrievedInfo.Qualifications.Should().Contain("M.Ed. Mathematics");
-        retrievedInfo.Qualifications.Should().Contain("State Teaching Certificate");
-        retrievedInfo.Qualifications.Should().Contain("AP Calculus Certified");
-        retrievedInfo.Specializations.Should().HaveCount(3);
-        retrievedInfo.Specializations.Should().Contain("Advanced Mathematics");
-        retrievedInfo.Specializations.Should().Contain("Statistics");
-        retrievedInfo.Department.Should().Be("Mathematics");
-        retrievedInfo.CustomFields.Should().ContainKey("Office");
-        retrievedInfo.CustomFields["Office"].Should().Be("Room 204");
-        retrievedInfo.CustomFields.Should().ContainKey("OfficeHours");
-        retrievedInfo.CustomFields["OfficeHours"].Should().Be("Mon-Fri 3-4 PM");
+        Assert.NotNull(retrievedInfo);
+        Assert.Equal("Experienced mathematics teacher with 15 years in education", retrievedInfo.Bio);
+        Assert.Equal(3, retrievedInfo.Qualifications.Count);
+        Assert.Contains("M.Ed. Mathematics", retrievedInfo.Qualifications);
+        Assert.Contains("State Teaching Certificate", retrievedInfo.Qualifications);
+        Assert.Contains("AP Calculus Certified", retrievedInfo.Qualifications);
+        Assert.Equal(3, retrievedInfo.Specializations.Count);
+        Assert.Contains("Advanced Mathematics", retrievedInfo.Specializations);
+        Assert.Contains("Statistics", retrievedInfo.Specializations);
+        Assert.Equal("Mathematics", retrievedInfo.Department);
+        Assert.Contains("Office", retrievedInfo.CustomFields.Keys);
+        Assert.Equal("Room 204", retrievedInfo.CustomFields["Office"]);
+        Assert.Contains("OfficeHours", retrievedInfo.CustomFields.Keys);
+        Assert.Equal("Mon-Fri 3-4 PM", retrievedInfo.CustomFields["OfficeHours"]);
     }
 
     [Fact]
@@ -91,12 +91,15 @@ public class EducatorTests
         var info = educator.GetEducatorInfo();
 
         // Assert
-        info.Should().NotBeNull();
-        info.Bio.Should().BeNull();
-        info.Qualifications.Should().NotBeNull().And.BeEmpty();
-        info.Specializations.Should().NotBeNull().And.BeEmpty();
-        info.Department.Should().BeNull();
-        info.CustomFields.Should().NotBeNull().And.BeEmpty();
+        Assert.NotNull(info);
+        Assert.Null(info.Bio);
+        Assert.NotNull(info.Qualifications);
+        Assert.Empty(info.Qualifications);
+        Assert.NotNull(info.Specializations);
+        Assert.Empty(info.Specializations);
+        Assert.Null(info.Department);
+        Assert.NotNull(info.CustomFields);
+        Assert.Empty(info.CustomFields);
     }
 
     [Fact]
@@ -115,14 +118,14 @@ public class EducatorTests
         educator.SetEducatorInfo(educatorInfo);
 
         // Assert
-        educator.EducatorInfoJson.Should().NotBe("{}");
+        Assert.NotEqual("{}", educator.EducatorInfoJson);
         
         // Verify we can deserialize it back
         var deserializedInfo = JsonSerializer.Deserialize<EducatorInfo>(educator.EducatorInfoJson);
-        deserializedInfo.Should().NotBeNull();
-        deserializedInfo!.Bio.Should().Be("Test bio");
-        deserializedInfo.Qualifications.Should().Contain("Test Qualification");
-        deserializedInfo.Department.Should().Be("Test Department");
+        Assert.NotNull(deserializedInfo);
+        Assert.Equal("Test bio", deserializedInfo!.Bio);
+        Assert.Contains("Test Qualification", deserializedInfo.Qualifications);
+        Assert.Equal("Test Department", deserializedInfo.Department);
     }
 
     [Theory]
@@ -141,7 +144,7 @@ public class EducatorTests
         };
 
         // Act & Assert
-        educator.FullName.Should().Be(expected);
+        Assert.Equal(expected, educator.FullName);
     }
 
     [Fact]
@@ -151,9 +154,12 @@ public class EducatorTests
         var educatorInfo = new EducatorInfo();
 
         // Assert
-        educatorInfo.Qualifications.Should().NotBeNull().And.BeEmpty();
-        educatorInfo.Specializations.Should().NotBeNull().And.BeEmpty();
-        educatorInfo.CustomFields.Should().NotBeNull().And.BeEmpty();
+        Assert.NotNull(educatorInfo.Qualifications);
+        Assert.Empty(educatorInfo.Qualifications);
+        Assert.NotNull(educatorInfo.Specializations);
+        Assert.Empty(educatorInfo.Specializations);
+        Assert.NotNull(educatorInfo.CustomFields);
+        Assert.Empty(educatorInfo.CustomFields);
     }
 
     [Theory]
@@ -169,7 +175,7 @@ public class EducatorTests
         educator.Email = email;
 
         // Assert
-        educator.Email.Should().Be(email);
+        Assert.Equal(email, educator.Email);
     }
 
     [Theory]
@@ -186,7 +192,7 @@ public class EducatorTests
         educator.Phone = phone;
 
         // Assert
-        educator.Phone.Should().Be(phone);
+        Assert.Equal(phone, educator.Phone);
     }
 
     [Fact]
@@ -196,19 +202,19 @@ public class EducatorTests
         var educator = new Educator();
 
         // Default should be active
-        educator.IsActive.Should().BeTrue();
+        Assert.True(educator.IsActive);
 
         // Act - deactivate
         educator.IsActive = false;
 
         // Assert
-        educator.IsActive.Should().BeFalse();
+        Assert.False(educator.IsActive);
 
         // Act - reactivate
         educator.IsActive = true;
 
         // Assert
-        educator.IsActive.Should().BeTrue();
+        Assert.True(educator.IsActive);
     }
 
     [Fact]
@@ -224,8 +230,8 @@ public class EducatorTests
         };
 
         // Assert
-        educator.IsActive.Should().BeTrue();
-        educator.FullName.Should().Be("Independent Teacher");
+        Assert.True(educator.IsActive);
+        Assert.Equal("Independent Teacher", educator.FullName);
     }
 
     [Fact]
@@ -271,11 +277,11 @@ public class EducatorTests
         var retrievedInfo = educator.GetEducatorInfo();
 
         // Assert
-        retrievedInfo.Should().NotBeNull();
-        retrievedInfo.Qualifications.Should().HaveCount(6);
-        retrievedInfo.Specializations.Should().HaveCount(6);
-        retrievedInfo.CustomFields.Should().HaveCount(6);
-        retrievedInfo.CustomFields["YearsExperience"].Should().Be("22");
-        retrievedInfo.CustomFields["ResearchInterests"].Should().Be("Mathematics anxiety, visual learning in calculus");
+        Assert.NotNull(retrievedInfo);
+        Assert.Equal(6, retrievedInfo.Qualifications.Count);
+        Assert.Equal(6, retrievedInfo.Specializations.Count);
+        Assert.Equal(6, retrievedInfo.CustomFields.Count);
+        Assert.Equal("22", retrievedInfo.CustomFields["YearsExperience"]);
+        Assert.Equal("Mathematics anxiety, visual learning in calculus", retrievedInfo.CustomFields["ResearchInterests"]);
     }
 }

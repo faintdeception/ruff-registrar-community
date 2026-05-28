@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -48,9 +47,8 @@ public class EducatorsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(expectedEducators);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Same(expectedEducators, okResult.Value);
     }
 
     [Fact]
@@ -66,9 +64,8 @@ public class EducatorsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<ObjectResult>();
-        var objectResult = actionResult as ObjectResult;
-        objectResult!.StatusCode.Should().Be(500);
+        var objectResult = Assert.IsType<ObjectResult>(actionResult);
+        Assert.Equal(500, objectResult.StatusCode);
     }
 
     [Fact]
@@ -93,9 +90,8 @@ public class EducatorsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<OkObjectResult>();
-        var okResult = actionResult as OkObjectResult;
-        okResult!.Value.Should().BeEquivalentTo(expectedEducator);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult);
+        Assert.Same(expectedEducator, okResult.Value);
     }
 
     [Fact]
@@ -113,7 +109,7 @@ public class EducatorsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(actionResult);
     }
 
     [Fact]
@@ -130,9 +126,8 @@ public class EducatorsControllerTests
 
         // Assert
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<ObjectResult>();
-        var objectResult = actionResult as ObjectResult;
-        objectResult!.StatusCode.Should().Be(500);
+        var objectResult = Assert.IsType<ObjectResult>(actionResult);
+        Assert.Equal(500, objectResult.StatusCode);
     }
 
     // Note: Admin-only operations (Create, Update, Delete, Activate, Deactivate) 
@@ -154,7 +149,7 @@ public class EducatorsControllerTests
 
         // Assert - Without proper JWT token, the auth check fails and returns Forbid
         var actionResult = result.Result;
-        actionResult.Should().BeOfType<ForbidResult>();
+        Assert.IsType<ForbidResult>(actionResult);
     }
 
     [Fact]
@@ -167,6 +162,6 @@ public class EducatorsControllerTests
         var result = await _controller.DeleteEducator(educatorId);
 
         // Assert
-        result.Should().BeOfType<ForbidResult>();
+        Assert.IsType<ForbidResult>(result);
     }
 }

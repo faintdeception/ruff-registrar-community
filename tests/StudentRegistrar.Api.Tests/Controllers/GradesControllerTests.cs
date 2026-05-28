@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -38,8 +37,8 @@ public class GradesControllerTests
 
         var result = await _controller.GetGrades();
 
-        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().BeEquivalentTo(grades);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Same(grades, okResult.Value);
     }
 
     // -------------------------------------------------------------------------
@@ -55,8 +54,8 @@ public class GradesControllerTests
 
         var result = await _controller.GetGrade(id);
 
-        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().BeEquivalentTo(dto);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Same(dto, okResult.Value);
     }
 
     [Fact]
@@ -66,7 +65,7 @@ public class GradesControllerTests
 
         var result = await _controller.GetGrade(Guid.NewGuid());
 
-        result.Result.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(result.Result);
     }
 
     // -------------------------------------------------------------------------
@@ -99,10 +98,10 @@ public class GradesControllerTests
 
         var result = await _controller.CreateGrade(createDto);
 
-        var createdResult = result.Result.Should().BeOfType<CreatedAtActionResult>().Subject;
-        createdResult.StatusCode.Should().Be(201);
-        createdResult.ActionName.Should().Be(nameof(GradesController.GetGrade));
-        createdResult.Value.Should().BeEquivalentTo(created);
+        var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
+        Assert.Equal(201, createdResult.StatusCode);
+        Assert.Equal(nameof(GradesController.GetGrade), createdResult.ActionName);
+        Assert.Same(created, createdResult.Value);
     }
 
     // -------------------------------------------------------------------------
@@ -125,8 +124,8 @@ public class GradesControllerTests
 
         var result = await _controller.UpdateGrade(id, updateDto);
 
-        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().BeEquivalentTo(updated);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Same(updated, okResult.Value);
     }
 
     [Fact]
@@ -143,7 +142,7 @@ public class GradesControllerTests
             GradeDate = DateTime.UtcNow
         });
 
-        result.Result.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(result.Result);
     }
 
     // -------------------------------------------------------------------------
@@ -158,7 +157,7 @@ public class GradesControllerTests
 
         var result = await _controller.DeleteGrade(id);
 
-        result.Should().BeOfType<NoContentResult>();
+        Assert.IsType<NoContentResult>(result);
     }
 
     [Fact]
@@ -168,7 +167,7 @@ public class GradesControllerTests
 
         var result = await _controller.DeleteGrade(Guid.NewGuid());
 
-        result.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(result);
     }
 
     // -------------------------------------------------------------------------
@@ -187,8 +186,8 @@ public class GradesControllerTests
 
         var result = await _controller.GetGradesByStudent(studentId);
 
-        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().BeEquivalentTo(grades);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Same(grades, okResult.Value);
     }
 
     // -------------------------------------------------------------------------
@@ -207,7 +206,7 @@ public class GradesControllerTests
 
         var result = await _controller.GetGradesByCourse(courseId);
 
-        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().BeEquivalentTo(grades);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Same(grades, okResult.Value);
     }
 }

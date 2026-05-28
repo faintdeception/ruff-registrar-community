@@ -1,6 +1,5 @@
 using AutoMapper;
 using Microsoft.Extensions.DependencyInjection;
-using FluentAssertions;
 using Moq;
 using StudentRegistrar.Api.DTOs;
 using StudentRegistrar.Api.Services;
@@ -67,12 +66,12 @@ public class EducatorServiceTests
 
         var result = await _service.InviteEducatorAsync(request);
 
-        result.Credentials.Should().NotBeNull();
-        result.Credentials!.Username.Should().Be(request.Email);
-        result.Credentials.TemporaryPassword.Should().Be("TempPass123!");
-        result.Educator.Email.Should().Be(request.Email);
-        result.Educator.KeycloakUserId.Should().Be(keycloakUserId);
-        result.Educator.EducatorInfo.Department.Should().Be("STEM");
+        Assert.NotNull(result.Credentials);
+        Assert.Equal(request.Email, result.Credentials!.Username);
+        Assert.Equal("TempPass123!", result.Credentials.TemporaryPassword);
+        Assert.Equal(request.Email, result.Educator.Email);
+        Assert.Equal(keycloakUserId, result.Educator.KeycloakUserId);
+        Assert.Equal("STEM", result.Educator.EducatorInfo.Department);
 
         _keycloakService.Verify(s => s.UpdateUserRoleAsync(keycloakUserId, UserRole.Educator), Times.Once);
         _educatorRepository.Verify(r => r.CreateAsync(It.Is<Educator>(e =>
@@ -120,14 +119,14 @@ public class EducatorServiceTests
 
         var result = await _service.InviteEducatorAsync(request);
 
-        result.Credentials.Should().BeNull();
-        result.Educator.AccountHolderId.Should().Be(accountHolderId);
-        result.Educator.KeycloakUserId.Should().Be(keycloakUserId);
-        result.Educator.FirstName.Should().Be(accountHolder.FirstName);
-        result.Educator.LastName.Should().Be(accountHolder.LastName);
-        result.Educator.Email.Should().Be(accountHolder.EmailAddress);
-        result.Educator.Phone.Should().Be(accountHolder.MobilePhone);
-        result.Message.Should().Contain("authorized");
+        Assert.Null(result.Credentials);
+        Assert.Equal(accountHolderId, result.Educator.AccountHolderId);
+        Assert.Equal(keycloakUserId, result.Educator.KeycloakUserId);
+        Assert.Equal(accountHolder.FirstName, result.Educator.FirstName);
+        Assert.Equal(accountHolder.LastName, result.Educator.LastName);
+        Assert.Equal(accountHolder.EmailAddress, result.Educator.Email);
+        Assert.Equal(accountHolder.MobilePhone, result.Educator.Phone);
+        Assert.Contains("authorized", result.Message);
 
         _keycloakService.Verify(s => s.CreateUserAsync(It.IsAny<CreateUserRequest>()), Times.Never);
         _keycloakService.Verify(s => s.UpdateUserRoleAsync(keycloakUserId, UserRole.Educator), Times.Once);
@@ -191,12 +190,12 @@ public class EducatorServiceTests
 
         var result = await _service.InviteEducatorAsync(request);
 
-        result.Credentials.Should().NotBeNull();
-        result.Credentials!.Username.Should().Be(accountHolder.EmailAddress);
-        result.Credentials.TemporaryPassword.Should().Be("TempPass123!");
-        result.Educator.AccountHolderId.Should().Be(accountHolderId);
-        result.Educator.KeycloakUserId.Should().Be(keycloakUserId);
-        accountHolder.KeycloakUserId.Should().Be(keycloakUserId);
+        Assert.NotNull(result.Credentials);
+        Assert.Equal(accountHolder.EmailAddress, result.Credentials!.Username);
+        Assert.Equal("TempPass123!", result.Credentials.TemporaryPassword);
+        Assert.Equal(accountHolderId, result.Educator.AccountHolderId);
+        Assert.Equal(keycloakUserId, result.Educator.KeycloakUserId);
+        Assert.Equal(keycloakUserId, accountHolder.KeycloakUserId);
 
         _accountHolderRepository.Verify(r => r.UpdateAsync(It.Is<AccountHolder>(a =>
             a.Id == accountHolderId &&
@@ -260,12 +259,12 @@ public class EducatorServiceTests
 
         var result = await _service.InviteEducatorAsync(request);
 
-        result.Credentials.Should().BeNull();
-        result.Message.Should().Contain("authorized");
-        result.Educator.Id.Should().Be(existingEducator.Id);
-        result.Educator.IsActive.Should().BeTrue();
-        result.Educator.KeycloakUserId.Should().Be(keycloakUserId);
-        result.Educator.EducatorInfo.Department.Should().Be("Science");
+        Assert.Null(result.Credentials);
+        Assert.Contains("authorized", result.Message);
+        Assert.Equal(existingEducator.Id, result.Educator.Id);
+        Assert.True(result.Educator.IsActive);
+        Assert.Equal(keycloakUserId, result.Educator.KeycloakUserId);
+        Assert.Equal("Science", result.Educator.EducatorInfo.Department);
 
         _keycloakService.Verify(s => s.UpdateUserRoleAsync(keycloakUserId, UserRole.Educator), Times.Once);
         _educatorRepository.Verify(r => r.CreateAsync(It.IsAny<Educator>()), Times.Never);
@@ -287,7 +286,7 @@ public class EducatorServiceTests
 
         var result = await _service.DeleteEducatorAsync(educatorId);
 
-        result.Should().Be(DeleteEducatorResult.HardDeleted);
+        Assert.Equal(DeleteEducatorResult.HardDeleted, result);
         _educatorRepository.Verify(r => r.DeleteAsync(educatorId), Times.Once);
         _educatorRepository.Verify(r => r.SoftDeleteAsync(It.IsAny<Guid>()), Times.Never);
     }
@@ -307,7 +306,7 @@ public class EducatorServiceTests
 
         var result = await _service.DeleteEducatorAsync(educatorId);
 
-        result.Should().Be(DeleteEducatorResult.SoftDeleted);
+        Assert.Equal(DeleteEducatorResult.SoftDeleted, result);
         _educatorRepository.Verify(r => r.SoftDeleteAsync(educatorId), Times.Once);
         _educatorRepository.Verify(r => r.DeleteAsync(It.IsAny<Guid>()), Times.Never);
     }
@@ -327,6 +326,6 @@ public class EducatorServiceTests
 
         var result = await _service.DeleteEducatorAsync(educatorId);
 
-        result.Should().Be(DeleteEducatorResult.NotFound);
+        Assert.Equal(DeleteEducatorResult.NotFound, result);
     }
 }

@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -50,8 +49,8 @@ public class SemestersControllerTests
 
         var result = await _controller.GetSemesters();
 
-        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().BeEquivalentTo(semesters);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Same(semesters, okResult.Value);
     }
 
     // -------------------------------------------------------------------------
@@ -67,8 +66,8 @@ public class SemestersControllerTests
 
         var result = await _controller.GetSemester(id);
 
-        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().BeEquivalentTo(dto);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Same(dto, okResult.Value);
     }
 
     [Fact]
@@ -78,7 +77,7 @@ public class SemestersControllerTests
 
         var result = await _controller.GetSemester(Guid.NewGuid());
 
-        result.Result.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(result.Result);
     }
 
     // -------------------------------------------------------------------------
@@ -93,8 +92,8 @@ public class SemestersControllerTests
 
         var result = await _controller.GetActiveSemester();
 
-        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().BeEquivalentTo(dto);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Same(dto, okResult.Value);
     }
 
     [Fact]
@@ -104,7 +103,7 @@ public class SemestersControllerTests
 
         var result = await _controller.GetActiveSemester();
 
-        result.Result.Should().BeOfType<NotFoundObjectResult>();
+        Assert.IsType<NotFoundObjectResult>(result.Result);
     }
 
     // -------------------------------------------------------------------------
@@ -130,10 +129,10 @@ public class SemestersControllerTests
 
         var result = await _controller.CreateSemester(createDto);
 
-        var createdResult = result.Result.Should().BeOfType<CreatedAtActionResult>().Subject;
-        createdResult.StatusCode.Should().Be(201);
-        createdResult.ActionName.Should().Be(nameof(SemestersController.GetSemester));
-        createdResult.Value.Should().BeEquivalentTo(created);
+        var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
+        Assert.Equal(201, createdResult.StatusCode);
+        Assert.Equal(nameof(SemestersController.GetSemester), createdResult.ActionName);
+        Assert.Same(created, createdResult.Value);
     }
 
     // -------------------------------------------------------------------------
@@ -159,8 +158,8 @@ public class SemestersControllerTests
 
         var result = await _controller.UpdateSemester(id, updateDto);
 
-        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().BeEquivalentTo(updated);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Same(updated, okResult.Value);
     }
 
     [Fact]
@@ -175,7 +174,7 @@ public class SemestersControllerTests
             Name = "X", Code = "X"
         });
 
-        result.Result.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(result.Result);
     }
 
     // -------------------------------------------------------------------------
@@ -190,7 +189,7 @@ public class SemestersControllerTests
 
         var result = await _controller.DeleteSemester(id);
 
-        result.Should().BeOfType<NoContentResult>();
+        Assert.IsType<NoContentResult>(result);
     }
 
     [Fact]
@@ -200,6 +199,6 @@ public class SemestersControllerTests
 
         var result = await _controller.DeleteSemester(Guid.NewGuid());
 
-        result.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(result);
     }
 }

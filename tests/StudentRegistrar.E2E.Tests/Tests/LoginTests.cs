@@ -1,4 +1,3 @@
-using FluentAssertions;
 using OpenQA.Selenium;
 using StudentRegistrar.E2E.Tests.Base;
 using StudentRegistrar.E2E.Tests.Pages;
@@ -16,12 +15,12 @@ public class LoginTests : BaseTest
         WaitForPageLoad();
 
         // Assert - Home page should redirect to the app login entry page when not authenticated.
-        Driver.Url.Should().Contain("/login", "Unauthenticated users should be redirected to login page");
-        Driver.PageSource.Should().Contain("Sign in with Keycloak", "the app login page should direct users to the hosted Keycloak login form");
-        Driver.PageSource.Should().Contain("Credentials are entered directly with Keycloak", "the login page should explain that authentication happens on the hosted provider");
+        Assert.Contains("/login", Driver.Url);
+        Assert.Contains("Sign in with Keycloak", Driver.PageSource);
+        Assert.Contains("Credentials are entered directly with Keycloak", Driver.PageSource);
         
         var loginPage = new LoginPage(Driver);
-        loginPage.IsOnLoginPage().Should().BeTrue("Should display the login entry page on home page");
+        Assert.True(loginPage.IsOnLoginPage());
     }
 
     [Fact]
@@ -40,7 +39,7 @@ public class LoginTests : BaseTest
         }
         
         var loginPage = new LoginPage(Driver);
-        loginPage.IsOnLoginPage().Should().BeTrue("Should be on login page");
+        Assert.True(loginPage.IsOnLoginPage());
 
         // Act - Try to login with invalid credentials
         loginPage.Login("invalid_user", "invalid_password");
@@ -55,14 +54,14 @@ public class LoginTests : BaseTest
             15);
 
         // Assert - Should show an auth error and avoid redirecting into the app.
-        Driver.Url.Should().NotStartWith(BaseUrl, "invalid credentials should not result in an authenticated app session");
+        Assert.False(Driver.Url.StartsWith(BaseUrl, StringComparison.OrdinalIgnoreCase));
         
         var errorDisplayed = Driver.PageSource.Contains("Login Error") ||
                            Driver.PageSource.Contains("Invalid user credentials") ||
                            Driver.PageSource.Contains("Invalid username or password") ||
                            Driver.PageSource.Contains("username or password", StringComparison.OrdinalIgnoreCase);
         
-        errorDisplayed.Should().BeTrue("Should display an authentication error after invalid credentials");
+        Assert.True(errorDisplayed);
     }
 
     [Fact]
@@ -74,7 +73,7 @@ public class LoginTests : BaseTest
         WaitForPageLoad();
         
         var loginPage = new LoginPage(Driver);
-        loginPage.IsOnLoginPage().Should().BeTrue("Should be on login page");
+        Assert.True(loginPage.IsOnLoginPage());
 
         // Get credentials from configuration
         var username = Configuration["TestCredentials:ValidUser:Username"] ?? "admin1";
@@ -88,11 +87,11 @@ public class LoginTests : BaseTest
     WaitForUrlContains("/");
 
         // Assert - Should be redirected to home page and be logged in
-        Driver.Url.Should().NotContain("/login", "Should be redirected away from login page");
-        Driver.Url.Should().StartWith(BaseUrl, "Should be on the application");
+        Assert.DoesNotContain("/login", Driver.Url);
+        Assert.StartsWith(BaseUrl, Driver.Url);
         
         var homePage = new HomePage(Driver);
-        homePage.IsLoggedIn().Should().BeTrue("Should be logged in with valid credentials");
+        Assert.True(homePage.IsLoggedIn());
     }
 
     [Fact]
@@ -111,7 +110,7 @@ public class LoginTests : BaseTest
     WaitForUrlContains("/");
 
         var homePage = new HomePage(Driver);
-        homePage.IsLoggedIn().Should().BeTrue("Should be logged in before logout test");
+        Assert.True(homePage.IsLoggedIn());
 
         // Act - Logout using the logout button
         homePage.ClickLogout();
@@ -121,10 +120,10 @@ public class LoginTests : BaseTest
     WaitForUrlContains("/login");
 
         // Assert - Should be redirected back to login page
-        Driver.Url.Should().Contain("/login", "Should be redirected to login page after logout");
+        Assert.Contains("/login", Driver.Url);
         
         var loginPageAfterLogout = new LoginPage(Driver);
-        loginPageAfterLogout.IsOnLoginPage().Should().BeTrue("Should display login form after logout");
+        Assert.True(loginPageAfterLogout.IsOnLoginPage());
     }
 
     [Fact]
@@ -136,7 +135,7 @@ public class LoginTests : BaseTest
     NavigateToHome();
     WaitForPageLoad();
     WaitForUrlContains("/login");
-    Driver.Url.Should().Contain("/login", "Step 1: Should redirect to login when not authenticated");
+    Assert.Contains("/login", Driver.Url);
 
         // Step 2: Login with valid credentials
         var loginPage = new LoginPage(Driver);
@@ -148,9 +147,9 @@ public class LoginTests : BaseTest
     WaitForUrlContains("/");
 
         // Step 3: Verify logged in and on home page
-        Driver.Url.Should().NotContain("/login", "Step 3: Should be redirected away from login page");
+        Assert.DoesNotContain("/login", Driver.Url);
         var homePage = new HomePage(Driver);
-        homePage.IsLoggedIn().Should().BeTrue("Step 3: Should be logged in");
+        Assert.True(homePage.IsLoggedIn());
 
     // Step 4: Logout
     homePage.ClickLogout();
@@ -159,8 +158,8 @@ public class LoginTests : BaseTest
 
     // Step 5: Verify redirected back to login
     WaitForUrlContains("/login");
-    Driver.Url.Should().Contain("/login", "Step 5: Should be redirected to login page after logout");
+    Assert.Contains("/login", Driver.Url);
     var loginPageAfterLogout = new LoginPage(Driver);
-    loginPageAfterLogout.IsOnLoginPage().Should().BeTrue("Step 5: Should display login form after logout");
+    Assert.True(loginPageAfterLogout.IsOnLoginPage());
     }
 }

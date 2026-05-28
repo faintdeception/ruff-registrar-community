@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using FluentAssertions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -23,9 +22,9 @@ public class TenantAuthorizationTests
 
         var options = provider.GetRequiredService<IOptions<AuthorizationOptions>>().Value;
 
-        options.DefaultPolicy.Requirements.Should().Contain(r => r is DenyAnonymousAuthorizationRequirement);
-        options.DefaultPolicy.Requirements.Should().Contain(r => r is TenantMembershipRequirement);
-        options.GetPolicy("TenantMember")!.Requirements.Should().Contain(r => r is TenantMembershipRequirement);
+        Assert.Contains(options.DefaultPolicy.Requirements, requirement => requirement is DenyAnonymousAuthorizationRequirement);
+        Assert.Contains(options.DefaultPolicy.Requirements, requirement => requirement is TenantMembershipRequirement);
+        Assert.Contains(options.GetPolicy("TenantMember")!.Requirements, requirement => requirement is TenantMembershipRequirement);
     }
 
     [Fact]
@@ -35,7 +34,7 @@ public class TenantAuthorizationTests
 
         var result = await AuthorizeAsync(provider, "user-1");
 
-        result.Succeeded.Should().BeFalse();
+        Assert.False(result.Succeeded);
     }
 
     [Fact]
@@ -47,7 +46,7 @@ public class TenantAuthorizationTests
 
         var result = await AuthorizeAsync(provider, user.KeycloakId);
 
-        result.Succeeded.Should().BeTrue();
+        Assert.True(result.Succeeded);
     }
 
     [Fact]
@@ -60,7 +59,7 @@ public class TenantAuthorizationTests
 
         var result = await AuthorizeAsync(provider, user.KeycloakId, "Member", "Educator");
 
-        result.Succeeded.Should().BeFalse();
+        Assert.False(result.Succeeded);
     }
 
     [Fact]
@@ -70,7 +69,7 @@ public class TenantAuthorizationTests
 
         var result = await AuthorizeAsync(provider, "selfhosted-user");
 
-        result.Succeeded.Should().BeTrue();
+        Assert.True(result.Succeeded);
     }
 
     private static ServiceProvider BuildServiceProvider(

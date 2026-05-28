@@ -1,7 +1,6 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using AutoMapper;
-using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using StudentRegistrar.Api.Controllers;
@@ -36,7 +35,7 @@ public class GuidContractTests
 
         var dto = _mapper.Map<StudentDto>(student);
 
-        dto.Id.Should().Be(student.Id);
+        Assert.Equal(student.Id, dto.Id);
     }
 
     [Fact]
@@ -54,9 +53,9 @@ public class GuidContractTests
 
         var dto = _mapper.Map<EnrollmentDto>(enrollment);
 
-        dto.Id.Should().Be(enrollment.Id);
-        dto.StudentId.Should().Be(enrollment.StudentId);
-        dto.CourseId.Should().Be(enrollment.CourseId);
+        Assert.Equal(enrollment.Id, dto.Id);
+        Assert.Equal(enrollment.StudentId, dto.StudentId);
+        Assert.Equal(enrollment.CourseId, dto.CourseId);
     }
 
     [Fact]
@@ -71,8 +70,8 @@ public class GuidContractTests
 
         var enrollment = _mapper.Map<Enrollment>(createDto);
 
-        enrollment.StudentId.Should().Be(createDto.StudentId);
-        enrollment.CourseId.Should().Be(createDto.CourseId);
+        Assert.Equal(createDto.StudentId, enrollment.StudentId);
+        Assert.Equal(createDto.CourseId, enrollment.CourseId);
     }
 
     [Fact]
@@ -88,9 +87,9 @@ public class GuidContractTests
 
         var dto = _mapper.Map<GradeRecordDto>(grade);
 
-        dto.Id.Should().Be(grade.Id);
-        dto.StudentId.Should().Be(grade.StudentId);
-        dto.CourseId.Should().Be(grade.CourseId);
+        Assert.Equal(grade.Id, dto.Id);
+        Assert.Equal(grade.StudentId, dto.StudentId);
+        Assert.Equal(grade.CourseId, dto.CourseId);
     }
 
     [Fact]
@@ -106,8 +105,8 @@ public class GuidContractTests
 
         var grade = _mapper.Map<GradeRecord>(createDto);
 
-        grade.StudentId.Should().Be(createDto.StudentId);
-        grade.CourseId.Should().Be(createDto.CourseId);
+        Assert.Equal(createDto.StudentId, grade.StudentId);
+        Assert.Equal(createDto.CourseId, grade.CourseId);
     }
 
     [Fact]
@@ -115,8 +114,8 @@ public class GuidContractTests
     {
         var routeTemplates = GetRouteTemplates<CoursesController>();
 
-        routeTemplates.Should().NotContain(template => template.Contains("legacy", StringComparison.OrdinalIgnoreCase));
-        routeTemplates.Should().Contain("{id:guid}");
+        Assert.DoesNotContain(routeTemplates, template => template.Contains("legacy", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("{id:guid}", routeTemplates);
     }
 
     [Fact]
@@ -124,8 +123,8 @@ public class GuidContractTests
     {
         var routeTemplates = GetRouteTemplates<StudentsController>();
 
-        routeTemplates.Should().Contain("{id:guid}");
-        routeTemplates.Should().Contain("by-account/{accountHolderId:guid}");
+        Assert.Contains("{id:guid}", routeTemplates);
+        Assert.Contains("by-account/{accountHolderId:guid}", routeTemplates);
     }
 
     [Fact]
@@ -133,8 +132,8 @@ public class GuidContractTests
     {
         var routeTemplates = GetRouteTemplates<GradesController>();
 
-        routeTemplates.Should().Contain("{id:guid}");
-        routeTemplates.Should().NotContain("{id:int}");
+        Assert.Contains("{id:guid}", routeTemplates);
+        Assert.DoesNotContain("{id:int}", routeTemplates);
     }
 
     private static IReadOnlyCollection<string> GetRouteTemplates<TController>()

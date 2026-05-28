@@ -13,6 +13,7 @@ This directory contains scripts and assets to bootstrap a new Keycloak instance 
 - `bootstrap-keycloak.ps1` – PowerShell equivalent of bootstrap-keycloak.sh for Windows-first local/dev workflows.
 - `seed-test-users.sh` – Adds development / test users (Administrator, Educator, Member variants) – NOT for production.
 - `seed-test-users.ps1` – PowerShell equivalent of seed-test-users.sh for Windows-first local/dev workflows.
+- `add-spa-client.ps1` – PowerShell equivalent of add-spa-client.sh for Windows-first local/dev workflows.
 - `realm-student-registrar.template.json` – Minimal sanitized realm definition used as a baseline. Dynamic values (hostnames, client redirect URIs) are applied by bootstrap script.
 - `add-spa-client.sh` – Adds/updates the public SPA client used by the frontend.
 
@@ -23,6 +24,12 @@ This directory contains scripts and assets to bootstrap a new Keycloak instance 
 KEYCLOAK_ADMIN_PASSWORD=admin123! \
   ./scripts/keycloak/add-spa-client.sh \
   --keycloak-url http://localhost:8080
+```
+
+```powershell
+$env:KEYCLOAK_ADMIN_PASSWORD='admin123!'
+./scripts/keycloak/add-spa-client.ps1 -KeycloakUrl http://localhost:8080
+Remove-Item Env:KEYCLOAK_ADMIN_PASSWORD
 ```
 
 ### Azure Container Apps (ACA)

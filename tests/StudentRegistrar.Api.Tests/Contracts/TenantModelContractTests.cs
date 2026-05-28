@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using StudentRegistrar.Data;
 using StudentRegistrar.Models;
@@ -16,21 +15,21 @@ public class TenantModelContractTests
             .Where(entityType => typeof(ITenantEntity).IsAssignableFrom(entityType.ClrType))
             .ToArray();
 
-        tenantEntityTypes.Should().NotBeEmpty();
+        Assert.NotEmpty(tenantEntityTypes);
 
         foreach (var entityType in tenantEntityTypes)
         {
             var tenantId = entityType.FindProperty(nameof(ITenantEntity.TenantId));
-            tenantId.Should().NotBeNull($"{entityType.ClrType.Name} must be tenant scoped");
-            tenantId!.ClrType.Should().Be<Guid>($"{entityType.ClrType.Name}.TenantId must match ITenantEntity");
-            tenantId.IsNullable.Should().BeFalse($"{entityType.ClrType.Name}.TenantId must be required");
+            Assert.True(tenantId is not null, $"{entityType.ClrType.Name} must be tenant scoped");
+            Assert.Equal(typeof(Guid), tenantId!.ClrType);
+            Assert.False(tenantId.IsNullable);
 
-            entityType.GetDeclaredQueryFilters().Should().NotBeEmpty($"{entityType.ClrType.Name} must have a tenant query filter");
+            Assert.NotEmpty(entityType.GetDeclaredQueryFilters());
 
             var primaryKey = entityType.FindPrimaryKey();
-            primaryKey.Should().NotBeNull($"{entityType.ClrType.Name} must have a primary key");
-            primaryKey!.Properties.Should().ContainSingle($"{entityType.ClrType.Name} should use a single primary key");
-            primaryKey.Properties[0].ClrType.Should().Be<Guid>($"{entityType.ClrType.Name} should use Guid IDs before the clean EF baseline");
+            Assert.True(primaryKey is not null, $"{entityType.ClrType.Name} must have a primary key");
+            var primaryKeyProperty = Assert.Single(primaryKey!.Properties);
+            Assert.Equal(typeof(Guid), primaryKeyProperty.ClrType);
         }
     }
 
@@ -40,10 +39,10 @@ public class TenantModelContractTests
         using var dbContext = CreateDbContext();
         var tenantEntityType = dbContext.Model.FindEntityType(typeof(Tenant));
 
-        tenantEntityType.Should().NotBeNull();
-        tenantEntityType!.GetDeclaredQueryFilters().Should().BeEmpty("Tenant is the source of tenant resolution and is not tenant scoped");
-        tenantEntityType.FindPrimaryKey()!.Properties.Should().ContainSingle();
-        tenantEntityType.FindPrimaryKey()!.Properties[0].ClrType.Should().Be<Guid>();
+        Assert.NotNull(tenantEntityType);
+        Assert.Empty(tenantEntityType!.GetDeclaredQueryFilters());
+        var primaryKeyProperty = Assert.Single(tenantEntityType.FindPrimaryKey()!.Properties);
+        Assert.Equal(typeof(Guid), primaryKeyProperty.ClrType);
     }
 
     [Fact]
@@ -57,7 +56,7 @@ public class TenantModelContractTests
             .Select(property => $"{property.DeclaringType.DisplayName()}.{property.Name}")
             .ToArray();
 
-        shadowForeignKeys.Should().BeEmpty("foreign keys should be explicit model properties in the clean EF baseline");
+        Assert.Empty(shadowForeignKeys);
     }
 
     private static StudentRegistrarDbContext CreateDbContext()

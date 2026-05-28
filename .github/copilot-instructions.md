@@ -133,6 +133,19 @@ The project uses:
 ./scripts/testing/run-e2e-tests.sh --test-suite member
 ```
 
+```powershell
+# Run all E2E tests (visible browser)
+./scripts/testing/run-e2e-tests.ps1
+
+# Run in headless mode (CI/CD)
+./scripts/testing/run-e2e-tests.ps1 -Headless
+
+# Run specific role-based test suite
+./scripts/testing/run-e2e-tests.ps1 -TestSuite admin
+./scripts/testing/run-e2e-tests.ps1 -TestSuite educator
+./scripts/testing/run-e2e-tests.ps1 -TestSuite member
+```
+
 **Test Organization:**
 - `AdminTests` - Full system access tests
 - `EducatorTests` - Teaching and family management tests
@@ -143,6 +156,11 @@ The project uses:
 ```bash
 # Quick validation tests
 ./run-smoke-tests.sh
+```
+
+```powershell
+# Quick validation tests
+./run-smoke-tests.ps1
 ```
 
 ## Code Style and Quality

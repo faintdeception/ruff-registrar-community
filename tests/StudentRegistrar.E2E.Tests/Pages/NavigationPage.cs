@@ -1,6 +1,6 @@
 using OpenQA.Selenium;
 using OpenQA.Selenium.Support.UI;
-using FluentAssertions;
+using Xunit;
 
 namespace StudentRegistrar.E2E.Tests.Pages;
 
@@ -198,6 +198,8 @@ public class NavigationPage
         return navItems
             .Where(item => item.Displayed)
             .Select(item => item.GetDomAttribute("data-nav-item"))
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Select(item => item!)
             .ToList();
     }
 
@@ -207,6 +209,8 @@ public class NavigationPage
         return adminItems
             .Where(item => item.Displayed)
             .Select(item => item.GetDomAttribute("data-nav-item"))
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Select(item => item!)
             .ToList();
     }
 
@@ -234,34 +238,34 @@ public class NavigationPage
     public void VerifyAdminNavigation()
     {
         // Admin should see all nav items
-        IsAccountVisible().Should().BeTrue("Admin should see Account nav");
-        IsStudentsVisible().Should().BeTrue("Admin should see Students nav");
-        IsCoursesVisible().Should().BeTrue("Admin should see Courses nav");
-        IsSemestersVisible().Should().BeTrue("Admin should see Semesters nav");
-        IsEducatorsVisible().Should().BeTrue("Admin should see Educators nav");
+        Assert.True(IsAccountVisible());
+        Assert.True(IsStudentsVisible());
+        Assert.True(IsCoursesVisible());
+        Assert.True(IsSemestersVisible());
+        Assert.True(IsEducatorsVisible());
     }
 
     public void VerifyEducatorNavigation()
     {
         // Educator should see most nav items but NOT admin-only ones
-        IsAccountVisible().Should().BeTrue("Educator should see Account nav");
-        IsStudentsVisible().Should().BeFalse("Educator should NOT see Students nav");
-        IsCoursesVisible().Should().BeTrue("Educator should see Courses nav");
-        IsSemestersVisible().Should().BeFalse("Educator should NOT see Semesters nav");
-        IsEducatorsVisible().Should().BeTrue("Educator should see Educators nav");
+        Assert.True(IsAccountVisible());
+        Assert.False(IsStudentsVisible());
+        Assert.True(IsCoursesVisible());
+        Assert.False(IsSemestersVisible());
+        Assert.True(IsEducatorsVisible());
         
         // Double check - admin items should not be present in DOM
-        IsStudentsPresent().Should().BeFalse("Students nav should not be rendered for Educator");
-        IsSemestersPresent().Should().BeFalse("Semesters nav should not be rendered for Educator");
+        Assert.False(IsStudentsPresent());
+        Assert.False(IsSemestersPresent());
     }
 
     public void VerifyStudentNavigation()
     {
         // Student should see limited nav items
-        IsAccountVisible().Should().BeTrue("Student should see Account nav");
-        IsStudentsVisible().Should().BeFalse("Student should NOT see Students nav");
-        IsCoursesVisible().Should().BeTrue("Student should see Courses nav");
-        IsSemestersVisible().Should().BeFalse("Student should NOT see Semesters nav");
-        IsEducatorsVisible().Should().BeTrue("Student should see Educators nav");
+        Assert.True(IsAccountVisible());
+        Assert.False(IsStudentsVisible());
+        Assert.True(IsCoursesVisible());
+        Assert.False(IsSemestersVisible());
+        Assert.True(IsEducatorsVisible());
     }
 }

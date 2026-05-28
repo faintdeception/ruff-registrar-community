@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Xunit;
 
@@ -16,8 +15,8 @@ public class HealthResponseBuilderTests
         var response = Microsoft.Extensions.Hosting.HealthResponseBuilder.Build(report, "1.2.3");
 
         // Assert
-        response.Status.Should().Be(HealthStatus.Healthy.ToString());
-        response.Version.Should().Be("1.2.3");
+        Assert.Equal(HealthStatus.Healthy.ToString(), response.Status);
+        Assert.Equal("1.2.3", response.Version);
     }
 
     [Fact]
@@ -30,8 +29,8 @@ public class HealthResponseBuilderTests
         var response = Microsoft.Extensions.Hosting.HealthResponseBuilder.Build(report, null);
 
         // Assert
-        response.Status.Should().Be(HealthStatus.Healthy.ToString());
-        response.Version.Should().Be("unknown");
+        Assert.Equal(HealthStatus.Healthy.ToString(), response.Status);
+        Assert.Equal("unknown", response.Version);
     }
 
     [Theory]
@@ -47,8 +46,8 @@ public class HealthResponseBuilderTests
         var response = Microsoft.Extensions.Hosting.HealthResponseBuilder.Build(report, version);
 
         // Assert
-        response.Status.Should().Be(HealthStatus.Healthy.ToString());
-        response.Version.Should().Be("unknown");
+        Assert.Equal(HealthStatus.Healthy.ToString(), response.Status);
+        Assert.Equal("unknown", response.Version);
     }
 
     [Theory]
@@ -68,8 +67,8 @@ public class HealthResponseBuilderTests
         var response = Microsoft.Extensions.Hosting.HealthResponseBuilder.Build(report, "1.0.0");
 
         // Assert
-        response.Status.Should().Be(status.ToString());
-        response.Version.Should().Be("1.0.0");
+        Assert.Equal(status.ToString(), response.Status);
+        Assert.Equal("1.0.0", response.Version);
     }
 
     [Fact]
@@ -80,8 +79,8 @@ public class HealthResponseBuilderTests
         var version2 = Microsoft.Extensions.Hosting.HealthResponseBuilder.GetVersion();
 
         // Assert
-        version1.Should().NotBeNullOrWhiteSpace();
-        version2.Should().Be(version1);
+        Assert.False(string.IsNullOrWhiteSpace(version1));
+        Assert.Equal(version1, version2);
     }
 
     [Fact]
@@ -91,6 +90,6 @@ public class HealthResponseBuilderTests
         var version = Microsoft.Extensions.Hosting.HealthResponseBuilder.GetVersion();
 
         // Assert
-        version.Should().NotBeNullOrWhiteSpace();
+        Assert.False(string.IsNullOrWhiteSpace(version));
     }
 }

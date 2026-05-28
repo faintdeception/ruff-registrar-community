@@ -1,5 +1,4 @@
 using OpenQA.Selenium;
-using FluentAssertions;
 using StudentRegistrar.E2E.Tests.Base;
 using StudentRegistrar.E2E.Tests.Pages;
 using Xunit;
@@ -24,8 +23,7 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         var navigationPage = new NavigationPage(Driver);
 
         // Assert - Settings button should be visible
-        navigationPage.IsSettingsButtonVisible().Should().BeTrue(
-            "Admin should see settings button in header");
+        Assert.True(navigationPage.IsSettingsButtonVisible());
     }
 
     [Fact]
@@ -40,17 +38,10 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         WaitForPageLoad();
 
         // Assert - All menu items should be visible
-        navigationPage.IsSettingsDropdownVisible().Should().BeTrue(
-            "Settings dropdown should be visible after clicking settings button");
-        
-        navigationPage.IsSettingsMenuItemVisible("profile").Should().BeTrue(
-            "Admin should see Profile menu item");
-        
-        navigationPage.IsSettingsMenuItemVisible("manage-members").Should().BeTrue(
-            "Admin should see Manage Members menu item");
-        
-        navigationPage.IsSettingsMenuItemVisible("system").Should().BeTrue(
-            "Admin should see System Settings menu item");
+        Assert.True(navigationPage.IsSettingsDropdownVisible());
+        Assert.True(navigationPage.IsSettingsMenuItemVisible("profile"));
+        Assert.True(navigationPage.IsSettingsMenuItemVisible("manage-members"));
+        Assert.True(navigationPage.IsSettingsMenuItemVisible("system"));
     }
 
     [Fact]
@@ -67,14 +58,9 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         WaitForUrlContains("/settings/profile");
 
         // Assert - Should be on profile settings page
-        Driver.Url.Should().Contain("/settings/profile", 
-            "Should navigate to profile settings page");
-        
-        Driver.PageSource.Should().Contain("Profile Settings", 
-            "Page should contain Profile Settings title");
-        
-        Driver.PageSource.Should().Contain("Coming Soon", 
-            "Page should show Coming Soon message");
+        Assert.Contains("/settings/profile", Driver.Url);
+        Assert.Contains("Profile Settings", Driver.PageSource);
+        Assert.Contains("Coming Soon", Driver.PageSource);
     }
 
     [Fact]
@@ -91,14 +77,9 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         WaitForUrlContains("/settings/manage-members");
 
         // Assert - Should be on manage members page
-        Driver.Url.Should().Contain("/settings/manage-members", 
-            "Should navigate to manage members page");
-        
-        Driver.PageSource.Should().Contain("Manage Members", 
-            "Page should contain Manage Members title");
-        
-        Driver.PageSource.Should().Contain("Coming Soon", 
-            "Page should show Coming Soon message");
+        Assert.Contains("/settings/manage-members", Driver.Url);
+        Assert.Contains("Manage Members", Driver.PageSource);
+        Assert.Contains("Coming Soon", Driver.PageSource);
     }
 
     [Fact]
@@ -115,14 +96,9 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         WaitForUrlContains("/settings/system");
 
         // Assert - Should be on system settings page
-        Driver.Url.Should().Contain("/settings/system", 
-            "Should navigate to system settings page");
-        
-        Driver.PageSource.Should().Contain("System Settings", 
-            "Page should contain System Settings title");
-        
-        Driver.PageSource.Should().Contain("Coming Soon", 
-            "Page should show Coming Soon message");
+        Assert.Contains("/settings/system", Driver.Url);
+        Assert.Contains("System Settings", Driver.PageSource);
+        Assert.Contains("Coming Soon", Driver.PageSource);
     }
 
     #endregion
@@ -139,8 +115,7 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         var navigationPage = new NavigationPage(Driver);
 
         // Assert - Settings button should be visible
-        navigationPage.IsSettingsButtonVisible().Should().BeTrue(
-            "Educator should see settings button in header");
+        Assert.True(navigationPage.IsSettingsButtonVisible());
     }
 
     [Fact]
@@ -155,17 +130,10 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         WaitForPageLoad();
 
         // Assert - Should see profile but NOT admin-only items
-        navigationPage.IsSettingsDropdownVisible().Should().BeTrue(
-            "Settings dropdown should be visible after clicking settings button");
-        
-        navigationPage.IsSettingsMenuItemVisible("profile").Should().BeTrue(
-            "Educator should see Profile menu item");
-        
-        navigationPage.IsSettingsMenuItemPresent("manage-members").Should().BeFalse(
-            "Educator should NOT see Manage Members menu item");
-        
-        navigationPage.IsSettingsMenuItemPresent("system").Should().BeFalse(
-            "Educator should NOT see System Settings menu item");
+        Assert.True(navigationPage.IsSettingsDropdownVisible());
+        Assert.True(navigationPage.IsSettingsMenuItemVisible("profile"));
+        Assert.False(navigationPage.IsSettingsMenuItemPresent("manage-members"));
+        Assert.False(navigationPage.IsSettingsMenuItemPresent("system"));
     }
 
     [Fact]
@@ -182,11 +150,8 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         WaitForUrlContains("/settings/profile");
 
         // Assert - Should be on profile settings page
-        Driver.Url.Should().Contain("/settings/profile", 
-            "Should navigate to profile settings page");
-        
-        Driver.PageSource.Should().Contain("Profile Settings", 
-            "Page should contain Profile Settings title");
+        Assert.Contains("/settings/profile", Driver.Url);
+        Assert.Contains("Profile Settings", Driver.PageSource);
     }
 
     [Fact]
@@ -203,15 +168,13 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         if (Driver.Url.Contains("/unauthorized"))
         {
             // Best case: redirected to unauthorized page
-            Driver.Url.Should().Contain("/unauthorized", 
-                "Educator should be redirected to unauthorized page");
+            Assert.Contains("/unauthorized", Driver.Url);
         }
         else
         {
             // Fallback: Page might load but should be protected
             // Either show error message or empty/placeholder content, but NOT the actual Manage Members content
-            Driver.Url.Should().Contain("/settings/manage-members", 
-                "URL should still indicate manage-members page");
+            Assert.Contains("/settings/manage-members", Driver.Url);
             
             var hasProtection = Driver.PageSource.Contains("unauthorized") || 
                                Driver.PageSource.Contains("not authorized") ||
@@ -219,8 +182,7 @@ public class SettingsMenuTests : BaseRoleNavigationTest
                                Driver.PageSource.Contains("403") ||
                                Driver.PageSource.Contains("Permission denied");
             
-            hasProtection.Should().BeTrue(
-                "Page should be protected and display an authorization error message");
+            Assert.True(hasProtection);
         }
     }
 
@@ -238,14 +200,12 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         if (Driver.Url.Contains("/unauthorized"))
         {
             // Best case: redirected to unauthorized page
-            Driver.Url.Should().Contain("/unauthorized", 
-                "Educator should be redirected to unauthorized page");
+            Assert.Contains("/unauthorized", Driver.Url);
         }
         else
         {
             // Fallback: Page might load but should be protected
-            Driver.Url.Should().Contain("/settings/system", 
-                "URL should still indicate system settings page");
+            Assert.Contains("/settings/system", Driver.Url);
             
             var hasProtection = Driver.PageSource.Contains("unauthorized") || 
                                Driver.PageSource.Contains("not authorized") ||
@@ -253,8 +213,7 @@ public class SettingsMenuTests : BaseRoleNavigationTest
                                Driver.PageSource.Contains("403") ||
                                Driver.PageSource.Contains("Permission denied");
             
-            hasProtection.Should().BeTrue(
-                "Page should be protected and display an authorization error message");
+            Assert.True(hasProtection);
         }
     }
 
@@ -272,8 +231,7 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         var navigationPage = new NavigationPage(Driver);
 
         // Assert - Settings button should be visible
-        navigationPage.IsSettingsButtonVisible().Should().BeTrue(
-            "Member should see settings button in header");
+        Assert.True(navigationPage.IsSettingsButtonVisible());
     }
 
     [Fact]
@@ -288,17 +246,10 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         WaitForPageLoad();
 
         // Assert - Should see profile but NOT admin-only items
-        navigationPage.IsSettingsDropdownVisible().Should().BeTrue(
-            "Settings dropdown should be visible after clicking settings button");
-        
-        navigationPage.IsSettingsMenuItemVisible("profile").Should().BeTrue(
-            "Member should see Profile menu item");
-        
-        navigationPage.IsSettingsMenuItemPresent("manage-members").Should().BeFalse(
-            "Member should NOT see Manage Members menu item");
-        
-        navigationPage.IsSettingsMenuItemPresent("system").Should().BeFalse(
-            "Member should NOT see System Settings menu item");
+        Assert.True(navigationPage.IsSettingsDropdownVisible());
+        Assert.True(navigationPage.IsSettingsMenuItemVisible("profile"));
+        Assert.False(navigationPage.IsSettingsMenuItemPresent("manage-members"));
+        Assert.False(navigationPage.IsSettingsMenuItemPresent("system"));
     }
 
     [Fact]
@@ -315,11 +266,8 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         WaitForUrlContains("/settings/profile");
 
         // Assert - Should be on profile settings page
-        Driver.Url.Should().Contain("/settings/profile", 
-            "Should navigate to profile settings page");
-        
-        Driver.PageSource.Should().Contain("Profile Settings", 
-            "Page should contain Profile Settings title");
+        Assert.Contains("/settings/profile", Driver.Url);
+        Assert.Contains("Profile Settings", Driver.PageSource);
     }
 
     [Fact]
@@ -336,14 +284,12 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         if (Driver.Url.Contains("/unauthorized"))
         {
             // Best case: redirected to unauthorized page
-            Driver.Url.Should().Contain("/unauthorized", 
-                "Member should be redirected to unauthorized page");
+            Assert.Contains("/unauthorized", Driver.Url);
         }
         else
         {
             // Fallback: Page might load but should be protected
-            Driver.Url.Should().Contain("/settings/manage-members", 
-                "URL should still indicate manage-members page");
+            Assert.Contains("/settings/manage-members", Driver.Url);
             
             var hasProtection = Driver.PageSource.Contains("unauthorized") || 
                                Driver.PageSource.Contains("not authorized") ||
@@ -351,8 +297,7 @@ public class SettingsMenuTests : BaseRoleNavigationTest
                                Driver.PageSource.Contains("403") ||
                                Driver.PageSource.Contains("Permission denied");
             
-            hasProtection.Should().BeTrue(
-                "Page should be protected and display an authorization error message");
+            Assert.True(hasProtection);
         }
     }
 
@@ -370,14 +315,12 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         if (Driver.Url.Contains("/unauthorized"))
         {
             // Best case: redirected to unauthorized page
-            Driver.Url.Should().Contain("/unauthorized", 
-                "Member should be redirected to unauthorized page");
+            Assert.Contains("/unauthorized", Driver.Url);
         }
         else
         {
             // Fallback: Page might load but should be protected
-            Driver.Url.Should().Contain("/settings/system", 
-                "URL should still indicate system settings page");
+            Assert.Contains("/settings/system", Driver.Url);
             
             var hasProtection = Driver.PageSource.Contains("unauthorized") || 
                                Driver.PageSource.Contains("not authorized") ||
@@ -385,8 +328,7 @@ public class SettingsMenuTests : BaseRoleNavigationTest
                                Driver.PageSource.Contains("403") ||
                                Driver.PageSource.Contains("Permission denied");
             
-            hasProtection.Should().BeTrue(
-                "Page should be protected and display an authorization error message");
+            Assert.True(hasProtection);
         }
     }
 
@@ -405,15 +347,13 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         navigationPage.ClickSettingsButton();
         WaitForPageLoad();
         
-        navigationPage.IsSettingsDropdownVisible().Should().BeTrue(
-            "Dropdown should be open initially");
+        Assert.True(navigationPage.IsSettingsDropdownVisible());
         
         navigationPage.ClickSettingsMenuItem("profile");
         WaitForPageLoad();
 
         // Assert - Should navigate away and dropdown should close
-        Driver.Url.Should().Contain("/settings/profile", 
-            "Should navigate to profile page");
+        Assert.Contains("/settings/profile", Driver.Url);
     }
 
     #endregion

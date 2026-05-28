@@ -53,7 +53,7 @@ public sealed class RoomsPage
 
     private void WaitForPageLoad()
     {
-        _wait.Until(driver => ((IJavaScriptExecutor)driver).ExecuteScript("return document.readyState").Equals("complete"));
+        _wait.Until(driver => string.Equals(((IJavaScriptExecutor)driver).ExecuteScript("return document.readyState")?.ToString(), "complete", StringComparison.Ordinal));
         _wait.Until(d => d.FindElements(By.Id("create-room-btn")).Any()
             || d.FindElements(By.Id("create-first-room-btn")).Any()
             || d.PageSource.Contains("Room Management", StringComparison.OrdinalIgnoreCase));
