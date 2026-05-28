@@ -93,7 +93,7 @@ public class TenantResolutionMiddleware
             
             return await dbContext.Set<Tenant>()
                 .AsNoTracking()
-                .FirstOrDefaultAsync(t => t.Subdomain == tenantSlug && t.IsActive);
+                .FirstOrDefaultAsync(t => t.Subdomain == tenantSlug);
         });
 
         if (tenant == null)
@@ -101,6 +101,14 @@ public class TenantResolutionMiddleware
             _logger.LogWarning("Tenant not found for slug: {TenantSlug}", tenantSlug);
             context.Response.StatusCode = StatusCodes.Status404NotFound;
             await context.Response.WriteAsJsonAsync(new { error = "Organization not found", tenant = tenantSlug });
+            return;
+        }
+
+        if (TryGetBlockedTenantReason(tenant, out var blockedReason))
+        {
+            _logger.LogWarning("Tenant access blocked for {TenantSlug}: {Reason}", tenantSlug, blockedReason);
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            await context.Response.WriteAsJsonAsync(new { error = blockedReason, tenant = tenantSlug });
             return;
         }
 
@@ -159,6 +167,50 @@ public class TenantResolutionMiddleware
         if (tenantSlug.StartsWith('-') || tenantSlug.EndsWith('-'))
             return false;
         return tenantSlug.All(c => char.IsLetterOrDigit(c) || c == '-');
+    }
+
+    private static bool TryGetBlockedTenantReason(Tenant tenant, out string reason)
+    {
+        if (tenant.OffboardingStatus == TenantOffboardingStatus.Deleted)
+        {
+            reason = "Organization has been deleted";
+            return true;
+        }
+
+        if (tenant.OffboardingStatus == TenantOffboardingStatus.PendingDeletion)
+        {
+            reason = "Organization is pending deletion";
+            return true;
+        }
+
+        if (tenant.OffboardingStatus == TenantOffboardingStatus.DeletionFailed)
+        {
+            reason = "Organization access is blocked during deletion retry";
+            return true;
+        }
+
+        if (tenant.OffboardingStatus == TenantOffboardingStatus.Suspended)
+        {
+            reason = "Organization access is suspended";
+            return true;
+        }
+
+        if (tenant.OffboardingStatus == TenantOffboardingStatus.CancellationScheduled &&
+            tenant.AccessEndsAtUtc.HasValue &&
+            tenant.AccessEndsAtUtc.Value <= DateTime.UtcNow)
+        {
+            reason = "Organization access has ended";
+            return true;
+        }
+
+        if (!tenant.IsActive)
+        {
+            reason = "Organization access is inactive";
+            return true;
+        }
+
+        reason = string.Empty;
+        return false;
     }
 
     /// <summary>

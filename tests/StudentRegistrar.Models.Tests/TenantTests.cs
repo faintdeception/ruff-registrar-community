@@ -149,7 +149,14 @@ public class TenantTests
         Assert.Equal(string.Empty, tenant.Subdomain);
         Assert.Equal(SubscriptionTier.Free, tenant.SubscriptionTier);
         Assert.Equal(SubscriptionStatus.Active, tenant.SubscriptionStatus);
+        Assert.Equal(TenantOffboardingStatus.None, tenant.OffboardingStatus);
         Assert.True(tenant.IsActive);
+        Assert.Null(tenant.OffboardingRequestedAtUtc);
+        Assert.Null(tenant.AccessEndsAtUtc);
+        Assert.Null(tenant.DeletionScheduledAtUtc);
+        Assert.Null(tenant.DeletedAtUtc);
+        Assert.Null(tenant.LastOffboardingAttemptAtUtc);
+        Assert.Null(tenant.LastOffboardingError);
         Assert.Equal("{}", tenant.ThemeConfigJson);
     }
 
