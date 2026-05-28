@@ -94,11 +94,29 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         WaitForPageLoad();
         navigationPage.ClickSettingsMenuItem("system");
         WaitForUrlContains("/settings/system");
+        WaitForElementVisible(By.CssSelector("[data-testid='system-settings-title']"));
+        WaitForElementVisible(By.CssSelector("[data-testid='billing-management-card']"));
 
         // Assert - Should be on system settings page
         Assert.Contains("/settings/system", Driver.Url);
         Assert.Contains("System Settings", Driver.PageSource);
-        Assert.Contains("Coming Soon", Driver.PageSource);
+        Assert.Contains("Subscription Billing", Driver.PageSource);
+
+        var scheduleButtons = Driver.FindElements(By.CssSelector("[data-testid='schedule-cancellation-button']"));
+        var undoButtons = Driver.FindElements(By.CssSelector("[data-testid='undo-cancellation-button']"));
+
+        Assert.True(scheduleButtons.Count > 0 || undoButtons.Count > 0,
+            "Expected the billing management card to expose either a cancellation action or an undo action.");
+
+        var unavailableMessages = Driver.FindElements(By.CssSelector("[data-testid='billing-unavailable-message']"));
+        if (unavailableMessages.Count > 0)
+        {
+            Assert.Contains("Billing", unavailableMessages[0].Text);
+            if (scheduleButtons.Count > 0)
+            {
+                Assert.False(scheduleButtons[0].Enabled);
+            }
+        }
     }
 
     #endregion

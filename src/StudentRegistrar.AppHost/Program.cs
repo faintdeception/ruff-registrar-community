@@ -186,7 +186,7 @@ IResourceBuilder<ContainerResource>? frontendContainer = null;
 if (builder.ExecutionContext.IsRunMode)
 {
     // Next.js frontend (dev)
-    var frontendDev = builder.AddNpmApp("frontend", "../../frontend", "dev")
+    var frontendDev = builder.AddNpmApp("frontend", "../../frontend", "dev:aspire")
         .WithReference(apiService)
         .WithReference(keycloak)
         .WithHttpEndpoint(port: 3001, env: "PORT")

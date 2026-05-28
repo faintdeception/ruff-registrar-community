@@ -57,15 +57,7 @@ public class HomePage
         }
         catch (NoSuchElementException)
         {
-            try
-            {
-                // Alternative: check if URL doesn't contain login
-                return !_driver.Url.Contains("/login");
-            }
-            catch
-            {
-                return false;
-            }
+            return false;
         }
     }
 
