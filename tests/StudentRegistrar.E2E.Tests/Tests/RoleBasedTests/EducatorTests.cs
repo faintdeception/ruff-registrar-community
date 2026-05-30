@@ -82,6 +82,22 @@ public class EducatorTests : BaseTest
     }
 
     [Fact]
+    public void Educator_Should_Access_My_Rosters()
+    {
+        LoginAsEducator();
+
+        var navigationPage = new NavigationPage(Driver);
+        navigationPage.ClickTeaching();
+
+        var teachingPage = new TeachingPage(Driver);
+        teachingPage.WaitForPageLoad();
+
+        Assert.Contains("/teaching", Driver.Url);
+        Assert.Contains("My Rosters", Driver.PageSource, StringComparison.OrdinalIgnoreCase);
+        Assert.True(teachingPage.HasTitle());
+    }
+
+    [Fact]
     public void Educator_Should_NOT_Access_Admin_Features()
     {
         // Arrange - Login as educator
@@ -132,6 +148,12 @@ public class EducatorTests : BaseTest
         WaitForPageLoad();
         WaitForUrlContains("/courses");
         Assert.Contains("/courses", Driver.Url);
+
+        // 2b. Teaching rosters
+        navigationPage.ClickTeaching();
+        WaitForPageLoad();
+        WaitForUrlContains("/teaching");
+        Assert.Contains("/teaching", Driver.Url);
         
         // 3. Enrollment Management (own courses + children)
         // navigationPage.ClickEnrollments();

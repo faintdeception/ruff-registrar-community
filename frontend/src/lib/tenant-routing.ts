@@ -14,6 +14,8 @@ export const reservedTenantPathSegments = new Set([
   'settings',
   'silent-check-sso.html',
   'students',
+  'teaching',
+  'tenant-status',
   'unauthorized',
 ]);
 

@@ -36,6 +36,9 @@ public class TenantResolutionMiddlewareTests
 
         var payload = await ReadJsonAsync(httpContext);
         Assert.Equal("Organization access is suspended", payload.GetProperty("error").GetString());
+        Assert.Equal("tenant_access_blocked", payload.GetProperty("code").GetString());
+        Assert.Equal("suspended", payload.GetProperty("tenantStatus").GetString());
+        Assert.True(payload.GetProperty("canRecoverBilling").GetBoolean());
     }
 
     [Fact]
@@ -60,6 +63,32 @@ public class TenantResolutionMiddlewareTests
 
         var payload = await ReadJsonAsync(httpContext);
         Assert.Equal("Organization access has ended", payload.GetProperty("error").GetString());
+        Assert.Equal("access-ended", payload.GetProperty("tenantStatus").GetString());
+        Assert.True(payload.GetProperty("canRecoverBilling").GetBoolean());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_Blocks_BillingHold_Tenant_WithRecoveryMetadata()
+    {
+        await using var dbContext = CreateDbContext();
+        var tenant = CreateTenant();
+        tenant.IsActive = false;
+        tenant.SubscriptionStatus = SubscriptionStatus.BillingHold;
+
+        dbContext.Tenants.Add(tenant);
+        await dbContext.SaveChangesAsync();
+
+        var tenantContextAccessor = new TenantContextAccessor();
+        var middleware = CreateMiddleware();
+        var httpContext = CreateHttpContext($"/{tenant.Subdomain}/courses");
+
+        await middleware.InvokeAsync(httpContext, tenantContextAccessor, dbContext);
+
+        Assert.Equal(StatusCodes.Status403Forbidden, httpContext.Response.StatusCode);
+        var payload = await ReadJsonAsync(httpContext);
+        Assert.Equal("Billing must be restored before organization access can continue", payload.GetProperty("error").GetString());
+        Assert.Equal("billing-hold", payload.GetProperty("tenantStatus").GetString());
+        Assert.True(payload.GetProperty("canRecoverBilling").GetBoolean());
     }
 
     private static TenantResolutionMiddleware CreateMiddleware()

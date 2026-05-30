@@ -52,6 +52,7 @@ public class NavigationPage
     }
 
     public void ClickAccount() => ClickNavItem("account");
+    public void ClickTeaching() => ClickNavItem("teaching");
     public void ClickStudents() => ClickNavItem("students");
     public void ClickCourses() => ClickNavItem("courses");
     public void ClickSemesters() => ClickNavItem("semesters");
@@ -184,6 +185,7 @@ public class NavigationPage
     }
 
     public bool IsAccountVisible() => IsNavItemVisible("account");
+    public bool IsTeachingVisible() => IsNavItemVisible("teaching");
     public bool IsStudentsVisible() => IsNavItemVisible("students");
     public bool IsCoursesVisible() => IsNavItemVisible("courses");
     public bool IsSemestersVisible() => IsNavItemVisible("semesters");
@@ -249,6 +251,7 @@ public class NavigationPage
     {
         // Educator should see most nav items but NOT admin-only ones
         Assert.True(IsAccountVisible());
+        Assert.True(IsTeachingVisible());
         Assert.False(IsStudentsVisible());
         Assert.True(IsCoursesVisible());
         Assert.False(IsSemestersVisible());

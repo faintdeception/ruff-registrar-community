@@ -1,8 +1,17 @@
+import { buildTenantPath } from './tenant-routing';
 import { getApiBaseUrl, getTenantSlugFromPath } from './runtime-env';
 import { getAccessToken, getCurrentAccessToken } from './auth';
 
 interface ApiClientOptions extends RequestInit {
   headers?: Record<string, string>;
+}
+
+interface TenantBlockedPayload {
+  error?: string;
+  code?: string;
+  tenant?: string;
+  tenantStatus?: string;
+  canRecoverBilling?: boolean;
 }
 
 class ApiClient {
@@ -45,6 +54,8 @@ class ApiClient {
           throw new Error('Authentication failed');
         }
       }
+
+      await redirectIfTenantBlocked(response);
       
       return response;
     } catch (error) {
@@ -106,6 +117,57 @@ class ApiClient {
 // Export a singleton instance
 export const apiClient = new ApiClient();
 export default apiClient;
+
+const redirectIfTenantBlocked = async (response: Response): Promise<void> => {
+  if (typeof window === 'undefined' || ![403, 404].includes(response.status)) {
+    return;
+  }
+
+  if (window.location.pathname.includes('/tenant-status')) {
+    return;
+  }
+
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    return;
+  }
+
+  let payload: TenantBlockedPayload | null = null;
+  try {
+    payload = await response.clone().json() as TenantBlockedPayload;
+  } catch {
+    return;
+  }
+
+  if (!payload || (payload.code !== 'tenant_access_blocked' && payload.code !== 'organization_not_found')) {
+    return;
+  }
+
+  const tenantSlug = payload.tenant || getTenantSlugFromPath();
+  const target = buildTenantStatusPath(tenantSlug, payload);
+  if (window.location.pathname + window.location.search === target) {
+    return;
+  }
+
+  window.location.href = target;
+};
+
+const buildTenantStatusPath = (tenantSlug: string | null, payload: TenantBlockedPayload): string => {
+  const searchParams = new URLSearchParams();
+  if (payload.tenantStatus) {
+    searchParams.set('status', payload.tenantStatus);
+  }
+  if (payload.error) {
+    searchParams.set('message', payload.error);
+  }
+  if (payload.canRecoverBilling) {
+    searchParams.set('recover', 'true');
+  }
+
+  const basePath = buildTenantPath('/tenant-status', tenantSlug);
+  const query = searchParams.toString();
+  return query ? `${basePath}?${query}` : basePath;
+};
 
 const resolveApiUrl = (url: string): string => {
   if (url.startsWith('/api/')) {

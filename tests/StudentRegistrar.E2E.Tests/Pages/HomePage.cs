@@ -15,7 +15,7 @@ public class HomePage
     // Page elements
     public IWebElement PageTitle => _driver.FindElement(By.TagName("h1"));
     public IWebElement NavigationBar => _driver.FindElement(By.TagName("nav"));
-    public IWebElement LogoutButton => _driver.FindElement(By.Id("logout-button"));
+    public IWebElement LogoutButton => _driver.FindElement(By.CssSelector("[data-testid='logout-button'], #logout-button"));
 
     // Page actions
     public void ClickLogout()
@@ -52,7 +52,7 @@ public class HomePage
     {
         try
         {
-            // Check for logout button with id "logout-button" to determine if logged in
+            // Check for the shared logout control to determine if the authenticated shell is active.
             return LogoutButton.Displayed;
         }
         catch (NoSuchElementException)
