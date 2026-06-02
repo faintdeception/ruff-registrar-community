@@ -5,6 +5,7 @@ export type RuntimeEnv = {
   NEXT_PUBLIC_KEYCLOAK_REALM?: string;
   NEXT_PUBLIC_KEYCLOAK_CLIENT_ID?: string;
   NEXT_PUBLIC_API_URL?: string;
+  NEXT_PUBLIC_PORTAL_BASE_URL?: string;
   NEXT_PUBLIC_APP_VERSION?: string;
 };
 
@@ -34,6 +35,14 @@ export const getAppVersion = (): string => {
   }
 
   return getRuntimeEnv()?.NEXT_PUBLIC_APP_VERSION || process.env.NEXT_PUBLIC_APP_VERSION || 'unknown';
+};
+
+export const getPortalBaseUrl = (): string | null => {
+  if (typeof window === 'undefined') {
+    return process.env.NEXT_PUBLIC_PORTAL_BASE_URL || null;
+  }
+
+  return getRuntimeEnv()?.NEXT_PUBLIC_PORTAL_BASE_URL || process.env.NEXT_PUBLIC_PORTAL_BASE_URL || null;
 };
 
 export const getKeycloakConfig = () => {

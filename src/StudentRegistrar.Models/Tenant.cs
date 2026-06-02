@@ -30,6 +30,19 @@ public enum SubscriptionStatus
 }
 
 /// <summary>
+/// Explicit offboarding lifecycle for SaaS tenant access and deletion.
+/// </summary>
+public enum TenantOffboardingStatus
+{
+    None = 0,
+    CancellationScheduled = 1,
+    Suspended = 2,
+    PendingDeletion = 3,
+    DeletionFailed = 4,
+    Deleted = 5
+}
+
+/// <summary>
 /// Represents an organization (tenant) in the multi-tenant SaaS system.
 /// In self-hosted mode, there is typically one tenant or tenant logic is bypassed.
 /// </summary>
@@ -73,6 +86,48 @@ public partial class Tenant
     /// Complimentary tenants keep their assigned tier without requiring Stripe billing.
     /// </summary>
     public bool IsComplimentary { get; set; }
+
+    /// <summary>
+    /// Current offboarding lifecycle state for this tenant.
+    /// </summary>
+    public TenantOffboardingStatus OffboardingStatus { get; set; } = TenantOffboardingStatus.None;
+
+    /// <summary>
+    /// When tenant offboarding was first requested.
+    /// </summary>
+    public DateTime? OffboardingRequestedAtUtc { get; set; }
+
+    /// <summary>
+    /// Free-form operator reason for the current offboarding state.
+    /// </summary>
+    [MaxLength(500)]
+    public string? OffboardingReason { get; set; }
+
+    /// <summary>
+    /// When tenant access should end.
+    /// </summary>
+    public DateTime? AccessEndsAtUtc { get; set; }
+
+    /// <summary>
+    /// When final tenant deletion should be attempted.
+    /// </summary>
+    public DateTime? DeletionScheduledAtUtc { get; set; }
+
+    /// <summary>
+    /// When tenant deletion completed successfully.
+    /// </summary>
+    public DateTime? DeletedAtUtc { get; set; }
+
+    /// <summary>
+    /// Timestamp of the last deletion or offboarding processing attempt.
+    /// </summary>
+    public DateTime? LastOffboardingAttemptAtUtc { get; set; }
+
+    /// <summary>
+    /// Most recent offboarding processing error.
+    /// </summary>
+    [MaxLength(2000)]
+    public string? LastOffboardingError { get; set; }
 
     /// <summary>
     /// Stripe Customer ID for platform billing (subscription to ruff-registrar).

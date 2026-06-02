@@ -93,14 +93,34 @@ public class TenantResolutionMiddleware
             
             return await dbContext.Set<Tenant>()
                 .AsNoTracking()
-                .FirstOrDefaultAsync(t => t.Subdomain == tenantSlug && t.IsActive);
+                .FirstOrDefaultAsync(t => t.Subdomain == tenantSlug);
         });
 
         if (tenant == null)
         {
             _logger.LogWarning("Tenant not found for slug: {TenantSlug}", tenantSlug);
             context.Response.StatusCode = StatusCodes.Status404NotFound;
-            await context.Response.WriteAsJsonAsync(new { error = "Organization not found", tenant = tenantSlug });
+            await context.Response.WriteAsJsonAsync(new
+            {
+                error = "Organization not found",
+                code = "organization_not_found",
+                tenant = tenantSlug
+            });
+            return;
+        }
+
+        if (TryGetBlockedTenantReason(tenant, out var blockedReason, out var blockedStatus, out var canRecoverBilling))
+        {
+            _logger.LogWarning("Tenant access blocked for {TenantSlug}: {Reason}", tenantSlug, blockedReason);
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            await context.Response.WriteAsJsonAsync(new
+            {
+                error = blockedReason,
+                code = "tenant_access_blocked",
+                tenant = tenantSlug,
+                tenantStatus = blockedStatus,
+                canRecoverBilling
+            });
             return;
         }
 
@@ -108,7 +128,14 @@ public class TenantResolutionMiddleware
         {
             _logger.LogWarning("Tenant subscription cancelled: {TenantSlug}", tenantSlug);
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
-            await context.Response.WriteAsJsonAsync(new { error = "Subscription cancelled", tenant = tenantSlug });
+            await context.Response.WriteAsJsonAsync(new
+            {
+                error = "Subscription cancelled",
+                code = "tenant_access_blocked",
+                tenant = tenantSlug,
+                tenantStatus = "subscription-cancelled",
+                canRecoverBilling = false
+            });
             return;
         }
 
@@ -161,6 +188,72 @@ public class TenantResolutionMiddleware
         return tenantSlug.All(c => char.IsLetterOrDigit(c) || c == '-');
     }
 
+    private static bool TryGetBlockedTenantReason(Tenant tenant, out string reason, out string status, out bool canRecoverBilling)
+    {
+        if (tenant.OffboardingStatus == TenantOffboardingStatus.Deleted)
+        {
+            reason = "Organization has been deleted";
+            status = "deleted";
+            canRecoverBilling = false;
+            return true;
+        }
+
+        if (tenant.OffboardingStatus == TenantOffboardingStatus.PendingDeletion)
+        {
+            reason = "Organization is pending deletion";
+            status = "pending-deletion";
+            canRecoverBilling = false;
+            return true;
+        }
+
+        if (tenant.OffboardingStatus == TenantOffboardingStatus.DeletionFailed)
+        {
+            reason = "Organization access is blocked during deletion retry";
+            status = "deletion-failed";
+            canRecoverBilling = false;
+            return true;
+        }
+
+        if (tenant.OffboardingStatus == TenantOffboardingStatus.Suspended)
+        {
+            reason = "Organization access is suspended";
+            status = "suspended";
+            canRecoverBilling = true;
+            return true;
+        }
+
+        if (tenant.OffboardingStatus == TenantOffboardingStatus.CancellationScheduled &&
+            tenant.AccessEndsAtUtc.HasValue &&
+            tenant.AccessEndsAtUtc.Value <= DateTime.UtcNow)
+        {
+            reason = "Organization access has ended";
+            status = "access-ended";
+            canRecoverBilling = true;
+            return true;
+        }
+
+        if (tenant.SubscriptionStatus == SubscriptionStatus.BillingHold)
+        {
+            reason = "Billing must be restored before organization access can continue";
+            status = "billing-hold";
+            canRecoverBilling = true;
+            return true;
+        }
+
+        if (!tenant.IsActive)
+        {
+            reason = "Organization access is inactive";
+            status = "inactive";
+            canRecoverBilling = false;
+            return true;
+        }
+
+        reason = string.Empty;
+        status = string.Empty;
+        canRecoverBilling = false;
+        return false;
+    }
+
     /// <summary>
     /// Reserved leading path segments that cannot identify tenants.
     /// </summary>
@@ -180,6 +273,7 @@ public class TenantResolutionMiddleware
         "signup",
         "students",
         "swagger",
+        "tenant-status",
         "unauthorized"
     };
 }

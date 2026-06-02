@@ -99,6 +99,51 @@ public class EnrollmentsControllerTests
         Assert.Same(enrollments, okResult.Value);
     }
 
+    [Fact]
+    public async Task GetMyTeachingRoster_NoEducatorToken_ReturnsForbid()
+    {
+        var result = await _controller.GetMyTeachingRoster();
+
+        Assert.IsType<ForbidResult>(result);
+    }
+
+    [Fact]
+    public async Task GetMyTeachingRoster_Educator_ReturnsOk()
+    {
+        SetKeycloakSubClaim("kc-educator-1");
+        SetAuthorizationRole("Educator");
+
+        var roster = new List<EnrollmentDetailDto>
+        {
+            new() { Id = Guid.NewGuid().ToString(), CourseName = "Biology Lab", StudentName = "Casey Morgan" }
+        };
+
+        _mockService
+            .Setup(s => s.GetMyTeachingRosterAsync("kc-educator-1", null))
+            .ReturnsAsync(roster);
+
+        var result = await _controller.GetMyTeachingRoster();
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        Assert.Same(roster, okResult.Value);
+    }
+
+    [Fact]
+    public async Task GetMyTeachingRoster_UnassignedCourse_ReturnsForbid()
+    {
+        var courseId = Guid.NewGuid();
+        SetKeycloakSubClaim("kc-educator-1");
+        SetAuthorizationRole("Educator");
+
+        _mockService
+            .Setup(s => s.GetMyTeachingRosterAsync("kc-educator-1", courseId))
+            .ThrowsAsync(new UnauthorizedAccessException());
+
+        var result = await _controller.GetMyTeachingRoster(courseId);
+
+        Assert.IsType<ForbidResult>(result);
+    }
+
     // -------------------------------------------------------------------------
     // POST /api/enrollments/{id}/withdraw
     // -------------------------------------------------------------------------
@@ -201,5 +246,23 @@ public class EnrollmentsControllerTests
                 authenticationType: "Test"));
 
         _controller.ControllerContext.HttpContext.User = claims;
+    }
+
+    private void SetAuthorizationRole(string role)
+    {
+        var payload = role switch
+        {
+            "Administrator" => "eyJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiQWRtaW5pc3RyYXRvciJdfX0",
+            "Educator" => "eyJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiRWR1Y2F0b3IiXX19",
+            _ => string.Empty
+        };
+
+        if (string.IsNullOrWhiteSpace(payload))
+        {
+            _controller.ControllerContext.HttpContext.Request.Headers.Authorization = string.Empty;
+            return;
+        }
+
+        _controller.ControllerContext.HttpContext.Request.Headers.Authorization = $"Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.{payload}.";
     }
 }

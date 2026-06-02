@@ -11,6 +11,8 @@ public class EnrollmentServiceTests
     private readonly Mock<IEnrollmentRepository> _enrollmentRepo = new();
     private readonly Mock<IAccountHolderRepository> _accountHolderRepo = new();
     private readonly Mock<ICourseRepository> _courseRepo = new();
+    private readonly Mock<ICourseInstructorRepository> _courseInstructorRepo = new();
+    private readonly Mock<IEducatorRepository> _educatorRepo = new();
     private readonly EnrollmentService _service;
 
     public EnrollmentServiceTests()
@@ -18,7 +20,9 @@ public class EnrollmentServiceTests
         _service = new EnrollmentService(
             _enrollmentRepo.Object,
             _accountHolderRepo.Object,
-            _courseRepo.Object);
+            _courseRepo.Object,
+            _courseInstructorRepo.Object,
+            _educatorRepo.Object);
     }
 
     // -------------------------------------------------------------------------
@@ -79,6 +83,103 @@ public class EnrollmentServiceTests
         var result = await _service.GetByIdAsync(Guid.NewGuid());
 
         Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetMyTeachingRosterAsync_AssignedEducator_ReturnsCourseRosterWithParentContact()
+    {
+        var keycloakUserId = "kc-educator-1";
+        var accountHolderId = Guid.NewGuid();
+        var courseId = Guid.NewGuid();
+
+        _accountHolderRepo
+            .Setup(r => r.GetByKeycloakUserIdAsync(keycloakUserId))
+            .ReturnsAsync(new AccountHolder { Id = accountHolderId, KeycloakUserId = keycloakUserId });
+
+        _courseInstructorRepo
+            .Setup(r => r.GetByAccountHolderIdAsync(accountHolderId))
+            .ReturnsAsync(new List<CourseInstructor>
+            {
+                new() { Id = Guid.NewGuid(), AccountHolderId = accountHolderId, CourseId = courseId }
+            });
+
+        var enrollment = MakeEnrollment(Guid.NewGuid(), EnrollmentType.Enrolled);
+        enrollment.CourseId = courseId;
+        enrollment.Course = new Course { Id = courseId, Name = "Biology Lab", Code = "BIO-101" };
+        enrollment.Student = new Student
+        {
+            Id = enrollment.StudentId,
+            FirstName = "Casey",
+            LastName = "Morgan",
+            AccountHolder = new AccountHolder
+            {
+                FirstName = "Jordan",
+                LastName = "Morgan",
+                EmailAddress = "jordan@example.com",
+                MobilePhone = "555-1000"
+            }
+        };
+
+        _enrollmentRepo.Setup(r => r.GetByCourseIdAsync(courseId)).ReturnsAsync(new List<Enrollment> { enrollment });
+
+        var result = (await _service.GetMyTeachingRosterAsync(keycloakUserId, courseId)).ToList();
+
+        var rosterEntry = Assert.Single(result);
+        Assert.Equal("Biology Lab", rosterEntry.CourseName);
+        Assert.Equal("Jordan Morgan", rosterEntry.ParentName);
+        Assert.Equal("jordan@example.com", rosterEntry.ParentEmail);
+        Assert.Equal("555-1000", rosterEntry.ParentPhone);
+    }
+
+    [Fact]
+    public async Task GetMyTeachingRosterAsync_UnassignedCourse_ThrowsUnauthorizedAccess()
+    {
+        var keycloakUserId = "kc-educator-1";
+        var accountHolderId = Guid.NewGuid();
+
+        _accountHolderRepo
+            .Setup(r => r.GetByKeycloakUserIdAsync(keycloakUserId))
+            .ReturnsAsync(new AccountHolder { Id = accountHolderId, KeycloakUserId = keycloakUserId });
+
+        _courseInstructorRepo
+            .Setup(r => r.GetByAccountHolderIdAsync(accountHolderId))
+            .ReturnsAsync(Array.Empty<CourseInstructor>());
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _service.GetMyTeachingRosterAsync(keycloakUserId, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task GetMyTeachingRosterAsync_EducatorIdentityWithoutAccountHolder_ReturnsAssignedRoster()
+    {
+        var keycloakUserId = "kc-educator-1";
+        var educatorId = Guid.NewGuid();
+        var courseId = Guid.NewGuid();
+
+        _accountHolderRepo
+            .Setup(r => r.GetByKeycloakUserIdAsync(keycloakUserId))
+            .ReturnsAsync((AccountHolder?)null);
+
+        _educatorRepo
+            .Setup(r => r.GetByKeycloakUserIdAsync(keycloakUserId))
+            .ReturnsAsync(new Educator { Id = educatorId, KeycloakUserId = keycloakUserId, FirstName = "Emily", LastName = "Educator" });
+
+        _courseInstructorRepo
+            .Setup(r => r.GetByEducatorIdAsync(educatorId))
+            .ReturnsAsync(new List<CourseInstructor>
+            {
+                new() { Id = Guid.NewGuid(), EducatorId = educatorId, CourseId = courseId }
+            });
+
+        var enrollment = MakeEnrollment(Guid.NewGuid(), EnrollmentType.Enrolled);
+        enrollment.CourseId = courseId;
+        enrollment.Course = new Course { Id = courseId, Name = "Biology Lab", Code = "BIO-101" };
+
+        _enrollmentRepo.Setup(r => r.GetByCourseIdAsync(courseId)).ReturnsAsync(new List<Enrollment> { enrollment });
+
+        var result = (await _service.GetMyTeachingRosterAsync(keycloakUserId)).ToList();
+
+        var rosterEntry = Assert.Single(result);
+        Assert.Equal("Biology Lab", rosterEntry.CourseName);
     }
 
     // -------------------------------------------------------------------------
@@ -323,7 +424,30 @@ public class EnrollmentServiceTests
             FeeAmount = 100m,
             AmountPaid = 0m,
             PaymentStatus = PaymentStatus.Pending,
-            EnrollmentInfoJson = "{}"
+            EnrollmentInfoJson = "{}",
+            Student = new Student
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Student",
+                LastName = "Example",
+                AccountHolder = new AccountHolder
+                {
+                    FirstName = "Parent",
+                    LastName = "Example",
+                    EmailAddress = "parent@example.com"
+                }
+            },
+            Course = new Course
+            {
+                Id = Guid.NewGuid(),
+                Name = "Course",
+                Code = "CRS-1"
+            },
+            Semester = new Semester
+            {
+                Id = Guid.NewGuid(),
+                Name = "Fall 2026"
+            }
         };
     }
 }

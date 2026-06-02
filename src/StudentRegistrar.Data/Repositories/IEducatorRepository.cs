@@ -7,6 +7,7 @@ public interface IEducatorRepository
     Task<IEnumerable<Educator>> GetAllAsync();
     Task<Educator?> GetByIdAsync(Guid id);
     Task<Educator?> GetByAccountHolderIdAsync(Guid accountHolderId);
+    Task<Educator?> GetByKeycloakUserIdAsync(string keycloakUserId);
     Task<IEnumerable<Educator>> GetActiveAsync();
     Task<Educator> CreateAsync(Educator educator);
     Task<Educator> UpdateAsync(Educator educator);

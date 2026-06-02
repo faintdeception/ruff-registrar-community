@@ -47,6 +47,11 @@ public class LoginPage
     public void Login(string username, string password)
     {
         EnsureHostedLoginFormVisible();
+        if (!_driver.FindElements(By.Id("username")).Any() || !_driver.FindElements(By.Id("password")).Any())
+        {
+            return;
+        }
+
         EnterUsername(username);
         EnterPassword(password);
         ClickLogin();
@@ -133,6 +138,8 @@ public class LoginPage
             KeycloakEntryButton.Click();
         }
 
-        _wait.Until(d => d.FindElements(By.Id("username")).Any() && d.FindElements(By.Id("password")).Any());
+        _wait.Until(d =>
+            (d.FindElements(By.Id("username")).Any() && d.FindElements(By.Id("password")).Any()) ||
+            !d.Url.Contains("/login", StringComparison.OrdinalIgnoreCase));
     }
 }

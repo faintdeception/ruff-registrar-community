@@ -29,6 +29,17 @@ public class CourseInstructorRepository : ICourseInstructorRepository
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<CourseInstructor>> GetByAccountHolderIdAsync(Guid accountHolderId)
+    {
+        return await _context.CourseInstructors
+            .Include(ci => ci.Course)
+                .ThenInclude(c => c.Semester)
+            .Where(ci => ci.AccountHolderId == accountHolderId)
+            .OrderByDescending(ci => ci.Course.Semester.StartDate)
+            .ThenBy(ci => ci.Course.Code)
+            .ToListAsync();
+    }
+
     public async Task<IEnumerable<CourseInstructor>> GetByInstructorEmailAsync(string email)
     {
         return await _context.CourseInstructors

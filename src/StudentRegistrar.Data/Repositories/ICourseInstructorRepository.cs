@@ -6,6 +6,7 @@ public interface ICourseInstructorRepository
 {
     Task<CourseInstructor?> GetByIdAsync(Guid id);
     Task<IEnumerable<CourseInstructor>> GetByCourseIdAsync(Guid courseId);
+    Task<IEnumerable<CourseInstructor>> GetByAccountHolderIdAsync(Guid accountHolderId);
     Task<IEnumerable<CourseInstructor>> GetByInstructorEmailAsync(string email);
     Task<IEnumerable<CourseInstructor>> GetByEducatorIdAsync(Guid educatorId);
     Task<IEnumerable<CourseInstructor>> GetAllAsync();

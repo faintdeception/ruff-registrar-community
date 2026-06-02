@@ -17,6 +17,9 @@ public class KeycloakService : IKeycloakService
     private readonly string _realm;
     private readonly string _clientId;
     private readonly string? _clientSecret;
+    private readonly string? _provisioningClientId;
+    private readonly string? _provisioningClientSecret;
+    private readonly string _provisioningRealm;
     private readonly string? _adminUsername;
     private readonly string? _adminPassword;
     private readonly string _adminRealm;
@@ -39,6 +42,9 @@ public class KeycloakService : IKeycloakService
         _realm = _configuration["Keycloak:Realm"] ?? "student-registrar";
         _clientId = _configuration["Keycloak:ClientId"] ?? "student-registrar";
         _clientSecret = _configuration["Keycloak:ClientSecret"];
+        _provisioningClientId = _configuration["Keycloak:ProvisioningClientId"];
+        _provisioningClientSecret = _configuration["Keycloak:ProvisioningClientSecret"];
+        _provisioningRealm = _configuration["Keycloak:ProvisioningRealm"] ?? "master";
         _adminUsername = _configuration["Keycloak:AdminUsername"];
         _adminPassword = _configuration["Keycloak:AdminPassword"];
         _adminRealm = _configuration["Keycloak:AdminRealm"] ?? "master";
@@ -53,7 +59,7 @@ public class KeycloakService : IKeycloakService
             _logger.LogInformation("Creating user in Keycloak with email: {Email}", request.Email);
             
             // Get admin access token
-            var adminToken = await GetAdminAccessTokenAsync();
+            var adminToken = await GetManagementAccessTokenAsync();
             
             // Generate a secure temporary password
             var temporaryPassword = _passwordService.GenerateSecurePassword(14);
@@ -149,7 +155,7 @@ public class KeycloakService : IKeycloakService
             _logger.LogInformation("Updating user role for Keycloak ID: {KeycloakId} to role: {Role}", keycloakId, role);
             
             // Get admin access token
-            var adminToken = await GetAdminAccessTokenAsync();
+            var adminToken = await GetManagementAccessTokenAsync();
             
             // Map UserRole to Keycloak role name
             var keycloakRoleName = role.ToString();
@@ -201,7 +207,7 @@ public class KeycloakService : IKeycloakService
             _logger.LogInformation("Deactivating user for Keycloak ID: {KeycloakId}", keycloakId);
             
             // Get admin access token
-            var adminToken = await GetAdminAccessTokenAsync();
+            var adminToken = await GetManagementAccessTokenAsync();
             
             // Update user to set enabled = false
             var userUpdate = new { enabled = false };
@@ -236,7 +242,7 @@ public class KeycloakService : IKeycloakService
     {
         try
         {
-            var adminToken = await GetAdminAccessTokenAsync();
+            var adminToken = await GetManagementAccessTokenAsync();
 
             var realm = GetCurrentRealm();
             using var searchRequest = new HttpRequestMessage(HttpMethod.Get, $"{_keycloakBaseUrl}/admin/realms/{realm}/users?email={Uri.EscapeDataString(email)}&exact=true");
@@ -271,7 +277,7 @@ public class KeycloakService : IKeycloakService
             _logger.LogInformation("Checking if user exists with email: {Email}", email);
             
             // Get admin access token
-            var adminToken = await GetAdminAccessTokenAsync();
+            var adminToken = await GetManagementAccessTokenAsync();
             
             // Search for user by email
             var realm = GetCurrentRealm();
@@ -302,11 +308,43 @@ public class KeycloakService : IKeycloakService
         }
     }
 
-    private async Task<string> GetAdminAccessTokenAsync()
+    private async Task<string> GetManagementAccessTokenAsync()
     {
         try
         {
-            _logger.LogDebug("Obtaining admin access token from Keycloak");
+            _logger.LogDebug("Obtaining Keycloak management access token");
+
+            if (!string.IsNullOrWhiteSpace(_provisioningClientId) && !string.IsNullOrWhiteSpace(_provisioningClientSecret))
+            {
+                var provisioningTokenRequest = new Dictionary<string, string>
+                {
+                    { "grant_type", "client_credentials" },
+                    { "client_id", _provisioningClientId },
+                    { "client_secret", _provisioningClientSecret }
+                };
+
+                using var provisioningRequest = new HttpRequestMessage(HttpMethod.Post, $"{_keycloakBaseUrl}/realms/{_provisioningRealm}/protocol/openid-connect/token");
+                provisioningRequest.Content = new FormUrlEncodedContent(provisioningTokenRequest);
+
+                var provisioningResponse = await _httpClient.SendAsync(provisioningRequest);
+                if (!provisioningResponse.IsSuccessStatusCode)
+                {
+                    var provisioningError = await provisioningResponse.Content.ReadAsStringAsync();
+                    throw new InvalidOperationException($"Failed to obtain provisioning access token. Status: {provisioningResponse.StatusCode}, Error: {provisioningError}");
+                }
+
+                var provisioningContent = await provisioningResponse.Content.ReadAsStringAsync();
+                using var provisioningJson = JsonDocument.Parse(provisioningContent);
+                var provisioningAccessToken = provisioningJson.RootElement.GetProperty("access_token").GetString();
+
+                if (string.IsNullOrEmpty(provisioningAccessToken))
+                {
+                    throw new InvalidOperationException("Access token is null or empty in Keycloak provisioning response");
+                }
+
+                _logger.LogDebug("Successfully obtained Keycloak management access token via provisioning client");
+                return provisioningAccessToken;
+            }
 
             if (!string.IsNullOrWhiteSpace(_adminUsername) && !string.IsNullOrWhiteSpace(_adminPassword))
             {
@@ -383,7 +421,7 @@ public class KeycloakService : IKeycloakService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to obtain admin access token from Keycloak");
+            _logger.LogError(ex, "Failed to obtain Keycloak management access token");
             throw;
         }
     }

@@ -31,6 +31,7 @@ export default function Layout({ children }: LayoutProps) {
   }, []);
 
   const isAdmin = user?.roles.includes('Administrator');
+  const isEducator = user?.roles.includes('Educator');
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -76,6 +77,16 @@ export default function Layout({ children }: LayoutProps) {
                     >
                       Account
                     </Link>
+                    {isEducator && (
+                      <Link
+                        href={tenantPath('/teaching')}
+                        className="text-gray-600 hover:text-primary-600"
+                        data-testid="nav-teaching"
+                        data-nav-item="teaching"
+                      >
+                        My Rosters
+                      </Link>
+                    )}
                     {user.roles.includes('Administrator') && (
                       <Link
                         href={tenantPath('/students')}

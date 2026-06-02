@@ -1,3 +1,4 @@
+using OpenQA.Selenium;
 using StudentRegistrar.E2E.Tests.Base;
 using StudentRegistrar.E2E.Tests.Pages;
 using Xunit;
@@ -94,8 +95,8 @@ public abstract class BaseRoleNavigationTest : BaseTest
         var password = Configuration["TestCredentials:AdminUser:Password"] ?? "AdminPass123!";
 
         loginPage.Login(username, password);
-        WaitForPageLoad();
-        WaitForUrlContains("/");
+        WaitUntil(d => !d.Url.Contains("/login", StringComparison.OrdinalIgnoreCase), 30, 200, "Admin login did not leave the login page in time");
+        WaitForElementVisible(By.Id("logout-button"), 30);
 
         var homePage = new HomePage(Driver);
         Assert.True(homePage.IsLoggedIn());
@@ -115,8 +116,8 @@ public abstract class BaseRoleNavigationTest : BaseTest
         var password = Configuration["TestCredentials:EducatorUser:Password"] ?? "EducatorPass123!";
 
         loginPage.Login(username, password);
-        WaitForPageLoad();
-        WaitForUrlContains("/");
+        WaitUntil(d => !d.Url.Contains("/login", StringComparison.OrdinalIgnoreCase), 30, 200, "Educator login did not leave the login page in time");
+        WaitForElementVisible(By.Id("logout-button"), 30);
 
         var homePage = new HomePage(Driver);
         Assert.True(homePage.IsLoggedIn());
@@ -136,8 +137,8 @@ public abstract class BaseRoleNavigationTest : BaseTest
         var password = Configuration["TestCredentials:MemberUser:Password"] ?? "MemberPass123!";
 
         loginPage.Login(username, password);
-        WaitForPageLoad();
-        WaitForUrlContains("/");
+        WaitUntil(d => !d.Url.Contains("/login", StringComparison.OrdinalIgnoreCase), 30, 200, "Member login did not leave the login page in time");
+        WaitForElementVisible(By.Id("logout-button"), 30);
 
         var homePage = new HomePage(Driver);
         Assert.True(homePage.IsLoggedIn());

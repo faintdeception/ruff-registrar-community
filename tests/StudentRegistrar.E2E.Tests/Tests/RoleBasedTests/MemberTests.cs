@@ -185,6 +185,25 @@ public class MemberTests : BaseTest
     }
 
     [Fact]
+    public void Member_Should_NOT_Access_Teaching_Rosters()
+    {
+        LoginAsMember();
+
+        var navigationPage = new NavigationPage(Driver);
+        Assert.False(navigationPage.IsTeachingVisible());
+
+        Driver.Navigate().GoToUrl($"{BaseUrl.TrimEnd('/')}/teaching");
+        WaitForPageLoad();
+        WaitUntil(
+            d => d.Url.Contains("/unauthorized", StringComparison.OrdinalIgnoreCase) ||
+                 d.Url.Contains("/login", StringComparison.OrdinalIgnoreCase),
+            timeoutSeconds: 15,
+            failureMessage: "Member navigation to /teaching did not redirect away from the protected page in time.");
+
+        Assert.DoesNotContain("My Rosters", Driver.PageSource, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Member_Should_Complete_Family_Management_Workflow()
     {
         // This test covers the basic member workflow:

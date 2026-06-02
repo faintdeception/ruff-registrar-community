@@ -9,15 +9,21 @@ public class EnrollmentService : IEnrollmentService
     private readonly IEnrollmentRepository _enrollmentRepository;
     private readonly IAccountHolderRepository _accountHolderRepository;
     private readonly ICourseRepository _courseRepository;
+    private readonly ICourseInstructorRepository _courseInstructorRepository;
+    private readonly IEducatorRepository _educatorRepository;
 
     public EnrollmentService(
         IEnrollmentRepository enrollmentRepository,
         IAccountHolderRepository accountHolderRepository,
-        ICourseRepository courseRepository)
+        ICourseRepository courseRepository,
+        ICourseInstructorRepository courseInstructorRepository,
+        IEducatorRepository educatorRepository)
     {
         _enrollmentRepository = enrollmentRepository;
         _accountHolderRepository = accountHolderRepository;
         _courseRepository = courseRepository;
+        _courseInstructorRepository = courseInstructorRepository;
+        _educatorRepository = educatorRepository;
     }
 
     public async Task<IEnumerable<EnrollmentDetailDto>> GetAllAsync(
@@ -84,6 +90,54 @@ public class EnrollmentService : IEnrollmentService
         }
 
         return all.OrderByDescending(e => e.EnrollmentDate).Select(MapToDetail);
+    }
+
+    public async Task<IEnumerable<EnrollmentDetailDto>> GetMyTeachingRosterAsync(string keycloakUserId, Guid? courseId = null)
+    {
+        var taughtCourseIds = new HashSet<Guid>();
+
+        var accountHolder = await _accountHolderRepository.GetByKeycloakUserIdAsync(keycloakUserId);
+        if (accountHolder is not null)
+        {
+            var accountHolderAssignments = await _courseInstructorRepository.GetByAccountHolderIdAsync(accountHolder.Id);
+            taughtCourseIds.UnionWith(accountHolderAssignments.Select(assignment => assignment.CourseId));
+        }
+
+        var educator = await _educatorRepository.GetByKeycloakUserIdAsync(keycloakUserId);
+        if (educator is not null)
+        {
+            var educatorAssignments = await _courseInstructorRepository.GetByEducatorIdAsync(educator.Id);
+            taughtCourseIds.UnionWith(educatorAssignments.Select(assignment => assignment.CourseId));
+        }
+
+        if (taughtCourseIds.Count == 0)
+        {
+            return Array.Empty<EnrollmentDetailDto>();
+        }
+
+        if (courseId.HasValue)
+        {
+            if (!taughtCourseIds.Contains(courseId.Value))
+            {
+                throw new UnauthorizedAccessException("This course is not assigned to the calling educator.");
+            }
+
+            var roster = await _enrollmentRepository.GetByCourseIdAsync(courseId.Value);
+            return roster.Select(MapToDetail);
+        }
+
+        var all = new List<Enrollment>();
+        foreach (var taughtCourseId in taughtCourseIds)
+        {
+            var roster = await _enrollmentRepository.GetByCourseIdAsync(taughtCourseId);
+            all.AddRange(roster);
+        }
+
+        return all
+            .OrderBy(e => e.Course?.Name ?? string.Empty)
+            .ThenBy(e => e.Student?.LastName ?? string.Empty)
+            .ThenBy(e => e.Student?.FirstName ?? string.Empty)
+            .Select(MapToDetail);
     }
 
     public async Task<EnrollmentDetailDto> WithdrawAsync(Guid id, string? keycloakUserId, string? reason)
@@ -175,6 +229,11 @@ public class EnrollmentService : IEnrollmentService
         StudentName = e.Student is null
             ? string.Empty
             : $"{e.Student.FirstName} {e.Student.LastName}",
+        ParentName = e.Student?.AccountHolder is null
+            ? null
+            : $"{e.Student.AccountHolder.FirstName} {e.Student.AccountHolder.LastName}".Trim(),
+        ParentEmail = e.Student?.AccountHolder?.EmailAddress,
+        ParentPhone = e.Student?.AccountHolder?.MobilePhone ?? e.Student?.AccountHolder?.HomePhone,
         CourseId = e.CourseId.ToString(),
         CourseName = e.Course?.Name ?? string.Empty,
         CourseCode = e.Course?.Code,

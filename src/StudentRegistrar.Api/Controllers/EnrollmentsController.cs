@@ -111,6 +111,41 @@ public class EnrollmentsController : ControllerBase
     }
 
     /// <summary>
+    /// Get roster entries for the courses taught by the calling educator.
+    /// </summary>
+    [HttpGet("teaching")]
+    public async Task<IActionResult> GetMyTeachingRoster([FromQuery] Guid? courseId = null)
+    {
+        if (GetUserRole() != "Educator")
+            return Forbid();
+
+        var keycloakUserId = GetKeycloakUserId();
+        if (string.IsNullOrEmpty(keycloakUserId))
+            return Unauthorized(new { error = "Unable to identify user." });
+
+        try
+        {
+            var roster = await _enrollmentService.GetMyTeachingRosterAsync(keycloakUserId, courseId);
+            return Ok(roster);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Educator roster lookup failed for user {UserId}", keycloakUserId);
+            return NotFound(new { error = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Unauthorized roster access by educator {UserId} for course {CourseId}", keycloakUserId, courseId);
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving teaching roster for user {UserId}", keycloakUserId);
+            return StatusCode(500, new { error = "An error occurred while retrieving the teaching roster." });
+        }
+    }
+
+    /// <summary>
     /// Get enrollments for a specific student. Admin or the student's account holder.
     /// </summary>
     [HttpGet("student/{studentId:guid}")]

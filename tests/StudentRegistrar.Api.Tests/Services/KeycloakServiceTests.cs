@@ -68,6 +68,85 @@ public class KeycloakServiceTests
     }
 
     [Fact]
+    public async Task CreateUserAsync_WhenProvisioningClientConfigured_UsesProvisioningTokenFromMasterRealm()
+    {
+        var requests = new List<(string Uri, string? Body)>();
+        var handler = new RecordingHttpMessageHandler(requests,
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"access_token\":\"provisioning-token\"}")
+            },
+            new HttpResponseMessage(HttpStatusCode.Created)
+            {
+                Headers = { Location = new Uri("http://localhost:8080/admin/realms/test-realm/users/12345") }
+            });
+
+        var configMock = new Mock<IConfiguration>();
+        configMock.Setup(c => c["Keycloak:BaseUrl"]).Returns("http://localhost:8080");
+        configMock.Setup(c => c["Keycloak:Realm"]).Returns("test-realm");
+        configMock.Setup(c => c["Keycloak:ClientId"]).Returns("test-client");
+        configMock.Setup(c => c["Keycloak:ClientSecret"]).Returns("test-secret");
+        configMock.Setup(c => c["Keycloak:ProvisioningClientId"]).Returns("saas-tenant-provisioner");
+        configMock.Setup(c => c["Keycloak:ProvisioningClientSecret"]).Returns("provisioning-secret");
+        configMock.Setup(c => c["Keycloak:ProvisioningRealm"]).Returns("master");
+        configMock.Setup(c => c["Keycloak:AdminUsername"]).Returns("admin");
+        configMock.Setup(c => c["Keycloak:AdminPassword"]).Returns("admin-pass");
+
+        var service = new KeycloakService(new HttpClient(handler), configMock.Object, _loggerMock.Object, _passwordServiceMock.Object);
+        _passwordServiceMock.Setup(p => p.GenerateSecurePassword(14)).Returns("TempPass123!");
+        _passwordServiceMock.Setup(p => p.AssessPasswordStrength("TempPass123!")).Returns(PasswordStrength.Strong);
+
+        await service.CreateUserAsync(new CreateUserRequest
+        {
+            Email = "test@example.com",
+            FirstName = "John",
+            LastName = "Doe"
+        });
+
+        Assert.Equal("http://localhost:8080/realms/master/protocol/openid-connect/token", requests[0].Uri);
+        Assert.Contains("grant_type=client_credentials", requests[0].Body);
+        Assert.Contains("client_id=saas-tenant-provisioner", requests[0].Body);
+        Assert.DoesNotContain("grant_type=password", requests[0].Body);
+    }
+
+    [Fact]
+    public async Task CreateUserAsync_WhenProvisioningClientFails_DoesNotFallbackToAdminPassword()
+    {
+        var requests = new List<(string Uri, string? Body)>();
+        var handler = new RecordingHttpMessageHandler(requests,
+            new HttpResponseMessage(HttpStatusCode.Unauthorized)
+            {
+                Content = new StringContent("invalid client")
+            });
+
+        var configMock = new Mock<IConfiguration>();
+        configMock.Setup(c => c["Keycloak:BaseUrl"]).Returns("http://localhost:8080");
+        configMock.Setup(c => c["Keycloak:Realm"]).Returns("test-realm");
+        configMock.Setup(c => c["Keycloak:ClientId"]).Returns("test-client");
+        configMock.Setup(c => c["Keycloak:ClientSecret"]).Returns("test-secret");
+        configMock.Setup(c => c["Keycloak:ProvisioningClientId"]).Returns("saas-tenant-provisioner");
+        configMock.Setup(c => c["Keycloak:ProvisioningClientSecret"]).Returns("provisioning-secret");
+        configMock.Setup(c => c["Keycloak:ProvisioningRealm"]).Returns("master");
+        configMock.Setup(c => c["Keycloak:AdminUsername"]).Returns("admin");
+        configMock.Setup(c => c["Keycloak:AdminPassword"]).Returns("admin-pass");
+
+        var service = new KeycloakService(new HttpClient(handler), configMock.Object, _loggerMock.Object, _passwordServiceMock.Object);
+        _passwordServiceMock.Setup(p => p.GenerateSecurePassword(14)).Returns("TempPass123!");
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CreateUserAsync(new CreateUserRequest
+            {
+                Email = "test@example.com",
+                FirstName = "John",
+                LastName = "Doe"
+            }));
+
+        Assert.Contains("Failed to obtain provisioning access token", exception.Message);
+        Assert.Single(requests);
+        Assert.DoesNotContain("grant_type=password", requests[0].Body);
+    }
+
+    [Fact]
     public async Task CreateUserAsync_SuccessfulCreation_ReturnsCreateUserResponse()
     {
         // Arrange
@@ -494,5 +573,30 @@ public class KeycloakServiceTests
             _keycloakService.CreateUserAsync(request));
         
         Assert.Contains("Failed to extract user ID from Keycloak response", exception.Message);
+    }
+}
+
+internal sealed class RecordingHttpMessageHandler : HttpMessageHandler
+{
+    private readonly Queue<HttpResponseMessage> _responses;
+    private readonly List<(string Uri, string? Body)> _requests;
+
+    public RecordingHttpMessageHandler(List<(string Uri, string? Body)> requests, params HttpResponseMessage[] responses)
+    {
+        _requests = requests;
+        _responses = new Queue<HttpResponseMessage>(responses);
+    }
+
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
+        _requests.Add((request.RequestUri!.ToString(), body));
+
+        if (_responses.Count == 0)
+        {
+            throw new InvalidOperationException("No more mock responses configured.");
+        }
+
+        return _responses.Dequeue();
     }
 }

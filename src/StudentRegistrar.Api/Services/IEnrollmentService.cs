@@ -15,6 +15,7 @@ public interface IEnrollmentService
     Task<IEnumerable<EnrollmentDetailDto>> GetByStudentAsync(Guid studentId);
     Task<IEnumerable<EnrollmentDetailDto>> GetByCourseAsync(Guid courseId);
     Task<IEnumerable<EnrollmentDetailDto>> GetMyEnrollmentsAsync(string keycloakUserId);
+    Task<IEnumerable<EnrollmentDetailDto>> GetMyTeachingRosterAsync(string keycloakUserId, Guid? courseId = null);
 
     /// <summary>
     /// Transitions an Enrolled or Waitlisted enrollment to Withdrawn.

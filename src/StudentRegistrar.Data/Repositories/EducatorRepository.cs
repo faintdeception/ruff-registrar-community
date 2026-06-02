@@ -27,6 +27,11 @@ public class EducatorRepository : IEducatorRepository
         return await _context.Educators.FirstOrDefaultAsync(e => e.AccountHolderId == accountHolderId);
     }
 
+    public async Task<Educator?> GetByKeycloakUserIdAsync(string keycloakUserId)
+    {
+        return await _context.Educators.FirstOrDefaultAsync(e => e.KeycloakUserId == keycloakUserId);
+    }
+
     public async Task<IEnumerable<Educator>> GetActiveAsync()
     {
         return await _context.Educators.Where(e => e.IsActive).ToListAsync();
