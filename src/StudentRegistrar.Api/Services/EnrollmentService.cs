@@ -112,6 +112,11 @@ public class EnrollmentService : IEnrollmentService
 
         if (taughtCourseIds.Count == 0)
         {
+            if (courseId.HasValue)
+            {
+                throw new UnauthorizedAccessException("This course is not assigned to the calling educator.");
+            }
+
             return Array.Empty<EnrollmentDetailDto>();
         }
 
