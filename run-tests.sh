@@ -8,7 +8,7 @@ set -euo pipefail
 echo "🧪 Running Student Registrar Tests"
 echo "================================="
 
-if [ "$1" = "--watch" ]; then
+if [ "${1:-}" = "--watch" ]; then
     echo "Running in watch mode..."
     dotnet watch test
 else
