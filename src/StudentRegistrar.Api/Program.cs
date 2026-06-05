@@ -304,7 +304,9 @@ if (runMigrations)
 // Only use HTTPS redirection in production
 if (app.Environment.IsProduction())
 {
-    app.UseHttpsRedirection();
+    app.UseWhen(
+        context => !context.Request.Path.Equals("/health", StringComparison.OrdinalIgnoreCase),
+        branch => branch.UseHttpsRedirection());
 }
 
 app.UseForwardedHeaders();
@@ -319,6 +321,7 @@ app.UseTenantResolution();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapControllers();
 app.MapDefaultEndpoints();
 

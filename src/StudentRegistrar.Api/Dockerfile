@@ -1,6 +1,7 @@
 # See https://github.com/dotnet/dotnet-docker/blob/main/samples/aspnetapp/Dockerfile
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS base
 WORKDIR /app
+RUN apk add --no-cache krb5-libs
 EXPOSE 8080
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
