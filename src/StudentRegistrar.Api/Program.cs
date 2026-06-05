@@ -5,6 +5,7 @@ using StudentRegistrar.Data;
 using StudentRegistrar.Api.Services;
 using StudentRegistrar.Api.Services.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -13,6 +14,7 @@ using StudentRegistrar.Api.DTOs;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
 using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Security.Cryptography.X509Certificates;
 
 var builder = WebApplication.CreateBuilder(args);
 var httpContextAccessor = new HttpContextAccessor();
@@ -30,6 +32,8 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownIPNetworks.Clear();
     options.KnownProxies.Clear();
 });
+
+ConfigureDataProtection(builder.Services, builder.Configuration, "StudentRegistrar.Api");
 
 // Add tenant services for multi-tenancy support
 builder.Services.AddTenantServices();
@@ -456,6 +460,32 @@ static CachedSigningKeys FetchSigningKeys(string issuer, bool allowUntrustedCert
     return new CachedSigningKeys(
         jwks.GetSigningKeys().ToArray(),
         DateTimeOffset.UtcNow.AddMinutes(10));
+}
+
+static void ConfigureDataProtection(IServiceCollection services, IConfiguration configuration, string applicationName)
+{
+    var keyRingDirectory = configuration["DataProtection:KeyRingDirectory"];
+    if (string.IsNullOrWhiteSpace(keyRingDirectory))
+    {
+        return;
+    }
+
+    var dataProtectionBuilder = services.AddDataProtection()
+        .SetApplicationName(applicationName)
+        .PersistKeysToFileSystem(new DirectoryInfo(keyRingDirectory));
+
+    var certificatePath = configuration["DataProtection:CertificatePath"];
+    if (string.IsNullOrWhiteSpace(certificatePath))
+    {
+        return;
+    }
+
+    var certificatePassword = configuration["DataProtection:CertificatePassword"];
+    var certificate = string.IsNullOrWhiteSpace(certificatePassword)
+        ? new X509Certificate2(certificatePath)
+        : new X509Certificate2(certificatePath, certificatePassword);
+
+    dataProtectionBuilder.ProtectKeysWithCertificate(certificate);
 }
 
 file sealed record CachedSigningKeys(IReadOnlyCollection<SecurityKey> Keys, DateTimeOffset ExpiresAt);
