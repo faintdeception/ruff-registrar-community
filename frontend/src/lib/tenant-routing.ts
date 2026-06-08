@@ -1,32 +1,13 @@
-export const reservedTenantPathSegments = new Set([
-  '_next',
-  'account-holder',
-  'admin',
-  'api',
-  'courses',
-  'educators',
-  'env.js',
-  'favicon.ico',
-  'login',
-  'members',
-  'rooms',
-  'semesters',
-  'settings',
-  'silent-check-sso.html',
-  'students',
-  'teaching',
-  'tenant-status',
-  'unauthorized',
-]);
+const tenantPathNamespace = 'org';
 
 export const extractTenantSlugFromPath = (path: string): string | null => {
-  const pathname = path.split('?')[0].split('#')[0];
-  const candidate = pathname
-    .split('/')
-    .map(segment => segment.trim().toLowerCase())
-    .filter(Boolean)[0];
+  const segments = getPathSegments(path, true);
+  if (segments.length < 2 || segments[0] !== tenantPathNamespace) {
+    return null;
+  }
 
-  if (!candidate || reservedTenantPathSegments.has(candidate) || !isValidTenantSlug(candidate)) {
+  const candidate = segments[1];
+  if (!candidate || !isValidTenantSlug(candidate)) {
     return null;
   }
 
@@ -35,10 +16,7 @@ export const extractTenantSlugFromPath = (path: string): string | null => {
 
 export const stripTenantSlugFromPath = (path: string): string => {
   const pathname = path.split('?')[0].split('#')[0];
-  const segments = pathname
-    .split('/')
-    .map(segment => segment.trim())
-    .filter(Boolean);
+  const segments = getPathSegments(pathname);
 
   if (segments.length === 0) {
     return '/';
@@ -49,7 +27,7 @@ export const stripTenantSlugFromPath = (path: string): string => {
     return pathname || '/';
   }
 
-  const strippedSegments = segments.slice(1);
+  const strippedSegments = segments.slice(2);
   return strippedSegments.length === 0 ? '/' : `/${strippedSegments.join('/')}`;
 };
 
@@ -59,15 +37,16 @@ export const buildTenantPath = (targetPath: string, tenantSlug: string | null | 
     return normalizedTargetPath;
   }
 
-  if (extractTenantSlugFromPath(normalizedTargetPath) === tenantSlug) {
+  const existingSlug = extractTenantSlugFromPath(normalizedTargetPath);
+  if (existingSlug) {
     return normalizedTargetPath;
   }
 
   if (normalizedTargetPath === '/') {
-    return `/${tenantSlug}`;
+    return `/${tenantPathNamespace}/${tenantSlug}`;
   }
 
-  return `/${tenantSlug}${normalizedTargetPath}`;
+  return `/${tenantPathNamespace}/${tenantSlug}${normalizedTargetPath}`;
 };
 
 export const isValidTenantSlug = (value: string): boolean => {
@@ -80,4 +59,13 @@ const normalizeTargetPath = (value: string): string => {
   }
 
   return value.startsWith('/') ? value : `/${value}`;
+};
+
+const getPathSegments = (path: string, normalizeCase = false): string[] => {
+  return path
+    .split('?')[0]
+    .split('#')[0]
+    .split('/')
+    .map(segment => normalizeCase ? segment.trim().toLowerCase() : segment.trim())
+    .filter(Boolean);
 };
