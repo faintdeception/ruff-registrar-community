@@ -161,13 +161,18 @@ public class TenantResolutionMiddleware
 
         var segments = context.Request.Path.Value?
             .Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (segments is null || segments.Length == 0)
+        if (segments is null || segments.Length < 2)
         {
             return null;
         }
 
-        var candidate = segments[0].ToLowerInvariant();
-        if (ReservedPathSegments.Contains(candidate) || !IsValidTenantSlug(candidate))
+        if (!string.Equals(segments[0], "org", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var candidate = segments[1].ToLowerInvariant();
+        if (!IsValidTenantSlug(candidate))
         {
             return null;
         }
@@ -254,28 +259,6 @@ public class TenantResolutionMiddleware
         return false;
     }
 
-    /// <summary>
-    /// Reserved leading path segments that cannot identify tenants.
-    /// </summary>
-    private static readonly HashSet<string> ReservedPathSegments = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "admin",
-        "api",
-        "courses",
-        "educators",
-        "health",
-        "login",
-        "members",
-        "rooms",
-        "semesters",
-        "settings",
-        "signin",
-        "signup",
-        "students",
-        "swagger",
-        "tenant-status",
-        "unauthorized"
-    };
 }
 
 /// <summary>

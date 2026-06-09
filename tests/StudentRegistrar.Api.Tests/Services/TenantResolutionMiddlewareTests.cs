@@ -27,7 +27,7 @@ public class TenantResolutionMiddlewareTests
 
         var tenantContextAccessor = new TenantContextAccessor();
         var middleware = CreateMiddleware();
-        var httpContext = CreateHttpContext($"/{tenant.Subdomain}/courses");
+        var httpContext = CreateHttpContext($"/org/{tenant.Subdomain}/courses");
 
         await middleware.InvokeAsync(httpContext, tenantContextAccessor, dbContext);
 
@@ -54,7 +54,7 @@ public class TenantResolutionMiddlewareTests
 
         var tenantContextAccessor = new TenantContextAccessor();
         var middleware = CreateMiddleware();
-        var httpContext = CreateHttpContext($"/{tenant.Subdomain}/courses");
+        var httpContext = CreateHttpContext($"/org/{tenant.Subdomain}/courses");
 
         await middleware.InvokeAsync(httpContext, tenantContextAccessor, dbContext);
 
@@ -80,7 +80,7 @@ public class TenantResolutionMiddlewareTests
 
         var tenantContextAccessor = new TenantContextAccessor();
         var middleware = CreateMiddleware();
-        var httpContext = CreateHttpContext($"/{tenant.Subdomain}/courses");
+        var httpContext = CreateHttpContext($"/org/{tenant.Subdomain}/courses");
 
         await middleware.InvokeAsync(httpContext, tenantContextAccessor, dbContext);
 

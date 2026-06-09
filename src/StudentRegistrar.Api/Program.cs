@@ -124,7 +124,7 @@ builder.Services.AddCors(options =>
         var allowedOrigins = configuredOrigins.Length > 0 ? configuredOrigins : defaultOrigins;
         var baseDomain = builder.Configuration["Tenancy:BaseDomain"] ?? "ruffregistrar.com";
 
-        policy.SetIsOriginAllowed(origin => IsAllowedCorsOrigin(origin, allowedOrigins, baseDomain))
+          policy.SetIsOriginAllowed(origin => IsAllowedCorsOrigin(origin, allowedOrigins, baseDomain, builder.Environment.IsDevelopment()))
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -382,7 +382,7 @@ static string NormalizeIssuer(string issuer)
     return issuer.TrimEnd('/');
 }
 
-static bool IsAllowedCorsOrigin(string origin, IReadOnlyCollection<string> allowedOrigins, string baseDomain)
+static bool IsAllowedCorsOrigin(string origin, IReadOnlyCollection<string> allowedOrigins, string baseDomain, bool allowLocalhost)
 {
     if (allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase))
     {
@@ -403,8 +403,8 @@ static bool IsAllowedCorsOrigin(string origin, IReadOnlyCollection<string> allow
     var normalizedBaseDomain = baseDomain.Trim().ToLowerInvariant();
     var host = uri.Host.ToLowerInvariant();
 
-    if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)
-        || host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase))
+    if (allowLocalhost && (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase)))
     {
         return true;
     }
