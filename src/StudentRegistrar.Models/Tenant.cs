@@ -154,6 +154,33 @@ public partial class Tenant
     public string? StripePaymentMethodId { get; set; }
 
     /// <summary>
+    /// Stripe Connect account id for tenant-owned payment processing.
+    /// SaaS-only: enables direct payouts to the tenant's Stripe account.
+    /// </summary>
+    [MaxLength(255)]
+    public string? StripeConnectAccountId { get; set; }
+
+    /// <summary>
+    /// Whether Stripe Connect onboarding details are submitted for this tenant account.
+    /// </summary>
+    public bool StripeConnectDetailsSubmitted { get; set; }
+
+    /// <summary>
+    /// Whether the tenant Stripe Connect account can create charges.
+    /// </summary>
+    public bool StripeConnectChargesEnabled { get; set; }
+
+    /// <summary>
+    /// Whether the tenant Stripe Connect account can receive payouts.
+    /// </summary>
+    public bool StripeConnectPayoutsEnabled { get; set; }
+
+    /// <summary>
+    /// Timestamp when Stripe Connect onboarding first reached charge/payout-enabled state.
+    /// </summary>
+    public DateTime? StripeConnectOnboardingCompletedAtUtc { get; set; }
+
+    /// <summary>
     /// Logo image data stored as base64 (Enterprise tier only).
     /// Limited to ~500KB to keep DB manageable.
     /// </summary>

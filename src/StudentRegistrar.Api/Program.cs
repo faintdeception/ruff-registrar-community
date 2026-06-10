@@ -98,6 +98,7 @@ builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<ITenantBillingService, TenantBillingService>();
 builder.Services.AddScoped<ITenantStripeBillingGateway, TenantStripeBillingGateway>();
+builder.Services.AddScoped<ITenantPaymentConnectService, TenantPaymentConnectService>();
 
 // Add HttpClient for Keycloak
 builder.Services.AddHttpClient<IKeycloakService, KeycloakService>()

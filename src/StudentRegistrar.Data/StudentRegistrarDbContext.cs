@@ -101,6 +101,10 @@ public class StudentRegistrarDbContext : DbContext
             entity.Property(e => e.StripeSubscriptionId).HasMaxLength(255);
             entity.Property(e => e.StripeSetupIntentId).HasMaxLength(255);
             entity.Property(e => e.StripePaymentMethodId).HasMaxLength(255);
+            entity.Property(e => e.StripeConnectAccountId).HasMaxLength(255);
+            entity.Property(e => e.StripeConnectDetailsSubmitted).IsRequired();
+            entity.Property(e => e.StripeConnectChargesEnabled).IsRequired();
+            entity.Property(e => e.StripeConnectPayoutsEnabled).IsRequired();
             entity.Property(e => e.LogoBase64).HasMaxLength(700000);
             entity.Property(e => e.LogoMimeType).HasMaxLength(50);
             entity.Property(e => e.ThemeConfigJson).HasColumnType("jsonb");

@@ -33,13 +33,34 @@ interface TenantBillingCancellation {
   message: string;
 }
 
+interface TenantPaymentConnectStatus {
+  isSaaSMode: boolean;
+  hasPaymentFeatures: boolean;
+  platformStripeConfigured: boolean;
+  isAvailable: boolean;
+  isConnected: boolean;
+  stripeConnectAccountId?: string | null;
+  detailsSubmitted: boolean;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  onboardingCompletedAtUtc?: string | null;
+  unavailableReason?: string | null;
+}
+
+interface TenantPaymentConnectOnboardingLink {
+  url: string;
+  expiresAtUtc?: string | null;
+}
+
 export default function SystemSettings() {
   const { user } = useAuth();
   const [billing, setBilling] = useState<TenantBillingStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [connectSubmitting, setConnectSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [connectStatus, setConnectStatus] = useState<TenantPaymentConnectStatus | null>(null);
 
   const isAdmin = !!user?.roles.includes('Administrator');
 
@@ -49,12 +70,17 @@ export default function SystemSettings() {
       return;
     }
 
-    void fetchBilling();
+    void fetchSettingsData();
   }, [isAdmin]);
+
+  const fetchSettingsData = async () => {
+    setLoading(true);
+    await Promise.all([fetchBilling(), fetchConnectStatus()]);
+    setLoading(false);
+  };
 
   const fetchBilling = async () => {
     try {
-      setLoading(true);
       setError(null);
 
       const response = await apiClient.get('/api/tenant-billing');
@@ -67,8 +93,21 @@ export default function SystemSettings() {
     } catch (err) {
       setError('Failed to load billing settings');
       console.error('Error loading billing settings:', err);
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const fetchConnectStatus = async () => {
+    try {
+      const response = await apiClient.get('/api/tenant-payment-connect/status');
+      if (!response.ok) {
+        throw new Error('Failed to load Stripe Connect status');
+      }
+
+      const data = await response.json() as TenantPaymentConnectStatus;
+      setConnectStatus(data);
+    } catch (err) {
+      console.error('Error loading Stripe Connect status:', err);
+      setConnectStatus(null);
     }
   };
 
@@ -95,7 +134,7 @@ export default function SystemSettings() {
 
       const data = await response.json() as TenantBillingCancellation;
       setSuccessMessage(data.message);
-      await fetchBilling();
+      await fetchSettingsData();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to schedule cancellation';
       setError(message);
@@ -128,13 +167,59 @@ export default function SystemSettings() {
 
       const data = await response.json() as TenantBillingCancellation;
       setSuccessMessage(data.message);
-      await fetchBilling();
+      await fetchSettingsData();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to undo scheduled cancellation';
       setError(message);
       console.error('Error undoing scheduled cancellation:', err);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleConnectStripe = async () => {
+    if (connectSubmitting) {
+      return;
+    }
+
+    try {
+      setConnectSubmitting(true);
+      setError(null);
+
+      const response = await apiClient.post('/api/tenant-payment-connect/onboarding-link');
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || 'Failed to start Stripe Connect onboarding');
+      }
+
+      const data = await response.json() as TenantPaymentConnectOnboardingLink;
+      window.location.href = data.url;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to start Stripe Connect onboarding';
+      setError(message);
+      setConnectSubmitting(false);
+    }
+  };
+
+  const handleRefreshConnectStatus = async () => {
+    if (connectSubmitting) {
+      return;
+    }
+
+    try {
+      setConnectSubmitting(true);
+      const response = await apiClient.post('/api/tenant-payment-connect/status/refresh');
+      if (!response.ok) {
+        throw new Error('Failed to refresh Stripe Connect status');
+      }
+
+      const data = await response.json() as TenantPaymentConnectStatus;
+      setConnectStatus(data);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to refresh Stripe Connect status';
+      setError(message);
+    } finally {
+      setConnectSubmitting(false);
     }
   };
 
@@ -285,6 +370,77 @@ export default function SystemSettings() {
                   : 'This preserves access through the already-paid billing period, then moves the tenant into the existing offboarding pipeline.'}
               </p>
             </div>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-slate-200 bg-white shadow-sm" data-testid="tenant-payment-connect-card">
+          <div className="border-b border-slate-200 px-6 py-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3">
+                  <CreditCardIcon className="h-6 w-6 text-slate-700" />
+                  <h2 className="text-xl font-semibold text-slate-900">Tenant Stripe Connect</h2>
+                </div>
+                <p className="mt-2 text-sm text-slate-600">
+                  Connect your co-op Stripe account so family payments can settle directly to your organization.
+                </p>
+              </div>
+
+              {connectStatus?.isConnected ? (
+                <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
+                  Connected
+                </span>
+              ) : (
+                <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-800">
+                  Not connected
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="px-6 py-6 space-y-6">
+            {!connectStatus?.isAvailable && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700" data-testid="connect-unavailable-message">
+                {connectStatus?.unavailableReason ?? 'Stripe Connect is not available for this tenant.'}
+              </div>
+            )}
+
+            {connectStatus?.isAvailable && (
+              <>
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <StatusItem label="Account" value={connectStatus.stripeConnectAccountId ?? 'Not connected'} />
+                  <StatusItem label="Details submitted" value={connectStatus.detailsSubmitted ? 'Yes' : 'No'} />
+                  <StatusItem label="Charges enabled" value={connectStatus.chargesEnabled ? 'Yes' : 'No'} />
+                  <StatusItem label="Payouts enabled" value={connectStatus.payoutsEnabled ? 'Yes' : 'No'} />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleConnectStripe}
+                    disabled={!connectStatus.isAvailable || connectSubmitting}
+                    className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300"
+                    data-testid="connect-stripe-button"
+                  >
+                    {connectSubmitting
+                      ? 'Working...'
+                      : connectStatus.isConnected
+                        ? 'Update Stripe Connection'
+                        : 'Connect Stripe Account'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleRefreshConnectStatus}
+                    disabled={connectSubmitting}
+                    className="inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    data-testid="refresh-connect-status-button"
+                  >
+                    Refresh Status
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </section>
 

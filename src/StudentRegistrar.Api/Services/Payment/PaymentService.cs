@@ -2,6 +2,7 @@ using AutoMapper;
 using StudentRegistrar.Api.DTOs;
 using StudentRegistrar.Data.Repositories;
 using StudentRegistrar.Models;
+using System.Text.RegularExpressions;
 
 namespace StudentRegistrar.Api.Services;
 
@@ -48,7 +49,9 @@ public class PaymentService : IPaymentService
 
     public async Task<PaymentDto> CreatePaymentAsync(CreatePaymentDto createDto)
     {
+        createDto.TransactionId = NormalizeTransactionId(createDto.TransactionId);
         var payment = _mapper.Map<Payment>(createDto);
+        payment.SetPaymentInfo(SanitizePaymentInfo(createDto.PaymentInfo));
         var createdPayment = await _paymentRepository.CreateAsync(payment);
         return _mapper.Map<PaymentDto>(createdPayment);
     }
@@ -59,7 +62,14 @@ public class PaymentService : IPaymentService
         if (existingPayment == null)
             return null;
 
+        updateDto.TransactionId = NormalizeTransactionId(updateDto.TransactionId);
         _mapper.Map(updateDto, existingPayment);
+
+        if (updateDto.PaymentInfo != null)
+        {
+            existingPayment.SetPaymentInfo(SanitizePaymentInfo(updateDto.PaymentInfo));
+        }
+
         var updatedPayment = await _paymentRepository.UpdateAsync(existingPayment);
         return _mapper.Map<PaymentDto>(updatedPayment);
     }
@@ -83,5 +93,46 @@ public class PaymentService : IPaymentService
     {
         var payments = await _paymentRepository.GetPaymentHistoryAsync(accountHolderId, fromDate, toDate);
         return _mapper.Map<IEnumerable<PaymentDto>>(payments);
+    }
+
+    private static PaymentInfo SanitizePaymentInfo(PaymentInfo? input)
+    {
+        var sanitized = new PaymentInfo
+        {
+            // Restrict persisted payment metadata to minimal non-sensitive values.
+            CardLast4 = NormalizeLast4(input?.CardLast4),
+            CheckNumber = null,
+            ProcessorResponse = null,
+            CustomFields = new Dictionary<string, string>()
+        };
+
+        return sanitized;
+    }
+
+    private static string? NormalizeTransactionId(string? transactionId)
+    {
+        if (string.IsNullOrWhiteSpace(transactionId))
+        {
+            return null;
+        }
+
+        var normalized = transactionId.Trim();
+        return normalized.Length <= 64 ? normalized : normalized.Substring(0, 64);
+    }
+
+    private static string? NormalizeLast4(string? cardLast4)
+    {
+        if (string.IsNullOrWhiteSpace(cardLast4))
+        {
+            return null;
+        }
+
+        var digits = Regex.Replace(cardLast4, "[^0-9]", string.Empty);
+        if (digits.Length == 0)
+        {
+            return null;
+        }
+
+        return digits.Length <= 4 ? digits : digits.Substring(digits.Length - 4, 4);
     }
 }
