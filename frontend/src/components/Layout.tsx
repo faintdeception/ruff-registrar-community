@@ -132,11 +132,6 @@ export default function Layout({ children }: LayoutProps) {
                     <span className="text-sm text-gray-700" data-testid="user-name">
                       {user.firstName} {user.lastName}
                     </span>
-                    {user.roles && user.roles.length > 0 && (
-                      <span className="text-xs text-gray-500" data-testid="user-roles">
-                        ({user.roles.join(', ')})
-                      </span>
-                    )}
                   </div>
 
                   {/* Settings Dropdown */}

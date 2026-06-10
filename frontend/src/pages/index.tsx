@@ -13,7 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 export default function Home() {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const tenantPath = useTenantPath();
   const [stats, setStats] = useState({
     totalStudents: 0,
@@ -25,6 +25,24 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      setLoading(false);
+      setError(null);
+      setStats({
+        totalStudents: 0,
+        totalCourses: 0,
+        totalEducators: 0,
+        totalRooms: 0,
+      });
+      return;
+    }
+
+    let cancelled = false;
+
     const fetchStats = async () => {
       const fetchCount = async (endpoint: string) => {
         const response = await apiClient.get(endpoint);
@@ -54,12 +72,14 @@ export default function Home() {
         const totalEducators = educatorsResponse.status === 'fulfilled' ? educatorsResponse.value : 0;
         const totalRooms = roomsResponse.status === 'fulfilled' ? roomsResponse.value : 0;
 
-        setStats({
-          totalStudents,
-          totalCourses,
-          totalEducators,
-          totalRooms,
-        });
+        if (!cancelled) {
+          setStats({
+            totalStudents,
+            totalCourses,
+            totalEducators,
+            totalRooms,
+          });
+        }
 
         // Log any failed requests for debugging
         const failures = [studentsResponse, coursesResponse, educatorsResponse, roomsResponse]
@@ -71,15 +91,23 @@ export default function Home() {
         }
 
       } catch (err) {
-        console.error('Error fetching dashboard stats:', err);
-        setError('Failed to load dashboard statistics');
+        if (!cancelled) {
+          console.error('Error fetching dashboard stats:', err);
+          setError('Failed to load dashboard statistics');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchStats();
-  }, []);
+    void fetchStats();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, isAuthenticated]);
 
   return (
     <ProtectedRoute>
@@ -199,7 +227,7 @@ export default function Home() {
             </div>
           </Link>
 
-          <Link href={tenantPath('/Educators')} className="group">
+          <Link href={tenantPath('/educators')} className="group">
             <div className="card group-hover:shadow-lg transition-shadow">
               <div className="card-body text-center">
                 <ClipboardDocumentListIcon className="h-12 w-12 text-primary-600 mx-auto mb-4" />
