@@ -60,7 +60,7 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         // Assert - Should be on profile settings page
         Assert.Contains("/settings/profile", Driver.Url);
         Assert.Contains("Profile Settings", Driver.PageSource);
-        Assert.Contains("Coming Soon", Driver.PageSource);
+        Assert.Contains("Save Changes", Driver.PageSource);
     }
 
     [Fact]

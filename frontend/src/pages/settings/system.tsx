@@ -288,15 +288,6 @@ export default function SystemSettings() {
           </div>
         </section>
 
-        <section className="rounded-xl border border-blue-100 bg-blue-50 p-6">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-blue-900">Next up</h3>
-          <ul className="mt-3 space-y-2 text-sm text-blue-800">
-            <li>Configure available payment types for educators</li>
-            <li>Customize site logo and CSS for paid tiers</li>
-            <li>Set membership fee defaults</li>
-            <li>Manage broader system-wide policies</li>
-          </ul>
-        </section>
       </div>
     </ProtectedRoute>
   );
