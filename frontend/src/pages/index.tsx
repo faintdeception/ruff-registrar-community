@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useTenantPath } from '@/lib/tenant-path';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import api from '@/lib/api';
+import apiClient from '@/lib/api-client';
 import { 
   UserGroupIcon, 
   BookOpenIcon, 
@@ -26,23 +26,33 @@ export default function Home() {
 
   useEffect(() => {
     const fetchStats = async () => {
+      const fetchCount = async (endpoint: string) => {
+        const response = await apiClient.get(endpoint);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch ${endpoint}`);
+        }
+
+        const data = await response.json();
+        return Array.isArray(data) ? data.length : 0;
+      };
+
       try {
         setLoading(true);
         setError(null);
 
         // Fetch data from all endpoints in parallel
         const [studentsResponse, coursesResponse, educatorsResponse, roomsResponse] = await Promise.allSettled([
-          api.get('/students'),
-          api.get('/courses'),
-          api.get('/educators'),
-          api.get('/rooms')
+          fetchCount('/api/students'),
+          fetchCount('/api/courses'),
+          fetchCount('/api/educators'),
+          fetchCount('/api/rooms')
         ]);
 
         // Extract counts from successful responses
-        const totalStudents = studentsResponse.status === 'fulfilled' ? studentsResponse.value.data.length : 0;
-        const totalCourses = coursesResponse.status === 'fulfilled' ? coursesResponse.value.data.length : 0;
-        const totalEducators = educatorsResponse.status === 'fulfilled' ? educatorsResponse.value.data.length : 0;
-        const totalRooms = roomsResponse.status === 'fulfilled' ? roomsResponse.value.data.length : 0;
+        const totalStudents = studentsResponse.status === 'fulfilled' ? studentsResponse.value : 0;
+        const totalCourses = coursesResponse.status === 'fulfilled' ? coursesResponse.value : 0;
+        const totalEducators = educatorsResponse.status === 'fulfilled' ? educatorsResponse.value : 0;
+        const totalRooms = roomsResponse.status === 'fulfilled' ? roomsResponse.value : 0;
 
         setStats({
           totalStudents,

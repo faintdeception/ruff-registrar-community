@@ -12,6 +12,11 @@ namespace StudentRegistrar.Api.Services.Infrastructure;
 /// </summary>
 public class TenantResolutionMiddleware
 {
+    private static readonly string[] TenantContextOptionalApiPrefixes =
+    [
+        "/api/tenant-stripe-payments/webhook"
+    ];
+
     private readonly RequestDelegate _next;
     private readonly ILogger<TenantResolutionMiddleware> _logger;
     private readonly DeploymentMode _deploymentMode;
@@ -78,6 +83,19 @@ public class TenantResolutionMiddleware
 
         if (string.IsNullOrEmpty(tenantSlug))
         {
+            if (RequiresTenantContext(context.Request.Path))
+            {
+                _logger.LogWarning("Tenant not found for request without tenant slug: {Path}", context.Request.Path);
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    error = "Organization not found",
+                    code = "organization_not_found",
+                    tenant = (string?)null
+                });
+                return;
+            }
+
             _logger.LogDebug("No tenant slug found on request {Path}", context.Request.Path);
             
             // Allow request to continue for portal routes, controllers will handle appropriately
@@ -191,6 +209,18 @@ public class TenantResolutionMiddleware
         if (tenantSlug.StartsWith('-') || tenantSlug.EndsWith('-'))
             return false;
         return tenantSlug.All(c => char.IsLetterOrDigit(c) || c == '-');
+    }
+
+    private static bool RequiresTenantContext(PathString requestPath)
+    {
+        if (!requestPath.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var path = requestPath.Value ?? string.Empty;
+        return !TenantContextOptionalApiPrefixes.Any(prefix =>
+            path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool TryGetBlockedTenantReason(Tenant tenant, out string reason, out string status, out bool canRecoverBilling)

@@ -14,6 +14,53 @@ namespace StudentRegistrar.Api.Tests.Services;
 public class TenantResolutionMiddlewareTests
 {
     [Fact]
+    public async Task InvokeAsync_Blocks_TenantScoped_Api_Request_When_Tenant_Slug_Is_Missing()
+    {
+        await using var dbContext = CreateDbContext();
+        var tenantContextAccessor = new TenantContextAccessor();
+        var nextCalled = false;
+
+        var middleware = CreateMiddleware(_ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        });
+
+        var httpContext = CreateHttpContext("/api/rooms");
+
+        await middleware.InvokeAsync(httpContext, tenantContextAccessor, dbContext);
+
+        Assert.False(nextCalled);
+        Assert.Equal(StatusCodes.Status404NotFound, httpContext.Response.StatusCode);
+        Assert.Null(tenantContextAccessor.TenantContext);
+
+        var payload = await ReadJsonAsync(httpContext);
+        Assert.Equal("Organization not found", payload.GetProperty("error").GetString());
+        Assert.Equal("organization_not_found", payload.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_Allows_StripeWebhook_Request_When_Tenant_Slug_Is_Missing()
+    {
+        await using var dbContext = CreateDbContext();
+        var tenantContextAccessor = new TenantContextAccessor();
+        var nextCalled = false;
+
+        var middleware = CreateMiddleware(_ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        });
+
+        var httpContext = CreateHttpContext("/api/tenant-stripe-payments/webhook");
+
+        await middleware.InvokeAsync(httpContext, tenantContextAccessor, dbContext);
+
+        Assert.True(nextCalled);
+        Assert.Null(tenantContextAccessor.TenantContext);
+    }
+
+    [Fact]
     public async Task InvokeAsync_Blocks_Suspended_Offboarding_Tenant()
     {
         await using var dbContext = CreateDbContext();
@@ -91,7 +138,7 @@ public class TenantResolutionMiddlewareTests
         Assert.True(payload.GetProperty("canRecoverBilling").GetBoolean());
     }
 
-    private static TenantResolutionMiddleware CreateMiddleware()
+    private static TenantResolutionMiddleware CreateMiddleware(RequestDelegate? next = null)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -101,7 +148,7 @@ public class TenantResolutionMiddlewareTests
             .Build();
 
         return new TenantResolutionMiddleware(
-            _ => Task.CompletedTask,
+            next ?? (_ => Task.CompletedTask),
             NullLogger<TenantResolutionMiddleware>.Instance,
             configuration,
             new MemoryCache(new MemoryCacheOptions()));
