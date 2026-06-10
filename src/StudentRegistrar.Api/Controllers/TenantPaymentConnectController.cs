@@ -7,7 +7,7 @@ namespace StudentRegistrar.Api.Controllers;
 
 [ApiController]
 [Route("api/tenant-payment-connect")]
-[Authorize(Roles = "Administrator")]
+[Authorize]
 public class TenantPaymentConnectController : ControllerBase
 {
     private readonly ITenantPaymentConnectService _tenantPaymentConnectService;
@@ -25,6 +25,7 @@ public class TenantPaymentConnectController : ControllerBase
     }
 
     [HttpPost("status/refresh")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<TenantPaymentConnectStatusDto>> RefreshStatus(CancellationToken cancellationToken)
     {
         var result = await _tenantPaymentConnectService.RefreshStatusAsync(cancellationToken);
@@ -32,6 +33,7 @@ public class TenantPaymentConnectController : ControllerBase
     }
 
     [HttpPost("onboarding-link")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<TenantPaymentConnectOnboardingLinkDto>> CreateOnboardingLink(CancellationToken cancellationToken)
     {
         try

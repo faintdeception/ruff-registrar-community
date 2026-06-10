@@ -103,6 +103,15 @@ interface Enrollment {
   paymentStatus: string;
 }
 
+interface TenantPaymentConnectStatus {
+  isAvailable: boolean;
+  isConnected: boolean;
+  detailsSubmitted: boolean;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  unavailableReason?: string | null;
+}
+
 interface CreateCourseInstructorPayload {
   courseId: string;
   accountHolderId: string | null;
@@ -129,6 +138,9 @@ export default function CoursesPage() {
   const [availableMembers, setAvailableMembers] = useState<AccountHolder[]>([]);
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
   const [accountHolder, setAccountHolder] = useState<AccountHolder | null>(null);
+  const [connectStatus, setConnectStatus] = useState<TenantPaymentConnectStatus | null>(null);
+  const [connectStatusLoading, setConnectStatusLoading] = useState(false);
+  const [hasLoadedConnectStatus, setHasLoadedConnectStatus] = useState(false);
   const [roomError, setRoomError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -148,9 +160,13 @@ export default function CoursesPage() {
 
   useEffect(() => {
     if (user) {
-      fetchMyAccountHolder();
+      void fetchMyAccountHolder();
+      setHasLoadedConnectStatus(false);
+      void fetchConnectStatus();
     } else {
       setAccountHolder(null);
+      setConnectStatus(null);
+      setHasLoadedConnectStatus(false);
     }
   }, [user]);
 
@@ -300,6 +316,26 @@ export default function CoursesPage() {
     }
   };
 
+  const fetchConnectStatus = async () => {
+    try {
+      setConnectStatusLoading(true);
+
+      const response = await apiClient.get('/api/tenant-payment-connect/status');
+      if (!response.ok) {
+        throw new Error('Failed to fetch tenant payment connect status');
+      }
+
+      const data = await response.json() as TenantPaymentConnectStatus;
+      setConnectStatus(data);
+    } catch (err) {
+      console.error('Error fetching tenant payment connect status:', err);
+      setConnectStatus(null);
+    } finally {
+      setHasLoadedConnectStatus(true);
+      setConnectStatusLoading(false);
+    }
+  };
+
   const openEditModal = useCallback(async (course: Course) => {
     if (!isAdmin) return; // guard for non-admin users
     setEditingCourse(course);
@@ -352,8 +388,37 @@ export default function CoursesPage() {
     setShowSignupModal(true);
   };
 
+  const canCollectPaidCoursePayments = !!connectStatus?.isAvailable
+    && !!connectStatus?.isConnected
+    && !!connectStatus?.detailsSubmitted
+    && !!connectStatus?.chargesEnabled
+    && !!connectStatus?.payoutsEnabled;
+
+  const isCheckingPaidCoursePayments = !!user && !isAdmin && (!hasLoadedConnectStatus || connectStatusLoading);
+
+  const getPaymentUnavailableReason = () => {
+    if (isCheckingPaidCoursePayments) {
+      return 'Checking whether online payments are available for this organization.';
+    }
+
+    if (connectStatus?.unavailableReason) {
+      return connectStatus.unavailableReason;
+    }
+
+    return 'Online payments are not available for this organization yet.';
+  };
+
+  const paymentUnavailableForCourse = (course: Course) => {
+    return course.fee > 0 && course.currentEnrollment < course.maxCapacity && hasLoadedConnectStatus && !canCollectPaidCoursePayments;
+  };
+
   const submitCourseSignup = async () => {
     if (!signupCourse || !selectedStudentId) return;
+
+    if (signupCourse.fee > 0 && !canCollectPaidCoursePayments) {
+      setError(getPaymentUnavailableReason());
+      return;
+    }
 
     try {
       setIsSigningUp(true);
@@ -1094,6 +1159,7 @@ export default function CoursesPage() {
     const selectedStudent = students.find(student => student.id === selectedStudentId);
     const isWaitlist = signupCourse.currentEnrollment >= signupCourse.maxCapacity;
     const requiresPayment = signupCourse.fee > 0 && !isWaitlist;
+    const paymentUnavailable = requiresPayment && hasLoadedConnectStatus && !canCollectPaidCoursePayments;
 
     return (
       <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -1164,6 +1230,16 @@ export default function CoursesPage() {
                 <p className="mt-2 text-sm text-gray-600">
                   {formatCurrency(signupCourse.fee)} will be charged in Stripe for {selectedStudent?.firstName || 'this student'}. The course will show as paid after checkout confirmation returns.
                 </p>
+                {paymentUnavailable && (
+                  <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    <p>{getPaymentUnavailableReason()}</p>
+                    <p className="mt-1">
+                      {isAdmin
+                        ? 'Connect Stripe in System Settings before members can pay for courses online.'
+                        : 'Contact your organization administrator to enable online payments or arrange payment outside the app.'}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1179,10 +1255,18 @@ export default function CoursesPage() {
                 type="button"
                 onClick={submitCourseSignup}
                 data-testid="confirm-course-signup-button"
-                disabled={isSigningUp || !selectedStudentId}
+                disabled={isSigningUp || !selectedStudentId || paymentUnavailable}
                 className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSigningUp ? 'Signing up...' : isWaitlist ? 'Join Waitlist' : requiresPayment ? 'Pay and Sign Up' : 'Sign Up'}
+                {isSigningUp
+                  ? 'Signing up...'
+                  : isWaitlist
+                    ? 'Join Waitlist'
+                    : requiresPayment && paymentUnavailable
+                      ? 'Payment unavailable'
+                      : requiresPayment
+                        ? 'Pay and Sign Up'
+                        : 'Sign Up'}
               </button>
             </div>
           </div>
@@ -1438,13 +1522,19 @@ export default function CoursesPage() {
                         <button
                           data-testid={`course-signup-${course.name.replace(/\s+/g, '-').toLowerCase()}`}
                           onClick={() => openSignupModal(course)}
-                          disabled={isStudentSignedUpForCourse(course.id) || (accountHolder?.students?.length ?? 0) === 0}
+                          disabled={isStudentSignedUpForCourse(course.id)
+                            || (accountHolder?.students?.length ?? 0) === 0
+                            || (course.fee > 0 && course.currentEnrollment < course.maxCapacity && (isCheckingPaidCoursePayments || paymentUnavailableForCourse(course))) }
                           className="flex-1 btn btn-primary text-sm py-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isStudentSignedUpForCourse(course.id)
                             ? 'Signed Up'
                             : (accountHolder?.students?.length ?? 0) === 0
                               ? 'Add Student'
+                              : course.fee > 0 && course.currentEnrollment < course.maxCapacity && isCheckingPaidCoursePayments
+                                ? 'Checking payment...'
+                              : course.fee > 0 && course.currentEnrollment < course.maxCapacity && paymentUnavailableForCourse(course)
+                                ? 'Payment unavailable'
                               : hasPendingPaymentForCourse(course.id)
                                 ? 'Complete Payment'
                               : course.currentEnrollment >= course.maxCapacity
