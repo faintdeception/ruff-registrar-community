@@ -75,19 +75,37 @@ public sealed class TenantStripePaymentService : ITenantStripePaymentService
             }
         }
 
-        var payment = new Payment
-        {
-            AccountHolderId = request.AccountHolderId,
-            EnrollmentId = request.EnrollmentId,
-            Amount = request.Amount,
-            PaymentDate = DateTime.UtcNow,
-            PaymentMethod = StudentRegistrar.Models.PaymentMethod.CreditCard,
-            PaymentType = request.PaymentType,
-            Notes = "Pending Stripe Checkout session"
-        };
-        payment.SetPaymentInfo(new PaymentInfo());
+        Payment payment;
 
-        payment = await _paymentRepository.CreateAsync(payment);
+        if (request.PaymentId.HasValue)
+        {
+            payment = await _paymentRepository.GetByIdAsync(request.PaymentId.Value)
+                ?? throw new InvalidOperationException("Payment was not found for this tenant.");
+
+            if (payment.AccountHolderId != request.AccountHolderId ||
+                payment.EnrollmentId != request.EnrollmentId ||
+                payment.Amount != request.Amount ||
+                payment.PaymentType != request.PaymentType)
+            {
+                throw new InvalidOperationException("Payment details do not match the requested checkout session.");
+            }
+        }
+        else
+        {
+            payment = new Payment
+            {
+                AccountHolderId = request.AccountHolderId,
+                EnrollmentId = request.EnrollmentId,
+                Amount = request.Amount,
+                PaymentDate = DateTime.UtcNow,
+                PaymentMethod = StudentRegistrar.Models.PaymentMethod.CreditCard,
+                PaymentType = request.PaymentType,
+                Notes = "Pending Stripe Checkout session"
+            };
+            payment.SetPaymentInfo(new PaymentInfo());
+
+            payment = await _paymentRepository.CreateAsync(payment);
+        }
 
         var metadata = new Dictionary<string, string>
         {
@@ -119,6 +137,7 @@ public sealed class TenantStripePaymentService : ITenantStripePaymentService
                 cancellationToken);
 
             payment.TransactionId = checkout.SessionId;
+            payment.PaymentDate = DateTime.UtcNow;
             payment.Notes = "Pending Stripe Checkout session";
             await _paymentRepository.UpdateAsync(payment);
 

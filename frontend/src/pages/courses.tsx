@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/auth';
 import { useTenantPath } from '@/lib/tenant-path';
 import Layout from '@/components/Layout';
@@ -113,6 +114,7 @@ interface CreateCourseInstructorPayload {
 }
 
 export default function CoursesPage() {
+  const router = useRouter();
   const tenantPath = useTenantPath();
   const { user } = useAuth();
   const [semesters, setSemesters] = useState<Semester[]>([]);
@@ -133,7 +135,6 @@ export default function CoursesPage() {
   const [showSignupModal, setShowSignupModal] = useState(false);
   const [signupCourse, setSignupCourse] = useState<Course | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('2');
   const [isSigningUp, setIsSigningUp] = useState(false);
 
   const isAdmin = !!user?.roles.includes('Administrator');
@@ -160,6 +161,30 @@ export default function CoursesPage() {
       fetchCoursesBySemester(activeSemester.id);
     }
   }, [selectedSemester, activeSemester]);
+
+  useEffect(() => {
+    if (!router.isReady) {
+      return;
+    }
+
+    const checkout = typeof router.query.checkout === 'string' ? router.query.checkout : null;
+    if (!checkout) {
+      return;
+    }
+
+    if (checkout === 'success') {
+      setSuccessMessage('Stripe checkout completed. Payment confirmation may take a moment to appear.');
+    } else if (checkout === 'cancel') {
+      setError('Stripe checkout was cancelled. You can reopen the course and complete payment when ready.');
+    }
+
+    void fetchMyAccountHolder();
+    if (selectedSemester) {
+      void fetchCoursesBySemester(selectedSemester);
+    }
+
+    void router.replace(tenantPath('/courses'), undefined, { shallow: true });
+  }, [router, selectedSemester, tenantPath]);
 
   const fetchSemesters = async () => {
     try {
@@ -301,6 +326,18 @@ export default function CoursesPage() {
     return accountHolder?.students?.some(student =>
       student.enrollments?.some(enrollment =>
         enrollment.courseId === courseId &&
+        enrollment.paymentStatus === 'Paid' &&
+        enrollment.enrollmentType !== 'Withdrawn' &&
+        enrollment.enrollmentType !== 'Cancelled'
+      )
+    ) ?? false;
+  };
+
+  const hasPendingPaymentForCourse = (courseId: string) => {
+    return accountHolder?.students?.some(student =>
+      student.enrollments?.some(enrollment =>
+        enrollment.courseId === courseId &&
+        enrollment.paymentStatus === 'Pending' &&
         enrollment.enrollmentType !== 'Withdrawn' &&
         enrollment.enrollmentType !== 'Cancelled'
       )
@@ -312,7 +349,6 @@ export default function CoursesPage() {
     setSuccessMessage(null);
     setSignupCourse(course);
     setSelectedStudentId(accountHolder?.students?.[0]?.id ?? '');
-    setPaymentMethod('2');
     setShowSignupModal(true);
   };
 
@@ -326,12 +362,19 @@ export default function CoursesPage() {
 
       const response = await apiClient.post(`/api/courses/${signupCourse.id}/enrollments`, {
         studentId: selectedStudentId,
-        paymentMethod: signupCourse.fee > 0 ? Number(paymentMethod) : null
+        paymentMethod: signupCourse.fee > 0 ? 2 : null,
+        successUrl: signupCourse.fee > 0 ? `${window.location.origin}${tenantPath('/courses')}?checkout=success` : null,
+        cancelUrl: signupCourse.fee > 0 ? `${window.location.origin}${tenantPath('/courses')}?checkout=cancel` : null
       });
 
       const responseData = await response.json();
       if (!response.ok) {
         throw new Error(responseData.message || 'Failed to sign up for course');
+      }
+
+      if (responseData.requiresCheckout && responseData.checkoutUrl) {
+        window.location.assign(responseData.checkoutUrl);
+        return;
       }
 
       setSuccessMessage(responseData.message || 'Course signup completed.');
@@ -1112,27 +1155,14 @@ export default function CoursesPage() {
 
             {requiresPayment && (
               <div>
-                <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-700">
-                  Payment Method
-                </label>
                 <div className="mt-1 flex items-center gap-2">
                   <CreditCardIcon className="h-5 w-5 text-gray-400" />
-                  <select
-                    id="paymentMethod"
-                    data-testid="course-signup-payment-method-select"
-                    value={paymentMethod}
-                    onChange={(event) => setPaymentMethod(event.target.value)}
-                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
-                  >
-                    <option value="2">Credit Card</option>
-                    <option value="1">Check</option>
-                    <option value="5">Zelle</option>
-                    <option value="6">Bank Transfer</option>
-                    <option value="7">Other</option>
-                  </select>
+                  <div className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                    Secure Stripe Checkout
+                  </div>
                 </div>
                 <p className="mt-2 text-sm text-gray-600">
-                  {formatCurrency(signupCourse.fee)} will be recorded for {selectedStudent?.firstName || 'this student'}.
+                  {formatCurrency(signupCourse.fee)} will be charged in Stripe for {selectedStudent?.firstName || 'this student'}. The course will show as paid after checkout confirmation returns.
                 </p>
               </div>
             )}
@@ -1415,6 +1445,8 @@ export default function CoursesPage() {
                             ? 'Signed Up'
                             : (accountHolder?.students?.length ?? 0) === 0
                               ? 'Add Student'
+                              : hasPendingPaymentForCourse(course.id)
+                                ? 'Complete Payment'
                               : course.currentEnrollment >= course.maxCapacity
                                 ? 'Waitlist'
                                 : course.fee > 0

@@ -5,6 +5,8 @@ namespace StudentRegistrar.Api.DTOs;
 
 public sealed class CreateTenantStripeCheckoutSessionDto
 {
+    public Guid? PaymentId { get; init; }
+
     [Required]
     public Guid AccountHolderId { get; init; }
 

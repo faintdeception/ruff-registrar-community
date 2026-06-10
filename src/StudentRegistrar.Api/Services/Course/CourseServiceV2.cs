@@ -17,6 +17,7 @@ public class CourseServiceV2 : ICourseServiceV2
     private readonly IEducatorRepository _educatorRepository;
     private readonly IRoomRepository _roomRepository;
     private readonly IKeycloakService _keycloakService;
+    private readonly ITenantStripePaymentService _tenantStripePaymentService;
     private readonly IMapper _mapper;
     private readonly StudentRegistrarDbContext? _dbContext;
 
@@ -29,6 +30,7 @@ public class CourseServiceV2 : ICourseServiceV2
         IEducatorRepository educatorRepository,
         IRoomRepository roomRepository,
         IKeycloakService keycloakService,
+        ITenantStripePaymentService tenantStripePaymentService,
         IMapper mapper,
         StudentRegistrarDbContext? dbContext = null)
     {
@@ -40,6 +42,7 @@ public class CourseServiceV2 : ICourseServiceV2
         _educatorRepository = educatorRepository;
         _roomRepository = roomRepository;
         _keycloakService = keycloakService;
+        _tenantStripePaymentService = tenantStripePaymentService;
         _mapper = mapper;
         _dbContext = dbContext;
     }
@@ -101,14 +104,23 @@ public class CourseServiceV2 : ICourseServiceV2
         var course = await _courseRepository.GetByIdAsync(courseId)
             ?? throw new KeyNotFoundException("Course not found.");
 
-        var hasActiveEnrollment = await _enrollmentRepository.HasEnrollmentAsync(student.Id, course.Id, EnrollmentType.Enrolled)
-            || await _enrollmentRepository.HasEnrollmentAsync(student.Id, course.Id, EnrollmentType.Waitlisted);
-        if (hasActiveEnrollment)
+        var isWaitlisted = course.CurrentEnrollment >= course.MaxCapacity;
+        var existingEnrollment = (await _enrollmentRepository.GetByStudentIdAsync(student.Id, course.SemesterId))
+            .FirstOrDefault(e => e.CourseId == course.Id &&
+                e.EnrollmentType != EnrollmentType.Withdrawn &&
+                e.EnrollmentType != EnrollmentType.Cancelled);
+
+        var canResumePendingCheckout = existingEnrollment is not null &&
+            existingEnrollment.EnrollmentType == EnrollmentType.Enrolled &&
+            course.Fee > 0 &&
+            existingEnrollment.PaymentStatus == PaymentStatus.Pending &&
+            existingEnrollment.AmountPaid <= 0;
+
+        if (existingEnrollment is not null && !canResumePendingCheckout)
         {
             throw new InvalidOperationException("This student is already signed up for this course.");
         }
 
-        var isWaitlisted = course.CurrentEnrollment >= course.MaxCapacity;
         var enrollment = new Enrollment
         {
             StudentId = student.Id,
@@ -152,6 +164,81 @@ public class CourseServiceV2 : ICourseServiceV2
             }
 
             return (createdEnrollment, createdPayment);
+        }
+
+        if (!isWaitlisted && course.Fee > 0)
+        {
+            if (string.IsNullOrWhiteSpace(createDto.SuccessUrl) || string.IsNullOrWhiteSpace(createDto.CancelUrl))
+            {
+                throw new InvalidOperationException("Success and cancel URLs are required for paid course checkout.");
+            }
+
+            Enrollment pendingEnrollment;
+            Payment? pendingPayment = null;
+            var createdNewPendingEnrollment = false;
+
+            if (canResumePendingCheckout && existingEnrollment is not null)
+            {
+                pendingEnrollment = await _enrollmentRepository.GetByIdAsync(existingEnrollment.Id)
+                    ?? throw new InvalidOperationException("Existing pending enrollment could not be loaded.");
+
+                pendingPayment = pendingEnrollment.Payments
+                    .OrderByDescending(payment => payment.CreatedAt)
+                    .FirstOrDefault(payment =>
+                        payment.PaymentType == PaymentType.CourseFee &&
+                        payment.Amount == course.Fee &&
+                        payment.Notes?.Contains("[stripe-settled]", StringComparison.OrdinalIgnoreCase) != true);
+            }
+            else
+            {
+                pendingEnrollment = await _enrollmentRepository.CreateAsync(enrollment);
+                createdNewPendingEnrollment = true;
+            }
+
+            try
+            {
+                var checkout = await _tenantStripePaymentService.CreateCheckoutSessionAsync(
+                    new CreateTenantStripeCheckoutSessionDto
+                    {
+                        PaymentId = pendingPayment?.Id,
+                        AccountHolderId = accountHolder.Id,
+                        EnrollmentId = pendingEnrollment.Id,
+                        Amount = course.Fee,
+                        PaymentType = PaymentType.CourseFee,
+                        SuccessUrl = createDto.SuccessUrl!,
+                        CancelUrl = createDto.CancelUrl!,
+                        Description = $"Course signup for {course.Name}"
+                    });
+
+                return new CourseEnrollmentResultDto
+                {
+                    EnrollmentId = pendingEnrollment.Id.ToString(),
+                    StudentId = student.Id.ToString(),
+                    StudentName = student.FullName,
+                    CourseId = course.Id.ToString(),
+                    CourseName = course.Name,
+                    EnrollmentType = pendingEnrollment.EnrollmentType.ToString(),
+                    FeeAmount = pendingEnrollment.FeeAmount,
+                    AmountPaid = pendingEnrollment.AmountPaid,
+                    PaymentStatus = pendingEnrollment.PaymentStatus.ToString(),
+                    PaymentId = checkout.PaymentId.ToString(),
+                    RequiresCheckout = true,
+                    CheckoutSessionId = checkout.SessionId,
+                    CheckoutUrl = checkout.CheckoutUrl,
+                    Message = canResumePendingCheckout
+                        ? "Redirecting to Stripe checkout to complete payment."
+                        : "Redirecting to Stripe checkout to complete course signup."
+                };
+            }
+            catch
+            {
+                if (createdNewPendingEnrollment)
+                {
+                    await _enrollmentRepository.DeleteAsync(pendingEnrollment.Id);
+                }
+
+                throw;
+            }
         }
 
         var shouldCreateTransaction = _dbContext?.Database.CurrentTransaction == null;

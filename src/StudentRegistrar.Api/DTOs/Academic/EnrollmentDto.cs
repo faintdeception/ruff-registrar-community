@@ -59,6 +59,12 @@ public class CreateCourseEnrollmentDto
     public Guid StudentId { get; set; }
 
     public PaymentMethod? PaymentMethod { get; set; }
+
+    [Url]
+    public string? SuccessUrl { get; set; }
+
+    [Url]
+    public string? CancelUrl { get; set; }
 }
 
 public class CourseEnrollmentResultDto
@@ -73,5 +79,8 @@ public class CourseEnrollmentResultDto
     public decimal AmountPaid { get; set; }
     public string PaymentStatus { get; set; } = string.Empty;
     public string? PaymentId { get; set; }
+    public bool RequiresCheckout { get; set; }
+    public string? CheckoutSessionId { get; set; }
+    public string? CheckoutUrl { get; set; }
     public string Message { get; set; } = string.Empty;
 }
