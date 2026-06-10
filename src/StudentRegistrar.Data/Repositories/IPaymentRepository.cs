@@ -5,6 +5,7 @@ namespace StudentRegistrar.Data.Repositories;
 public interface IPaymentRepository
 {
     Task<Payment?> GetByIdAsync(Guid id);
+    Task<Payment?> GetByTransactionIdAsync(string transactionId);
     Task<IEnumerable<Payment>> GetByAccountHolderIdAsync(Guid accountHolderId);
     Task<IEnumerable<Payment>> GetByEnrollmentIdAsync(Guid enrollmentId);
     Task<IEnumerable<Payment>> GetByTypeAsync(PaymentType paymentType);

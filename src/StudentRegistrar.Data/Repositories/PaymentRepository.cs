@@ -20,6 +20,20 @@ public class PaymentRepository : IPaymentRepository
             .FirstOrDefaultAsync(p => p.Id == id);
     }
 
+    public async Task<Payment?> GetByTransactionIdAsync(string transactionId)
+    {
+        if (string.IsNullOrWhiteSpace(transactionId))
+        {
+            return null;
+        }
+
+        var normalizedTransactionId = transactionId.Trim();
+        return await _context.Payments
+            .Include(p => p.AccountHolder)
+            .Include(p => p.Enrollment)
+            .FirstOrDefaultAsync(p => p.TransactionId == normalizedTransactionId);
+    }
+
     public async Task<IEnumerable<Payment>> GetByAccountHolderIdAsync(Guid accountHolderId)
     {
         return await _context.Payments
