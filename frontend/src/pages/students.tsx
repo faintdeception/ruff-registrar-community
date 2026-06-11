@@ -32,7 +32,7 @@ interface Student {
 }
 
 export default function StudentsPage() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const tenantPath = useTenantPath();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,18 +41,26 @@ export default function StudentsPage() {
   const isAdmin = user?.roles.includes('Administrator');
 
   useEffect(() => {
-    fetchStudents();
-  }, []);
+    if (authLoading) {
+      return;
+    }
+
+    if (!isAdmin) {
+      setLoading(false);
+      setStudents([]);
+      setError(null);
+      return;
+    }
+
+    void fetchStudents();
+  }, [authLoading, isAdmin]);
 
   const fetchStudents = async () => {
     try {
       setLoading(true);
+      setError(null);
 
-      // For regular users, get their students through account holder endpoint
-      // For admins, we'd need a different endpoint to get all students
-      const endpoint = isAdmin ? '/api/students' : '/api/AccountHolders/me/students';
-      
-      const response = await apiClient.get(endpoint);
+      const response = await apiClient.get('/api/students');
       
       if (!response.ok) {
         throw new Error('Failed to fetch students');
