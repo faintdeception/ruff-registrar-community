@@ -44,14 +44,6 @@ public class UsersController : ControllerBase
         return Ok(_mapper.Map<IEnumerable<UserDto>>(users));
     }
 
-    [HttpGet("claims")]
-    [Authorize]
-    public ActionResult<object> DebugClaims()
-    {
-        var claims = User.Claims.Select(c => new { Type = c.Type, Value = c.Value }).ToList();
-        return Ok(new { Claims = claims });
-    }
-
     [HttpGet("{id}")]
     [Authorize]
     public async Task<ActionResult<UserDto>> GetUser(Guid id)
