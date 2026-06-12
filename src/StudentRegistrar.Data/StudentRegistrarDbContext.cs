@@ -81,6 +81,7 @@ public class StudentRegistrarDbContext : DbContext
     public DbSet<Educator> Educators { get; set; }
     public DbSet<Payment> Payments { get; set; }
     public DbSet<Room> Rooms { get; set; }
+    public DbSet<ProcessedStripeWebhookEvent> ProcessedStripeWebhookEvents { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -116,6 +117,22 @@ public class StudentRegistrarDbContext : DbContext
 
             entity.HasIndex(e => e.Subdomain).IsUnique();
             entity.HasIndex(e => e.KeycloakRealm).IsUnique();
+        });
+
+        modelBuilder.Entity<ProcessedStripeWebhookEvent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.StripeEventId).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.EventType).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.StripeSessionId).HasMaxLength(255);
+            entity.Property(e => e.IsCompleted).IsRequired();
+            entity.Property(e => e.CreatedAtUtc).IsRequired();
+            entity.Property(e => e.CompletedAtUtc);
+
+            entity.HasIndex(e => e.StripeEventId).IsUnique();
+            entity.HasIndex(e => new { e.EventType, e.StripeSessionId })
+                .IsUnique()
+                .HasFilter("\"StripeSessionId\" IS NOT NULL");
         });
 
         // Apply global query filters for tenant isolation
