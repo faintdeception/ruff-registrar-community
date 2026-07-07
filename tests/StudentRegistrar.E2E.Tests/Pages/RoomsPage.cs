@@ -17,7 +17,21 @@ public sealed class RoomsPage
 
     public void NavigateToRooms(string baseUrl)
     {
-        _driver.Navigate().GoToUrl($"{baseUrl.TrimEnd('/')}/rooms");
+        // Prefer client-side navigation via the nav link so the in-memory Keycloak
+        // session is preserved. A full-page reload on localhost drops the session
+        // because Keycloak init does not use `check-sso` there, which would render
+        // the "Access Denied" branch instead of Room Management for an admin.
+        var navLink = _driver.FindElements(By.CssSelector("[data-testid='nav-rooms']")).FirstOrDefault(e => e.Displayed);
+        if (navLink != null)
+        {
+            Click(navLink);
+            _wait.Until(d => d.Url.Contains("/rooms", StringComparison.OrdinalIgnoreCase));
+        }
+        else
+        {
+            _driver.Navigate().GoToUrl($"{baseUrl.TrimEnd('/')}/rooms");
+        }
+
         WaitForPageLoad();
     }
 
