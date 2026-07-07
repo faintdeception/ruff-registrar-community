@@ -267,6 +267,16 @@ public partial class TenantTheme
     public string? DisplayName { get; set; }
 
     /// <summary>
+    /// Optional custom welcome heading shown on the dashboard landing page.
+    /// </summary>
+    public string? HomeWelcomeTitle { get; set; }
+
+    /// <summary>
+    /// Optional custom welcome blurb shown on the dashboard landing page.
+    /// </summary>
+    public string? HomeWelcomeBlurb { get; set; }
+
+    /// <summary>
     /// Custom footer text
     /// </summary>
     public string? FooterText { get; set; }

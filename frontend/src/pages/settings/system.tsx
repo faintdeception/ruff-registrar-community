@@ -52,6 +52,13 @@ interface TenantPaymentConnectOnboardingLink {
   expiresAtUtc?: string | null;
 }
 
+interface TenantHomeContent {
+  welcomeTitle: string;
+  welcomeBlurb: string;
+  hasCustomWelcomeTitle: boolean;
+  hasCustomWelcomeBlurb: boolean;
+}
+
 export default function SystemSettings() {
   const { user } = useAuth();
   const [billing, setBilling] = useState<TenantBillingStatus | null>(null);
@@ -61,6 +68,9 @@ export default function SystemSettings() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [connectStatus, setConnectStatus] = useState<TenantPaymentConnectStatus | null>(null);
+  const [homeContent, setHomeContent] = useState<TenantHomeContent | null>(null);
+  const [welcomeTitleInput, setWelcomeTitleInput] = useState('');
+  const [welcomeBlurbInput, setWelcomeBlurbInput] = useState('');
 
   const isAdmin = !!user?.roles.includes('Administrator');
 
@@ -75,8 +85,25 @@ export default function SystemSettings() {
 
   const fetchSettingsData = async () => {
     setLoading(true);
-    await Promise.all([fetchBilling(), fetchConnectStatus()]);
+    await Promise.all([fetchBilling(), fetchConnectStatus(), fetchHomeContent()]);
     setLoading(false);
+  };
+
+  const fetchHomeContent = async () => {
+    try {
+      const response = await apiClient.get('/api/tenant-home-content');
+      if (!response.ok) {
+        throw new Error('Failed to load home content settings');
+      }
+
+      const data = await response.json() as TenantHomeContent;
+      setHomeContent(data);
+      setWelcomeTitleInput(data.hasCustomWelcomeTitle ? data.welcomeTitle : '');
+      setWelcomeBlurbInput(data.hasCustomWelcomeBlurb ? data.welcomeBlurb : '');
+    } catch (err) {
+      console.error('Error loading home content settings:', err);
+      setHomeContent(null);
+    }
   };
 
   const fetchBilling = async () => {
@@ -223,6 +250,35 @@ export default function SystemSettings() {
     }
   };
 
+  const handleSaveHomeContent = async () => {
+    try {
+      setSubmitting(true);
+      setError(null);
+      setSuccessMessage(null);
+
+      const response = await apiClient.put('/api/tenant-home-content', {
+        welcomeTitle: welcomeTitleInput,
+        welcomeBlurb: welcomeBlurbInput,
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || 'Failed to save home content settings');
+      }
+
+      const data = await response.json() as TenantHomeContent;
+      setHomeContent(data);
+      setWelcomeTitleInput(data.hasCustomWelcomeTitle ? data.welcomeTitle : '');
+      setWelcomeBlurbInput(data.hasCustomWelcomeBlurb ? data.welcomeBlurb : '');
+      setSuccessMessage('Landing page welcome content updated.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save home content settings';
+      setError(message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const formatDateTime = (value?: string | null) => {
     if (!value) {
       return 'Not scheduled';
@@ -288,6 +344,67 @@ export default function SystemSettings() {
             {successMessage}
           </div>
         )}
+
+        <section className="rounded-xl border border-slate-200 bg-white shadow-sm" data-testid="home-content-settings-card">
+          <div className="border-b border-slate-200 px-6 py-5">
+            <h2 className="text-xl font-semibold text-slate-900">Home Landing Content</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Customize the dashboard welcome message shown to your organization after sign-in.
+            </p>
+          </div>
+
+          <div className="px-6 py-6 space-y-4">
+            <div>
+              <label htmlFor="welcome-title" className="block text-sm font-medium text-slate-700">
+                Welcome title
+              </label>
+              <input
+                id="welcome-title"
+                type="text"
+                maxLength={120}
+                value={welcomeTitleInput}
+                onChange={(event) => setWelcomeTitleInput(event.target.value)}
+                className="mt-2 block w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                placeholder={homeContent?.welcomeTitle ?? 'Welcome to Student Registrar'}
+                data-testid="welcome-title-input"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Leave blank to default to "Welcome to {'{'}organization name{'}'}".
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="welcome-blurb" className="block text-sm font-medium text-slate-700">
+                Welcome blurb
+              </label>
+              <textarea
+                id="welcome-blurb"
+                maxLength={600}
+                rows={4}
+                value={welcomeBlurbInput}
+                onChange={(event) => setWelcomeBlurbInput(event.target.value)}
+                className="mt-2 block w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                placeholder={homeContent?.welcomeBlurb ?? 'A comprehensive homeschool management system designed to help you track students, courses, rooms, and educators with ease.'}
+                data-testid="welcome-blurb-input"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Leave blank to use the default blurb.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSaveHomeContent}
+                disabled={submitting}
+                className="inline-flex items-center rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-primary-300"
+                data-testid="save-home-content-button"
+              >
+                {submitting ? 'Saving...' : 'Save Home Content'}
+              </button>
+            </div>
+          </div>
+        </section>
 
         <section className="rounded-xl border border-slate-200 bg-white shadow-sm" data-testid="billing-management-card">
           <div className="border-b border-slate-200 px-6 py-5">

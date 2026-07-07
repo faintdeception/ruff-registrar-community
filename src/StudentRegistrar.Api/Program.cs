@@ -98,6 +98,7 @@ builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<ITenantBillingService, TenantBillingService>();
 builder.Services.AddScoped<ITenantStripeBillingGateway, TenantStripeBillingGateway>();
+builder.Services.AddScoped<ITenantHomeContentService, TenantHomeContentService>();
 builder.Services.AddScoped<ITenantPaymentConnectService, TenantPaymentConnectService>();
 builder.Services.AddScoped<ITenantStripePaymentGateway, TenantStripePaymentGateway>();
 builder.Services.AddScoped<ITenantStripePaymentService, TenantStripePaymentService>();

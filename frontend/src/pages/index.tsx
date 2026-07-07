@@ -23,6 +23,10 @@ export default function Home() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [homeContent, setHomeContent] = useState({
+    welcomeTitle: 'Welcome to Student Registrar',
+    welcomeBlurb: 'A comprehensive homeschool management system designed to help you track students, courses, rooms, and educators with ease.',
+  });
 
   useEffect(() => {
     if (authLoading) {
@@ -58,12 +62,32 @@ export default function Home() {
         setLoading(true);
         setError(null);
 
-        // Fetch data from all endpoints in parallel
+        const fetchHomeContent = async () => {
+          try {
+            const response = await apiClient.get('/api/tenant-home-content');
+            if (!response.ok) {
+              return;
+            }
+
+            const data = await response.json() as { welcomeTitle?: string; welcomeBlurb?: string };
+            if (!cancelled && data.welcomeTitle && data.welcomeBlurb) {
+              setHomeContent({
+                welcomeTitle: data.welcomeTitle,
+                welcomeBlurb: data.welcomeBlurb,
+              });
+            }
+          } catch {
+            // Leave default content when tenant home content cannot be loaded.
+          }
+        };
+
+        // Fetch stats and home content in parallel.
         const [studentsResponse, coursesResponse, educatorsResponse, roomsResponse] = await Promise.allSettled([
           fetchCount('/api/students'),
           fetchCount('/api/courses'),
           fetchCount('/api/educators'),
-          fetchCount('/api/rooms')
+          fetchCount('/api/rooms'),
+          fetchHomeContent(),
         ]);
 
         // Extract counts from successful responses
@@ -116,11 +140,10 @@ export default function Home() {
         {/* Hero Section */}
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold text-gray-900 mb-4">
-            Welcome to Student Registrar
+            {homeContent.welcomeTitle}
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            A comprehensive homeschool management system designed to help you 
-            track students, courses, rooms, and educators with ease.
+            {homeContent.welcomeBlurb}
           </p>
         </div>
 
