@@ -50,10 +50,23 @@ DB_USER=$(read_setting "Enter DB user" "postgres" "DB_USER" "false")
 if [ -z "${DB_PASSWORD:-}" ] && [ -n "${POSTGRES_PASSWORD:-}" ]; then
     DB_PASSWORD="$POSTGRES_PASSWORD"
 fi
-DB_PASSWORD=$(read_setting "Enter DB password" "" "DB_PASSWORD" "true")
+# Default to the fixed local Aspire/docker-compose dev password so Windows and
+# Linux users get the same non-interactive local experience.
+DB_PASSWORD=$(read_setting "Enter DB password" "postgres123" "DB_PASSWORD" "true")
 
 if [ -z "${DB_CONTAINER:-}" ] && command -v docker >/dev/null 2>&1; then
+    # Prefer a docker compose managed postgres service when present.
     DB_CONTAINER=$(docker compose ps -q postgres 2>/dev/null || true)
+
+    # Fall back to an Aspire-managed postgres container (named like "postgres-xxxxxxxx").
+    if [ -z "$DB_CONTAINER" ]; then
+        DB_CONTAINER=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^postgres-' | head -n 1 || true)
+    fi
+
+    # Last resort: any running container whose name contains "postgres".
+    if [ -z "$DB_CONTAINER" ]; then
+        DB_CONTAINER=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -i postgres | head -n 1 || true)
+    fi
 fi
 DB_CONTAINER=$(read_setting "Enter DB container name" "" "DB_CONTAINER" "true")
 TENANT_ID="${SEED_TENANT_ID:-00000000-0000-0000-0000-000000000001}"
@@ -122,8 +135,8 @@ fi
 
 echo "🏢 Creating Tenant..."
 
-execute_sql "INSERT INTO \"Tenants\" (\"Id\", \"Name\", \"Subdomain\", \"SubscriptionTier\", \"SubscriptionStatus\", \"ThemeConfigJson\", \"KeycloakRealm\", \"AdminEmail\", \"IsActive\", \"CreatedAt\", \"UpdatedAt\") VALUES
-('$TENANT_ID', 'E2E Test Tenant', 'test', 1, 0, '{}', 'student-registrar', 'admin.test@example.com', true, NOW(), NOW())
+execute_sql "INSERT INTO \"Tenants\" (\"Id\", \"Name\", \"Subdomain\", \"SubscriptionTier\", \"SubscriptionStatus\", \"IsComplimentary\", \"ThemeConfigJson\", \"KeycloakRealm\", \"AdminEmail\", \"IsActive\", \"CreatedAt\", \"UpdatedAt\") VALUES
+('$TENANT_ID', 'E2E Test Tenant', 'test', 1, 0, false, '{}', 'student-registrar', 'admin.test@example.com', true, NOW(), NOW())
 ON CONFLICT (\"Id\") DO NOTHING;"
 
 echo "🧑‍💼 Creating Users..."

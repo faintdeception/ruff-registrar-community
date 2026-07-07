@@ -11,7 +11,8 @@ scripts/testing/
 ├── setup-test-users.sh    # 👥 Creates test users in Keycloak
 ├── setup-test-users.ps1   # 👥 Windows/PowerShell test user setup
 ├── test-e2e-only.sh       # 🔧 Simple E2E test runner
-├── seed-database.sh       # 🌱 Seeds database with test data
+├── seed-database.sh       # 🌱 Seeds database with test data (Bash/WSL/Linux)
+├── seed-database.ps1      # 🌱 Seeds database with test data (Windows PowerShell)
 └── Dockerfile             # 🐳 Docker container for E2E tests
 ```
 
@@ -114,7 +115,12 @@ Remove-Item Env:SeleniumSettings__Headless
    ```bash
    ./scripts/testing/seed-database.sh
    ```
-   On Windows, `setup-test-users.ps1` also syncs the required E2E `Users` and `AccountHolders` rows with live Keycloak IDs when a local PostgreSQL container is available. This sync is required for workflows that authorize an existing member, such as `parenteducator1`.
+   ```powershell
+   ./scripts/testing/seed-database.ps1
+   ```
+   Both runners auto-detect the PostgreSQL container for docker compose **and** Aspire runs (Aspire names its container like `postgres-xxxxxxxx`) and default to the local dev password `postgres123`. Use `-Reset`/`SEED_DATABASE_RESET=true` and `-Force` (PowerShell) or `SEED_DATABASE_RESET=true` (Bash) for non-interactive reseeds.
+
+   On Windows, `setup-test-users.ps1` also syncs the required E2E `Users` and `AccountHolders` rows with live Keycloak IDs when a local PostgreSQL container is available. This sync is required for workflows that authorize an existing member, such as `parenteducator1`. Because `seed-database` truncates `Users`/`AccountHolders` on reseed, run `setup-test-users.ps1` **after** a reseed so the E2E users carry live Keycloak IDs.
 
 ## 🧪 Test Users
 
@@ -223,9 +229,28 @@ When `-DbContainer` is omitted, it auto-detects the mapped Aspire PostgreSQL con
 - ✅ Semesters and courses
 - ✅ Enrollments and instructors
 - ✅ Prevents duplicate data
+- ✅ Auto-detects docker compose **and** Aspire PostgreSQL containers
 
 ```bash
 ./scripts/testing/seed-database.sh
+# Non-interactive clean reseed:
+SEED_DATABASE_RESET=true ./scripts/testing/seed-database.sh
+```
+
+### `seed-database.ps1`
+**Purpose**: Windows-native equivalent of `seed-database.sh` (same dataset)
+**Features**:
+- Mirrors the Bash dataset (tenant, users, account holders, semesters, students, rooms, courses, instructors, enrollments, payments)
+- Auto-detects the docker compose or Aspire PostgreSQL container (`postgres-xxxxxxxx`)
+- Defaults to the local dev password `postgres123`
+- Supports non-interactive `-Force` and `-Reset`
+
+```powershell
+./scripts/testing/seed-database.ps1
+# Non-interactive clean reseed:
+./scripts/testing/seed-database.ps1 -Reset -Force
+# Target a specific container:
+./scripts/testing/seed-database.ps1 -DbContainer postgres-xxxxxxxx
 ```
 
 ### `Dockerfile`
@@ -307,7 +332,7 @@ Symptoms: login tests stay on `/login` or Keycloak returns `Realm does not exist
 4. Check ChromeDriver compatibility
 
 ### Database Issues
-**Solution**: Reseed the database with `./scripts/testing/seed-database.sh`
+**Solution**: Reseed the database with `./scripts/testing/seed-database.sh` (Bash/WSL/Linux) or `./scripts/testing/seed-database.ps1` (Windows PowerShell). If Admin room/course flows fail because the `Rooms`/`Courses` tables are empty, a reseed populates the baseline data those tests depend on. After a reseed, run `setup-test-users.ps1` again to re-sync live Keycloak IDs.
 
 ## 📈 Future Enhancements
 
