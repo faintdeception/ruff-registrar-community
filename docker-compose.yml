@@ -62,6 +62,10 @@ services:
       - Keycloak__AdminUsername=admin
       - Keycloak__AdminPassword=${KEYCLOAK_ADMIN_PASSWORD:-changeme-in-production}
       - Keycloak__AdminRealm=master
+      # Fixed local/CI dev secret for the confidential student-registrar client. Matches the
+      # secret in scripts/keycloak/realm-student-registrar.template.json so the API can obtain a
+      # Keycloak management token for admin operations (e.g. inviting educators). Local/CI only.
+      - Keycloak__ClientSecret=${KEYCLOAK_CLIENT_SECRET:-student-registrar-local-dev-secret}
 
   frontend:
     build:
