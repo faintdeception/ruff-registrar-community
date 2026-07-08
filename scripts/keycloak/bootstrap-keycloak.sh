@@ -43,6 +43,8 @@ Usage: $0 [options]
 
 Environment overrides:
   KEYCLOAK_ADMIN_PASSWORD   Master admin password (skips prompt)
+  INITIAL_ADMIN_USERNAME    First application admin username
+  INITIAL_ADMIN_EMAIL       First application admin email
   INITIAL_ADMIN_TEMP_PASS   Temp password for first app admin (skips prompt if other identity fields supplied)
 
 Behavior:
@@ -65,6 +67,10 @@ while [[ $# -gt 0 ]]; do
     *) echo "Unknown option: $1" >&2; usage; exit 1;;
   esac
 done
+
+INIT_APP_ADMIN_USERNAME="${INIT_APP_ADMIN_USERNAME:-${INITIAL_ADMIN_USERNAME:-}}"
+INIT_APP_ADMIN_EMAIL="${INIT_APP_ADMIN_EMAIL:-${INITIAL_ADMIN_EMAIL:-}}"
+INIT_APP_ADMIN_TEMP_PASS="${INIT_APP_ADMIN_TEMP_PASS:-${INITIAL_ADMIN_TEMP_PASS:-}}"
 
 if ! command -v jq >/dev/null; then
   echo "jq is required" >&2; exit 2; fi
@@ -149,17 +155,25 @@ if [[ "$RESPONSE" != 201 && "$RESPONSE" != 409 ]]; then
 
 # Gather initial application admin (interactive if needed)
 if [[ -z "$INIT_APP_ADMIN_USERNAME" ]]; then
+  if [[ ! -t 0 ]]; then
+    echo "Initial application admin username is required. Set INITIAL_ADMIN_USERNAME or pass --initial-admin-username." >&2
+    exit 2
+  fi
   read -p "Initial application admin username: " INIT_APP_ADMIN_USERNAME
 fi
 if [[ -z "$INIT_APP_ADMIN_EMAIL" ]]; then
+  if [[ ! -t 0 ]]; then
+    echo "Initial application admin email is required. Set INITIAL_ADMIN_EMAIL or pass --initial-admin-email." >&2
+    exit 2
+  fi
   read -p "Initial application admin email: " INIT_APP_ADMIN_EMAIL
 fi
 if [[ -z "$INIT_APP_ADMIN_TEMP_PASS" ]]; then
-  if [[ -n "${INITIAL_ADMIN_TEMP_PASS:-}" ]]; then
-    INIT_APP_ADMIN_TEMP_PASS="$INITIAL_ADMIN_TEMP_PASS"
-  else
-    read -s -p "Initial application admin temporary password: " INIT_APP_ADMIN_TEMP_PASS; echo
+  if [[ ! -t 0 ]]; then
+    echo "Initial application admin temporary password is required. Set INITIAL_ADMIN_TEMP_PASS or pass --initial-admin-temp-pass." >&2
+    exit 2
   fi
+  read -s -p "Initial application admin temporary password: " INIT_APP_ADMIN_TEMP_PASS; echo
 fi
 
 APP_ADMIN_USERNAME="$INIT_APP_ADMIN_USERNAME"
