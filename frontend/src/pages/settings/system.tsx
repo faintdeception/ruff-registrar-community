@@ -369,7 +369,7 @@ export default function SystemSettings() {
                 data-testid="welcome-title-input"
               />
               <p className="mt-1 text-xs text-slate-500">
-                Leave blank to default to "Welcome to {'{'}organization name{'}'}".
+                Leave blank to default to &quot;Welcome to {'{'}organization name{'}'}&quot;.
               </p>
             </div>
 
