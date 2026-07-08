@@ -76,6 +76,39 @@ if [[ ! -f "$TEMPLATE_JSON" ]]; then
 
 echo "🔐 Keycloak bootstrap (realm: $REALM)"
 
+get_admin_token() {
+  curl -s -X POST "${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token" \
+    -H 'Content-Type: application/x-www-form-urlencoded' \
+    --data-urlencode "username=${ADMIN_USERNAME}" \
+    --data-urlencode "password=${KEYCLOAK_ADMIN_PASSWORD}" \
+    -d 'client_id=admin-cli' \
+    -d 'grant_type=password'
+}
+
+wait_for_admin_token() {
+  local max_wait_seconds="${KEYCLOAK_TOKEN_MAX_WAIT_SECONDS:-120}"
+  local sleep_seconds="${KEYCLOAK_TOKEN_RETRY_DELAY_SECONDS:-5}"
+  local elapsed=0
+  local token_response=""
+  local token=""
+
+  while (( elapsed <= max_wait_seconds )); do
+    token_response=$(get_admin_token)
+    token=$(jq -r '.access_token // empty' <<<"$token_response")
+
+    if [[ -n "$token" ]]; then
+      printf '%s\n%s' "$token" "$token_response"
+      return 0
+    fi
+
+    sleep "$sleep_seconds"
+    elapsed=$((elapsed + sleep_seconds))
+  done
+
+  printf '\n%s' "$token_response"
+  return 1
+}
+
 # Resolve master admin password
 if [[ -n "$ADMIN_PASSWORD_FILE" ]]; then
   if [[ ! -f "$ADMIN_PASSWORD_FILE" ]]; then
@@ -88,15 +121,17 @@ if [[ -z "${KEYCLOAK_ADMIN_PASSWORD:-}" ]]; then
 fi
 
 # Obtain token
-TOKEN=$(curl -s -X POST "${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token" \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  --data-urlencode "username=${ADMIN_USERNAME}" \
-  --data-urlencode "password=${KEYCLOAK_ADMIN_PASSWORD}" \
-  -d 'client_id=admin-cli' \
-  -d 'grant_type=password' | jq -r '.access_token')
+echo "Waiting for master-admin token..."
+TOKEN_OUTPUT=$(wait_for_admin_token) || {
+  TOKEN_RESPONSE=$(tail -n 1 <<<"$TOKEN_OUTPUT")
+  echo "Failed to obtain admin token" >&2
+  if [[ -n "$TOKEN_RESPONSE" ]]; then
+    echo "Last token response: $TOKEN_RESPONSE" >&2
+  fi
+  exit 4
+}
 
-if [[ -z "$TOKEN" || "$TOKEN" == null ]]; then
-  echo "Failed to obtain admin token" >&2; exit 4; fi
+TOKEN=$(head -n 1 <<<"$TOKEN_OUTPUT")
 
 echo "Checking if realm already exists..."
 REALM_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TOKEN" "${KEYCLOAK_URL}/admin/realms/${REALM}")
