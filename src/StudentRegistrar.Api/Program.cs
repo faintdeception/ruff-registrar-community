@@ -175,10 +175,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             ClockSkew = TimeSpan.Zero,
-            IssuerSigningKeyResolver = (_, _, keyId, _) =>
+            IssuerSigningKeyResolver = (token, _, keyId, _) =>
             {
-                var expectedIssuer = ResolveExpectedIssuer(httpContextAccessor.HttpContext, authorityBaseUrl, realm);
-                return ResolveSigningKeys(expectedIssuer, keyId, allowUntrustedKeycloakCertificates);
+                var issuerForKeys = TryReadTokenIssuer(token)
+                    ?? ResolveExpectedIssuer(httpContextAccessor.HttpContext, authorityBaseUrl, realm);
+                return ResolveSigningKeys(issuerForKeys, keyId, allowUntrustedKeycloakCertificates);
             },
             IssuerValidator = (issuer, _, _) =>
             {
@@ -196,6 +197,33 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         // Configure JWT token handling for Keycloak roles
         options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
         {
+            OnAuthenticationFailed = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("JwtBearerAuthentication");
+                logger.LogWarning(
+                    context.Exception,
+                    "JWT authentication failed for {Path}: {ExceptionType}: {Message}",
+                    context.HttpContext.Request.Path,
+                    context.Exception.GetType().Name,
+                    context.Exception.Message);
+                return Task.CompletedTask;
+            },
+            OnChallenge = context =>
+            {
+                if (!string.IsNullOrWhiteSpace(context.Error) || !string.IsNullOrWhiteSpace(context.ErrorDescription))
+                {
+                    var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
+                        .CreateLogger("JwtBearerAuthentication");
+                    logger.LogWarning(
+                        "JWT challenge for {Path}: {Error} {ErrorDescription}",
+                        context.HttpContext.Request.Path,
+                        context.Error,
+                        context.ErrorDescription);
+                }
+
+                return Task.CompletedTask;
+            },
             OnTokenValidated = context =>
             {
                 var claimsIdentity = context.Principal?.Identity as System.Security.Claims.ClaimsIdentity;
@@ -334,6 +362,20 @@ app.MapControllers();
 app.MapDefaultEndpoints();
 
 await app.RunAsync();
+
+static string? TryReadTokenIssuer(string token)
+{
+    try
+    {
+        return new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler()
+            .ReadJwtToken(token)
+            .Issuer;
+    }
+    catch
+    {
+        return null;
+    }
+}
 
 static string ResolveExpectedIssuer(HttpContext? httpContext, string authorityBaseUrl, string defaultRealm)
 {
