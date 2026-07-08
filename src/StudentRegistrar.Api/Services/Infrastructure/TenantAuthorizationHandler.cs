@@ -32,6 +32,8 @@ public class TenantMembershipRequirement : IAuthorizationRequirement
 /// </summary>
 public class TenantAuthorizationHandler : AuthorizationHandler<TenantMembershipRequirement>
 {
+    private static readonly string[] UserIdClaimTypes = [ClaimTypes.NameIdentifier, "sub"];
+
     private readonly ITenantContextAccessor _tenantContextAccessor;
     private readonly ILogger<TenantAuthorizationHandler> _logger;
     private readonly StudentRegistrarDbContext _dbContext;
@@ -83,10 +85,13 @@ public class TenantAuthorizationHandler : AuthorizationHandler<TenantMembershipR
         }
 
         // SaaS mode: validate user belongs to the resolved tenant
-        var userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userId = UserIdClaimTypes
+            .Select(claimType => context.User.FindFirst(claimType)?.Value)
+            .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
+
         if (string.IsNullOrEmpty(userId))
         {
-            _logger.LogWarning("Tenant authorization failed: No user ID in claims");
+            _logger.LogWarning("Tenant authorization failed: No user ID in claims ({ClaimTypes})", string.Join(", ", UserIdClaimTypes));
             // Don't call Fail() - let framework handle authorization failure naturally
             return;
         }

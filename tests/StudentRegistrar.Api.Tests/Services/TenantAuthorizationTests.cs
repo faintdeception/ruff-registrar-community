@@ -50,6 +50,18 @@ public class TenantAuthorizationTests
     }
 
     [Fact]
+    public async Task AuthorizeAsync_Should_Succeed_When_SaaS_User_Uses_Sub_Claim()
+    {
+        var tenant = CreateTenant();
+        var user = CreateUser("user-sub", tenant.Id);
+        using var provider = BuildServiceProvider("saas", TenantContext.ForSaaS(tenant), user);
+
+        var result = await AuthorizeAsync(provider, user.KeycloakId, userIdClaimType: "sub");
+
+        Assert.True(result.Succeeded);
+    }
+
+    [Fact]
     public async Task AuthorizeAsync_Should_Deny_When_SaaS_User_Belongs_To_A_Different_Tenant()
     {
         var requestedTenant = CreateTenant();
@@ -113,19 +125,20 @@ public class TenantAuthorizationTests
     private static async Task<AuthorizationResult> AuthorizeAsync(
         IServiceProvider provider,
         string userId,
+        string userIdClaimType = ClaimTypes.NameIdentifier,
         params string[] roles)
     {
         var authorizationService = provider.GetRequiredService<IAuthorizationService>();
         var policy = provider.GetRequiredService<IOptions<AuthorizationOptions>>().Value.GetPolicy("TenantMember")!;
 
-        return await authorizationService.AuthorizeAsync(CreatePrincipal(userId, roles), resource: null, policy);
+        return await authorizationService.AuthorizeAsync(CreatePrincipal(userId, userIdClaimType, roles), resource: null, policy);
     }
 
-    private static ClaimsPrincipal CreatePrincipal(string userId, params string[] roles)
+    private static ClaimsPrincipal CreatePrincipal(string userId, string userIdClaimType, params string[] roles)
     {
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, userId)
+            new(userIdClaimType, userId)
         };
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
