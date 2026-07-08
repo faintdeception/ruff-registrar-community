@@ -455,7 +455,7 @@ export default function SystemSettings() {
 
             {!billing?.canManageBilling && !billing?.canUndoCancellation && (
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700" data-testid="billing-unavailable-message">
-                {billing?.unavailableReason ?? 'Billing management is not available for this organization.'}
+                {billing?.unavailableReason || 'Billing management is not available for this organization.'}
               </div>
             )}
 

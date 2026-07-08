@@ -181,7 +181,7 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
         Assert.True(coursesPage.IsCourseFeeVisible(courseName, "$95.25"));
     }
 
-    [Fact]
+    [SkippableFact]
     [Trait("Suite", "SaaSCompatibility")]
     public void Existing_Member_Should_Add_Child_And_Sign_Up_For_Paid_Course()
     {
@@ -232,7 +232,13 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
 
         coursesPage.NavigateToCourses(BaseUrl);
         coursesPage.SelectSemester(semesterName);
-        Assert.Equal("Pay & Sign Up", coursesPage.GetSignupButtonText(courseName));
+        var signupButtonText = coursesPage.GetSignupButtonText(courseName);
+        Skip.If(
+            signupButtonText.Contains("Payment unavailable", StringComparison.OrdinalIgnoreCase),
+            "Paid-course signup requires tenant Stripe Connect, which is disabled in self-hosted mode " +
+            "(TenantPaymentConnectService: 'available in SaaS deployments only'). This SaaS-compatibility " +
+            "scenario is exercised in the SaaS/Stripe E2E lane, not the self-hosted core lane.");
+        Assert.Equal("Pay & Sign Up", signupButtonText);
         coursesPage.SignUpStudentForCourse(courseName, studentFullName);
         Assert.Contains("payment was recorded", coursesPage.GetSuccessMessage());
         Assert.Equal("Signed Up", coursesPage.GetSignupButtonText(courseName));
@@ -284,7 +290,7 @@ public sealed class DashboardSetupWorkflowTests : BaseTest
     private void EnsureParentEducatorMemberAccountExists()
     {
         LoginAsParentEducator("parent educator test user should be able to sign in before authorization");
-        NavigateToUrl($"{BaseUrl.TrimEnd('/')}/account-holder");
+        new AccountHolderPage(Driver).NavigateToAccount(BaseUrl);
         WaitUntil(d => d.PageSource.Contains("Sarah Johnson") || d.PageSource.Contains("No account holder data found"), 15, 300,
             "parent educator account holder page did not finish loading");
         Assert.Contains("Sarah Johnson", Driver.PageSource);

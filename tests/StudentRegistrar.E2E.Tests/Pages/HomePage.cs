@@ -20,7 +20,17 @@ public class HomePage
     // Page actions
     public void ClickLogout()
     {
-        LogoutButton.Click();
+        var button = LogoutButton;
+        try
+        {
+            ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});", button);
+            button.Click();
+        }
+        catch (ElementClickInterceptedException)
+        {
+            // The Next.js dev overlay (<nextjs-portal>) can intercept the click; click via JS instead.
+            ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", button);
+        }
     }
 
     // Page validations

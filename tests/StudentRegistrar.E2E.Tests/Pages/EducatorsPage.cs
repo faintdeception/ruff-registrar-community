@@ -16,7 +16,21 @@ public sealed class EducatorsPage
 
     public void NavigateToEducators(string baseUrl)
     {
-        _driver.Navigate().GoToUrl($"{baseUrl.TrimEnd('/')}/educators");
+        // Prefer client-side navigation via the nav link so the in-memory Keycloak
+        // session is preserved. A full-page reload on localhost drops the session
+        // (Keycloak init does not use `check-sso` there), which hides the admin-only
+        // "Add Educator" action.
+        var navLink = _driver.FindElements(By.CssSelector("[data-testid='nav-educators']")).FirstOrDefault(e => e.Displayed);
+        if (navLink != null)
+        {
+            Click(navLink);
+            _wait.Until(d => d.Url.Contains("/educators", StringComparison.OrdinalIgnoreCase));
+        }
+        else
+        {
+            _driver.Navigate().GoToUrl($"{baseUrl.TrimEnd('/')}/educators");
+        }
+
         WaitForPageLoad();
     }
 
@@ -100,6 +114,11 @@ public sealed class EducatorsPage
     private void Click(By locator)
     {
         var element = _wait.Until(d => d.FindElement(locator));
+        Click(element);
+    }
+
+    private void Click(IWebElement element)
+    {
         try
         {
             ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});", element);

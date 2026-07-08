@@ -17,7 +17,20 @@ public class AccountHolderPage
 
     public void NavigateToAccount(string baseUrl)
     {
-        _driver.Navigate().GoToUrl($"{baseUrl.TrimEnd('/')}/account-holder");
+        // Prefer client-side navigation via the nav link so the in-memory Keycloak
+        // session is preserved. A full-page reload on localhost drops the session
+        // (Keycloak init does not use `check-sso` there), which would redirect an
+        // otherwise-authenticated member to the login page.
+        var navLink = _driver.FindElements(By.CssSelector("[data-testid='nav-account']")).FirstOrDefault(e => e.Displayed);
+        if (navLink != null)
+        {
+            SafeClick(navLink);
+        }
+        else
+        {
+            _driver.Navigate().GoToUrl($"{baseUrl.TrimEnd('/')}/account-holder");
+        }
+
         _wait.Until(d => d.Url.Contains("/account-holder", StringComparison.OrdinalIgnoreCase));
     }
 

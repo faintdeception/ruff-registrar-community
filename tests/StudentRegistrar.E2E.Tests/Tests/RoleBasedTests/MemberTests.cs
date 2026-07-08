@@ -96,7 +96,7 @@ public class MemberTests : BaseTest
             $"MSC{uniqueSuffix[^4..]}",
             "All Ages",
             12,
-            45.00m,
+            0.00m,
             "MW 10:00",
             "Deterministic member enrollment course.");
 

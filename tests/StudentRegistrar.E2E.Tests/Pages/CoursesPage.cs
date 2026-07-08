@@ -45,7 +45,21 @@ public class CoursesPage
 
     public void NavigateToCourses(string baseUrl)
     {
-        _driver.Navigate().GoToUrl($"{baseUrl.TrimEnd('/')}/courses");
+        // Prefer client-side navigation via the nav link so the in-memory Keycloak
+        // session is preserved. A full-page reload on localhost drops the session
+        // (Keycloak init does not use `check-sso` there), which would hide
+        // authenticated/admin course actions.
+        var navLink = _driver.FindElements(By.CssSelector("[data-testid='nav-courses']")).FirstOrDefault(e => e.Displayed);
+        if (navLink != null)
+        {
+            SafeClick(navLink);
+            _wait.Until(d => d.Url.Contains("/courses", StringComparison.OrdinalIgnoreCase));
+        }
+        else
+        {
+            _driver.Navigate().GoToUrl($"{baseUrl.TrimEnd('/')}/courses");
+        }
+
         WaitForPageLoad();
     }
 

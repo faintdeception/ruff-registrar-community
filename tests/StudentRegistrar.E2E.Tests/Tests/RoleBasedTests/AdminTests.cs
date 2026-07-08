@@ -222,13 +222,11 @@ public class AdminTests : BaseTest
 
         foreach (var (testId, expectedUrl) in navigationLinks)
         {
-            // Navigate back to home first
-            Driver.Navigate().GoToUrl(BaseUrl);
-            WaitForPageLoad();
-
-            // Click the navigation link
+            // The nav bar is rendered on every page, so click each link client-side.
+            // A full-page reload on localhost would drop the Keycloak session and hide
+            // authenticated-only nav items like nav-account.
             var link = Driver.FindElement(By.CssSelector($"[data-testid='{testId}']"));
-            link.Click();
+            ClickWithOverlayFallback(link);
             WaitForPageLoad();
             WaitForUrlContains(expectedUrl);
 

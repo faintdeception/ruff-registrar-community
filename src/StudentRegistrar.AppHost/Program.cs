@@ -16,11 +16,12 @@ IResourceBuilder<ParameterResource>? keycloakClientSecret = null;
 
 if (builder.ExecutionContext.IsRunMode)
 {
-    var clientSecretValue = keycloakConfig["ClientSecret"];
-    if (!string.IsNullOrWhiteSpace(clientSecretValue))
-    {
-        keycloakClientSecret = builder.AddParameter("keycloak-client-secret", clientSecretValue, secret: true);
-    }
+    // Local dev/E2E default: match the fixed secret provisioned into the
+    // student-registrar confidential client (realm template + docker-compose/CI).
+    // This lets the API obtain a Keycloak management token for admin operations
+    // (e.g. inviting educators) without per-machine configuration.
+    var clientSecretValue = keycloakConfig["ClientSecret"] ?? "student-registrar-local-dev-secret";
+    keycloakClientSecret = builder.AddParameter("keycloak-client-secret", clientSecretValue, secret: true);
 }
 else
 {

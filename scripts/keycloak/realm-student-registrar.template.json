@@ -43,6 +43,7 @@
       "clientId": "student-registrar",
       "enabled": true,
       "publicClient": false,
+      "secret": "student-registrar-local-dev-secret",
       "protocol": "openid-connect",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,

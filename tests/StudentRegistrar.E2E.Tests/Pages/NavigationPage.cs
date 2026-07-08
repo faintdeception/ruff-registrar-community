@@ -218,7 +218,7 @@ public class NavigationPage
 
     public string GetUserName() => UserName?.Text.Trim() ?? string.Empty;
 
-    public string GetUserRoles() => UserRoles?.Text.Trim() ?? string.Empty;
+    public string GetUserRoles() => UserRoles?.GetDomAttribute("data-roles")?.Trim() ?? string.Empty;
 
     public bool IsUserLoggedIn() => UserMenu != null && UserMenu.Displayed && !string.IsNullOrEmpty(GetUserName());
 
