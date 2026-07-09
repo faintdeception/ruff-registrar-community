@@ -150,9 +150,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         }
 
         var publicAuthorityBaseUrl = builder.Configuration["Keycloak:PublicAuthority"];
+    var keycloakBackchannelBaseUrl = builder.Configuration["Keycloak:BaseUrl"];
 
         authorityBaseUrl = authorityBaseUrl!.TrimEnd('/');
         publicAuthorityBaseUrl = publicAuthorityBaseUrl?.TrimEnd('/');
+    keycloakBackchannelBaseUrl = keycloakBackchannelBaseUrl?.TrimEnd('/');
         var authority = BuildRealmAuthority(authorityBaseUrl, realm);
 
         options.Authority = authority;
@@ -179,7 +181,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             {
                 var issuerForKeys = TryReadTokenIssuer(token)
                     ?? ResolveExpectedIssuer(httpContextAccessor.HttpContext, authorityBaseUrl, realm);
-                return ResolveSigningKeys(issuerForKeys, keyId, allowUntrustedKeycloakCertificates);
+                return ResolveSigningKeys(issuerForKeys, keyId, allowUntrustedKeycloakCertificates, keycloakBackchannelBaseUrl);
             },
             IssuerValidator = (issuer, _, _) =>
             {
@@ -468,15 +470,20 @@ static bool IsAllowedCorsOrigin(string origin, IReadOnlyCollection<string> allow
     return host.EndsWith($".{normalizedBaseDomain}", StringComparison.OrdinalIgnoreCase);
 }
 
-static IReadOnlyCollection<SecurityKey> ResolveSigningKeys(string issuer, string? keyId, bool allowUntrustedCertificates)
+static IReadOnlyCollection<SecurityKey> ResolveSigningKeys(
+    string issuer,
+    string? keyId,
+    bool allowUntrustedCertificates,
+    string? backchannelBaseUrl)
 {
     var normalizedIssuer = NormalizeIssuer(issuer);
+    var jwksIssuer = ResolveBackchannelIssuer(normalizedIssuer, backchannelBaseUrl);
     var cachedKeys = SigningKeyCache.Keys.AddOrUpdate(
-        normalizedIssuer,
-        _ => FetchSigningKeys(normalizedIssuer, allowUntrustedCertificates),
+        jwksIssuer,
+        _ => FetchSigningKeys(jwksIssuer, allowUntrustedCertificates),
         (_, existing) => existing.ExpiresAt > DateTimeOffset.UtcNow
             ? existing
-            : FetchSigningKeys(normalizedIssuer, allowUntrustedCertificates));
+            : FetchSigningKeys(jwksIssuer, allowUntrustedCertificates));
 
     if (string.IsNullOrWhiteSpace(keyId))
     {
@@ -485,6 +492,23 @@ static IReadOnlyCollection<SecurityKey> ResolveSigningKeys(string issuer, string
 
     var matchingKeys = cachedKeys.Keys.Where(key => string.Equals(key.KeyId, keyId, StringComparison.Ordinal)).ToArray();
     return matchingKeys.Length > 0 ? matchingKeys : cachedKeys.Keys;
+}
+
+static string ResolveBackchannelIssuer(string issuer, string? backchannelBaseUrl)
+{
+    if (string.IsNullOrWhiteSpace(backchannelBaseUrl))
+    {
+        return issuer;
+    }
+
+    var realmsSegment = "/realms/";
+    var realmIndex = issuer.IndexOf(realmsSegment, StringComparison.OrdinalIgnoreCase);
+    if (realmIndex < 0)
+    {
+        return issuer;
+    }
+
+    return $"{backchannelBaseUrl.TrimEnd('/')}{issuer[realmIndex..]}";
 }
 
 static CachedSigningKeys FetchSigningKeys(string issuer, bool allowUntrustedCertificates)
