@@ -24,6 +24,37 @@ public class WebDriverFactory : IDisposable
 
         EnsureSeleniumManagerIsExecutable();
 
+        const int maxAttempts = 3;
+        Exception? lastException = null;
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            var tempUserDataDir = Path.Combine(Path.GetTempPath(), $"ChromeTest_{Guid.NewGuid()}");
+            try
+            {
+                var options = CreateChromeOptions(tempUserDataDir);
+                var service = CreateChromeDriverService();
+                _driver = service is null
+                    ? new ChromeDriver(options)
+                    : new ChromeDriver(service, options);
+
+                ConfigureDriverTimeouts(_driver);
+                return _driver;
+            }
+            catch (WebDriverException ex) when (attempt < maxAttempts)
+            {
+                lastException = ex;
+                TryDeleteDirectory(tempUserDataDir);
+                Thread.Sleep(TimeSpan.FromSeconds(attempt));
+            }
+        }
+
+        throw new WebDriverException($"Unable to start ChromeDriver after {maxAttempts} attempts.", lastException);
+    }
+
+    private ChromeOptions CreateChromeOptions(string tempUserDataDir)
+    {
+
         var options = new ChromeOptions();
         
         // Configure Chrome options based on settings
@@ -56,7 +87,6 @@ public class WebDriverFactory : IDisposable
         options.AddArgument("--disable-default-apps");
         
         // Add user data directory to prevent profile conflicts
-        var tempUserDataDir = Path.Combine(Path.GetTempPath(), $"ChromeTest_{Guid.NewGuid()}");
         options.AddArgument($"--user-data-dir={tempUserDataDir}");
         
         // Enable logging for debugging
@@ -66,19 +96,17 @@ public class WebDriverFactory : IDisposable
         // Set page load strategy for better reliability
         options.PageLoadStrategy = PageLoadStrategy.Normal;
 
-        var service = CreateChromeDriverService();
-        _driver = service is null
-            ? new ChromeDriver(options)
-            : new ChromeDriver(service, options);
+        return options;
+    }
 
+    private void ConfigureDriverTimeouts(IWebDriver driver)
+    {
         // Configure timeouts
         var implicitWait = int.Parse(_configuration["SeleniumSettings:ImplicitWaitSeconds"] ?? "10");
         var pageLoadTimeout = int.Parse(_configuration["SeleniumSettings:PageLoadTimeoutSeconds"] ?? "30");
 
-        _driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(implicitWait);
-        _driver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(pageLoadTimeout);
-
-        return _driver;
+        driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(implicitWait);
+        driver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(pageLoadTimeout);
     }
 
     private static void EnsureSeleniumManagerIsExecutable()
@@ -209,6 +237,21 @@ public class WebDriverFactory : IDisposable
         }
 
         return Path.Combine(AppContext.BaseDirectory, "runtimes", runtime, "native", executableName);
+    }
+
+    private static void TryDeleteDirectory(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, recursive: true);
+            }
+        }
+        catch
+        {
+            // Best-effort cleanup only.
+        }
     }
 
     public void Dispose()

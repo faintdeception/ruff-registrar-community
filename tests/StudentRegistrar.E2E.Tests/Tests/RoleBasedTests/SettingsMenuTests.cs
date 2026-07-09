@@ -80,12 +80,21 @@ public class SettingsMenuTests : BaseRoleNavigationTest
         // Assert - Should be on manage members page with members table/content loaded
         Assert.Contains("/settings/manage-members", Driver.Url);
         Assert.Contains("Manage Members", Driver.PageSource);
-        // Should show members table or empty state, not "Coming Soon"
-        var pageSource = Driver.PageSource;
-        var hasMembersContent = pageSource.Contains("Name") || 
-                               pageSource.Contains("Email") || 
-                               pageSource.Contains("No members found");
-        Assert.True(hasMembersContent, "Page should display members table or empty state");
+
+        WaitUntil(_ =>
+        {
+            var pageSource = Driver.PageSource;
+            return pageSource.Contains("Name") ||
+                   pageSource.Contains("Email") ||
+                   pageSource.Contains("No members found") ||
+                   pageSource.Contains("Error loading members");
+        }, 30, failureMessage: "Manage members page did not finish loading members in time");
+
+        var hasMembersContent = Driver.PageSource.Contains("Name") ||
+                                Driver.PageSource.Contains("Email") ||
+                                Driver.PageSource.Contains("No members found");
+        var visibleText = Driver.FindElement(By.TagName("body")).Text;
+        Assert.True(hasMembersContent, $"Page should display members table or empty state. Visible text: {visibleText}");
     }
 
     [Fact]
