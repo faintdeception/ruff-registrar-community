@@ -125,6 +125,24 @@ public class LoginPage
         }
     }
 
+    public bool HasRequestAccessLink()
+    {
+        try
+        {
+            return _driver.FindElement(By.CssSelector("[data-testid='tenant-access-request-link']")).Displayed;
+        }
+        catch (NoSuchElementException)
+        {
+            return false;
+        }
+    }
+
+    public string GetRequestAccessHref()
+    {
+        var link = _driver.FindElement(By.CssSelector("[data-testid='tenant-access-request-link']"));
+        return link.GetAttribute("href") ?? string.Empty;
+    }
+
     private void EnsureHostedLoginFormVisible()
     {
         if (_driver.FindElements(By.Id("username")).Any())

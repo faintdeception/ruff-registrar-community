@@ -7,6 +7,53 @@ namespace StudentRegistrar.E2E.Tests.Tests;
 
 public class LoginTests : BaseTest
 {
+    private static string? ExtractTenantSlugFromBaseUrl(string baseUrl)
+    {
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri))
+        {
+            return null;
+        }
+
+        var segments = uri.AbsolutePath
+            .Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (segments.Length < 2 || !string.Equals(segments[0], "org", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return segments[1];
+    }
+
+    private static string BuildTenantLoginUrl(string baseUrl, string tenantSlug)
+    {
+        var trimmedBaseUrl = baseUrl.TrimEnd('/');
+        var tenantPrefix = $"/org/{tenantSlug}";
+
+        if (trimmedBaseUrl.Contains(tenantPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return $"{trimmedBaseUrl}/login";
+        }
+
+        return $"{trimmedBaseUrl}{tenantPrefix}/login";
+    }
+
+    private string GetConfiguredLoginUsername()
+    {
+        return Configuration["TestCredentials:ValidUser:Username"]
+            ?? Environment.GetEnvironmentVariable("PORTAL_E2E_ADMIN_SETUP_ADMIN_EMAIL")
+            ?? Environment.GetEnvironmentVariable("SAAS_SMOKE_ADMIN_EMAIL")
+            ?? "admin1";
+    }
+
+    private string GetConfiguredLoginPassword()
+    {
+        return Configuration["TestCredentials:ValidUser:Password"]
+            ?? Environment.GetEnvironmentVariable("PORTAL_E2E_ADMIN_SETUP_PASSWORD")
+            ?? Environment.GetEnvironmentVariable("SAAS_SMOKE_ADMIN_PASSWORD")
+            ?? "AdminPass123!";
+    }
+
     [Fact]
     public void Should_Show_Login_Elements_When_Not_Authenticated()
     {
@@ -21,6 +68,38 @@ public class LoginTests : BaseTest
         
         var loginPage = new LoginPage(Driver);
         Assert.True(loginPage.IsOnLoginPage());
+    }
+
+    [Fact]
+    public void Should_Show_Tenant_Access_Request_Link_For_Tenant_Login()
+    {
+        var tenantSlug = Environment.GetEnvironmentVariable("PORTAL_E2E_LOGIN_SUBDOMAIN")
+            ?? Environment.GetEnvironmentVariable("PORTAL_E2E_ADMIN_SETUP_SUBDOMAIN")
+            ?? Environment.GetEnvironmentVariable("SAAS_SMOKE_SUBDOMAIN")
+            ?? ExtractTenantSlugFromBaseUrl(BaseUrl)
+            ?? "test1";
+
+        Console.WriteLine($"Tenant login test using slug: {tenantSlug}");
+
+        // Arrange - Navigate directly to tenant-scoped login
+        NavigateToUrl(BuildTenantLoginUrl(BaseUrl, tenantSlug));
+        WaitForPageLoad();
+        WaitForUrlContains($"/org/{tenantSlug}/login");
+
+        var loginPage = new LoginPage(Driver);
+        Assert.True(loginPage.IsOnLoginPage());
+
+        // Act - wait for the tenant access request link to render after tenant contact is resolved.
+        WaitForElementVisible(By.CssSelector("[data-testid='tenant-access-request-link']"), 15);
+
+        // Assert
+        Assert.True(loginPage.HasRequestAccessLink());
+        var href = loginPage.GetRequestAccessHref();
+        var decodedHref = Uri.UnescapeDataString(href);
+
+        Assert.StartsWith("mailto:", href);
+        Assert.Contains($"Access request for {tenantSlug}", decodedHref, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Hello,", decodedHref, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -76,8 +155,8 @@ public class LoginTests : BaseTest
         Assert.True(loginPage.IsOnLoginPage());
 
         // Get credentials from configuration
-        var username = Configuration["TestCredentials:ValidUser:Username"] ?? "admin1";
-        var password = Configuration["TestCredentials:ValidUser:Password"] ?? "AdminPass123!";
+        var username = GetConfiguredLoginUsername();
+        var password = GetConfiguredLoginPassword();
 
         // Act - Login with valid credentials
         loginPage.Login(username, password);
@@ -102,8 +181,8 @@ public class LoginTests : BaseTest
         WaitForPageLoad();
         
         var loginPage = new LoginPage(Driver);
-        var username = Configuration["TestCredentials:ValidUser:Username"] ?? "admin1";
-        var password = Configuration["TestCredentials:ValidUser:Password"] ?? "AdminPass123!";
+        var username = GetConfiguredLoginUsername();
+        var password = GetConfiguredLoginPassword();
         
     loginPage.Login(username, password);
     WaitForPageLoad();
@@ -139,8 +218,8 @@ public class LoginTests : BaseTest
 
         // Step 2: Login with valid credentials
         var loginPage = new LoginPage(Driver);
-        var username = Configuration["TestCredentials:ValidUser:Username"] ?? "admin1";
-        var password = Configuration["TestCredentials:ValidUser:Password"] ?? "AdminPass123!";
+        var username = GetConfiguredLoginUsername();
+        var password = GetConfiguredLoginPassword();
         
     loginPage.Login(username, password);
     WaitForPageLoad();
