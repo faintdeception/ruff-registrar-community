@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
-import { getAppVersion, getTenantSlugFromPath } from '@/lib/runtime-env';
+import { getApiBaseUrl, getAppVersion, getTenantSlugFromPath } from '@/lib/runtime-env';
 import { AcademicCapIcon, ArrowRightCircleIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
 
 export default function Login() {
   const appVersion = getAppVersion();
   const tenantSlug = getTenantSlugFromPath();
+  const apiBaseUrl = getApiBaseUrl();
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [requestAccessUrl, setRequestAccessUrl] = useState<string | null>(null);
@@ -19,7 +20,7 @@ export default function Login() {
       }
 
       try {
-        const response = await fetch(`/api/tenant-access-request`, {
+        const response = await fetch(`${apiBaseUrl}/api/tenant-access-request`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -48,7 +49,7 @@ export default function Login() {
     };
 
     void fetchRequestAccessUrl();
-  }, [tenantSlug]);
+  }, [apiBaseUrl, tenantSlug]);
 
   const handleSignIn = async () => {
     setError('');
@@ -133,16 +134,16 @@ export default function Login() {
 
             {requestAccessUrl && (
               <div className="text-center text-sm text-gray-600">
-                <button
-                  type="button"
-                  onClick={handleRequestAccess}
+                <a
+                  data-testid="tenant-access-request-link"
+                  href={requestAccessUrl}
                   className="font-medium text-primary-600 hover:text-primary-700 underline decoration-2 underline-offset-2"
                 >
                   <span className="flex items-center justify-center gap-2">
                     <EnvelopeIcon className="h-4 w-4" />
                     Or click here to request access
                   </span>
-                </button>
+                </a>
               </div>
             )}
           </div>
