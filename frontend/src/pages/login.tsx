@@ -1,14 +1,54 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
-import { getAppVersion } from '@/lib/runtime-env';
-import { AcademicCapIcon, ArrowRightCircleIcon } from '@heroicons/react/24/outline';
+import { getAppVersion, getTenantSlugFromPath } from '@/lib/runtime-env';
+import { AcademicCapIcon, ArrowRightCircleIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
 
 export default function Login() {
   const appVersion = getAppVersion();
+  const tenantSlug = getTenantSlugFromPath();
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [requestAccessUrl, setRequestAccessUrl] = useState<string | null>(null);
   
   const { login } = useAuth();
+
+  useEffect(() => {
+    const fetchRequestAccessUrl = async () => {
+      if (!tenantSlug) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/tenant-access-request`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Tenant-Slug': tenantSlug,
+          },
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = await response.json() as { adminEmail?: string };
+        if (!payload.adminEmail) {
+          return;
+        }
+
+        const subject = encodeURIComponent(`Access request for ${tenantSlug}`);
+        const body = encodeURIComponent(
+          `Hello,\n\nI would like to request access to the ${tenantSlug} organization in Student Registrar.\n\nThanks,\n`
+        );
+
+        setRequestAccessUrl(`mailto:${payload.adminEmail}?subject=${subject}&body=${body}`);
+      } catch {
+        setRequestAccessUrl(null);
+      }
+    };
+
+    void fetchRequestAccessUrl();
+  }, [tenantSlug]);
 
   const handleSignIn = async () => {
     setError('');
@@ -20,6 +60,12 @@ export default function Login() {
       setError(err instanceof Error ? err.message : 'Unable to start sign-in');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRequestAccess = () => {
+    if (requestAccessUrl) {
+      window.location.href = requestAccessUrl;
     }
   };
 
@@ -84,6 +130,21 @@ export default function Login() {
                 )}
               </button>
             </div>
+
+            {requestAccessUrl && (
+              <div className="text-center text-sm text-gray-600">
+                <button
+                  type="button"
+                  onClick={handleRequestAccess}
+                  className="font-medium text-primary-600 hover:text-primary-700 underline decoration-2 underline-offset-2"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <EnvelopeIcon className="h-4 w-4" />
+                    Or click here to request access
+                  </span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
