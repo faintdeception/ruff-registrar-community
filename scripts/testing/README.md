@@ -26,7 +26,7 @@ Important:
 - `run-e2e-tests.ps1` and `run-e2e-tests.sh` are for the core self-hosted app stack.
 - Do not point the full core E2E suite at the SaaS AppHost on `http://localhost:3001`; that is a different app shape and many admin workflows will fail for the wrong reason.
 - For SaaS local validation, use the root-level compatibility runner instead: `saas/scripts/testing/run-local-core-saas-compatibility.ps1` on Windows or `run-local-core-saas-compatibility.sh` on Bash.
-- The tenant access-request login assertion (`LoginTests.Should_Show_Tenant_Access_Request_Link_For_Tenant_Login`) is a SaaS-compatibility check. In self-hosted runs it is skipped unless `PORTAL_E2E_LOGIN_SUBDOMAIN` (or an equivalent tenant-scoped base URL) is provided.
+- The tenant access-request login assertion (`LoginTests.Should_Show_Tenant_Access_Request_Link_For_Tenant_Login`) runs in both self-hosted and SaaS contexts. In self-hosted mode it validates the default login page; when `PORTAL_E2E_LOGIN_SUBDOMAIN` (or an equivalent tenant-scoped base URL) is provided it validates the tenant-scoped login page.
 
 ### Default Core Test Lane
 ```bash

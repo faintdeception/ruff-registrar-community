@@ -138,12 +138,12 @@ public class TenantResolutionMiddlewareTests
         Assert.True(payload.GetProperty("canRecoverBilling").GetBoolean());
     }
 
-    private static TenantResolutionMiddleware CreateMiddleware(RequestDelegate? next = null)
+    private static TenantResolutionMiddleware CreateMiddleware(RequestDelegate? next = null, string deploymentMode = "saas")
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["DEPLOYMENT_MODE"] = "saas"
+                ["DEPLOYMENT_MODE"] = deploymentMode
             })
             .Build();
 

@@ -15,17 +15,18 @@ export default function Login() {
 
   useEffect(() => {
     const fetchRequestAccessUrl = async () => {
-      if (!tenantSlug) {
-        return;
-      }
-
       try {
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+
+        if (tenantSlug) {
+          headers['X-Tenant-Slug'] = tenantSlug;
+        }
+
         const response = await fetch(`${apiBaseUrl}/api/tenant-access-request`, {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Tenant-Slug': tenantSlug,
-          },
+          headers,
         });
 
         if (!response.ok) {
@@ -37,9 +38,12 @@ export default function Login() {
           return;
         }
 
-        const subject = encodeURIComponent(`Access request for ${tenantSlug}`);
+        const organizationLabel = tenantSlug ?? 'Student Registrar';
+        const subject = encodeURIComponent(`Access request for ${organizationLabel}`);
         const body = encodeURIComponent(
-          `Hello,\n\nI would like to request access to the ${tenantSlug} organization in Student Registrar.\n\nThanks,\n`
+          tenantSlug
+            ? `Hello,\n\nI would like to request access to the ${tenantSlug} organization in Student Registrar.\n\nThanks,\n`
+            : 'Hello,\n\nI would like to request access to Student Registrar.\n\nThanks,\n'
         );
 
         setRequestAccessUrl(`mailto:${payload.adminEmail}?subject=${subject}&body=${body}`);

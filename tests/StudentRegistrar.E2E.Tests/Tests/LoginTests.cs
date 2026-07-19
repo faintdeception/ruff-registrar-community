@@ -70,8 +70,7 @@ public class LoginTests : BaseTest
         Assert.True(loginPage.IsOnLoginPage());
     }
 
-    [SkippableFact]
-    [Trait("Suite", "SaaSCompatibility")]
+    [Fact]
     public void Should_Show_Tenant_Access_Request_Link_For_Tenant_Login()
     {
         var configuredTenantSlug = Environment.GetEnvironmentVariable("PORTAL_E2E_LOGIN_SUBDOMAIN")
@@ -80,15 +79,24 @@ public class LoginTests : BaseTest
         var tenantSlugFromBaseUrl = ExtractTenantSlugFromBaseUrl(BaseUrl);
         var tenantSlug = configuredTenantSlug ?? tenantSlugFromBaseUrl;
 
-        Skip.If(string.IsNullOrWhiteSpace(tenantSlug),
-            "Tenant access-request link test requires a tenant-scoped slug. Set PORTAL_E2E_LOGIN_SUBDOMAIN (or run the SaaS compatibility lane that sets it) before executing this test.");
+        var loginUrl = string.IsNullOrWhiteSpace(tenantSlug)
+            ? $"{BaseUrl.TrimEnd('/')}/login"
+            : BuildTenantLoginUrl(BaseUrl, tenantSlug!);
 
-        Console.WriteLine($"Tenant login test using slug: {tenantSlug}");
+        Console.WriteLine($"Tenant login test using slug: {tenantSlug ?? "<self-hosted>"}");
 
-        // Arrange - Navigate directly to tenant-scoped login
-        NavigateToUrl(BuildTenantLoginUrl(BaseUrl, tenantSlug!));
+        // Arrange - Navigate directly to the appropriate login page for the current deployment mode.
+        NavigateToUrl(loginUrl);
         WaitForPageLoad();
-        WaitForUrlContains($"/org/{tenantSlug}/login");
+
+        if (string.IsNullOrWhiteSpace(tenantSlug))
+        {
+            WaitForUrlContains("/login");
+        }
+        else
+        {
+            WaitForUrlContains($"/org/{tenantSlug}/login");
+        }
 
         var loginPage = new LoginPage(Driver);
         Assert.True(loginPage.IsOnLoginPage());
@@ -102,7 +110,8 @@ public class LoginTests : BaseTest
         var decodedHref = Uri.UnescapeDataString(href);
 
         Assert.StartsWith("mailto:", href);
-        Assert.Contains($"Access request for {tenantSlug}", decodedHref, StringComparison.OrdinalIgnoreCase);
+        var expectedOrganizationLabel = tenantSlug ?? "Student Registrar";
+        Assert.Contains($"Access request for {expectedOrganizationLabel}", decodedHref, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Hello,", decodedHref, StringComparison.OrdinalIgnoreCase);
     }
 
