@@ -70,19 +70,23 @@ public class LoginTests : BaseTest
         Assert.True(loginPage.IsOnLoginPage());
     }
 
-    [Fact]
+    [SkippableFact]
+    [Trait("Suite", "SaaSCompatibility")]
     public void Should_Show_Tenant_Access_Request_Link_For_Tenant_Login()
     {
-        var tenantSlug = Environment.GetEnvironmentVariable("PORTAL_E2E_LOGIN_SUBDOMAIN")
+        var configuredTenantSlug = Environment.GetEnvironmentVariable("PORTAL_E2E_LOGIN_SUBDOMAIN")
             ?? Environment.GetEnvironmentVariable("PORTAL_E2E_ADMIN_SETUP_SUBDOMAIN")
-            ?? Environment.GetEnvironmentVariable("SAAS_SMOKE_SUBDOMAIN")
-            ?? ExtractTenantSlugFromBaseUrl(BaseUrl)
-            ?? "test1";
+            ?? Environment.GetEnvironmentVariable("SAAS_SMOKE_SUBDOMAIN");
+        var tenantSlugFromBaseUrl = ExtractTenantSlugFromBaseUrl(BaseUrl);
+        var tenantSlug = configuredTenantSlug ?? tenantSlugFromBaseUrl;
+
+        Skip.If(string.IsNullOrWhiteSpace(tenantSlug),
+            "Tenant access-request link test requires a tenant-scoped slug. Set PORTAL_E2E_LOGIN_SUBDOMAIN (or run the SaaS compatibility lane that sets it) before executing this test.");
 
         Console.WriteLine($"Tenant login test using slug: {tenantSlug}");
 
         // Arrange - Navigate directly to tenant-scoped login
-        NavigateToUrl(BuildTenantLoginUrl(BaseUrl, tenantSlug));
+        NavigateToUrl(BuildTenantLoginUrl(BaseUrl, tenantSlug!));
         WaitForPageLoad();
         WaitForUrlContains($"/org/{tenantSlug}/login");
 
