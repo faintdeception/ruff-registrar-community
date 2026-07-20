@@ -433,6 +433,52 @@ public class KeycloakServiceTests
     }
 
     [Fact]
+    public async Task UpdateUserEmailAsync_SuccessfulUpdate_SendsUsernameAndEmail()
+    {
+        var requests = new List<(string Uri, string? Body)>();
+        var handler = new RecordingHttpMessageHandler(requests,
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"access_token\":\"mock-token\"}")
+            },
+            new HttpResponseMessage(HttpStatusCode.NoContent));
+
+        var service = new KeycloakService(new HttpClient(handler), _configurationMock.Object, _loggerMock.Object, _passwordServiceMock.Object);
+
+        await service.UpdateUserEmailAsync("user-123", "updated@example.com");
+
+        Assert.Equal(2, requests.Count);
+        Assert.Equal("http://localhost:8080/admin/realms/test-realm/users/user-123", requests[1].Uri);
+        Assert.Contains("\"username\":\"updated@example.com\"", requests[1].Body);
+        Assert.Contains("\"email\":\"updated@example.com\"", requests[1].Body);
+        Assert.Contains("\"emailVerified\":false", requests[1].Body);
+    }
+
+    [Fact]
+    public async Task UpdateUserEmailAsync_WhenConflict_ThrowsInvalidOperationException()
+    {
+        var tokenResponse = JsonSerializer.Serialize(new { access_token = "mock-token" });
+        var tokenHttpResponse = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(tokenResponse)
+        };
+        var updateUserHttpResponse = new HttpResponseMessage(HttpStatusCode.Conflict);
+
+        _httpMessageHandlerMock.Protected()
+            .SetupSequence<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(tokenHttpResponse)
+            .ReturnsAsync(updateUserHttpResponse);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _keycloakService.UpdateUserEmailAsync("user-123", "updated@example.com"));
+
+        Assert.Contains("already exists in Keycloak", exception.Message);
+    }
+
+    [Fact]
     public async Task UserExistsAsync_UserExists_ReturnsTrue()
     {
         // Arrange

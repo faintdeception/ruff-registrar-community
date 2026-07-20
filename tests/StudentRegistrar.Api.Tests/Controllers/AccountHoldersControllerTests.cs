@@ -235,6 +235,24 @@ public class AccountHoldersControllerTests
         Assert.IsType<ForbidResult>(result.Result);
     }
 
+    [Fact]
+    public async Task UpdateAccountHolder_WhenLinkedEmailChangeRejected_ReturnsBadRequest()
+    {
+        var id = Guid.NewGuid();
+        var keycloakId = "kc-owner";
+        var myDto = MakeDto(id: id.ToString());
+        SetUser(keycloakId: keycloakId);
+        _accountHolderService.Setup(s => s.GetAccountHolderByUserIdAsync(keycloakId)).ReturnsAsync(myDto);
+        _accountHolderService
+            .Setup(s => s.UpdateAccountHolderAsync(id, It.IsAny<UpdateAccountHolderDto>()))
+            .ThrowsAsync(new InvalidOperationException("Email changes for linked members must be confirmed through profile settings."));
+
+        var result = await _controller.UpdateAccountHolder(id, new UpdateAccountHolderDto { EmailAddress = "updated@example.com" });
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("Email changes for linked members must be confirmed through profile settings.", badRequest.Value);
+    }
+
     // -------------------------------------------------------------------------
     // DELETE /api/accountholders/me/students/{studentId}
     // -------------------------------------------------------------------------

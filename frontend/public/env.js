@@ -1,5 +1,8 @@
-// Runtime environment overrides (optional).
-// This file is loaded before React initialises (beforeInteractive).
-// In production, replace these values via your deployment environment or
-// template this file at container startup. In development the defaults in
-// next.config.js already cover NEXT_PUBLIC_* variables, so this can be empty.
+window.__ENV__ = {
+  "NEXT_PUBLIC_KEYCLOAK_URL": "http://localhost:8080",
+  "NEXT_PUBLIC_KEYCLOAK_REALM": "student-registrar",
+  "NEXT_PUBLIC_KEYCLOAK_CLIENT_ID": "student-registrar-spa",
+  "NEXT_PUBLIC_API_URL": "http://localhost:64432",
+  "NEXT_PUBLIC_PORTAL_BASE_URL": "",
+  "NEXT_PUBLIC_APP_VERSION": "0.2.0"
+};

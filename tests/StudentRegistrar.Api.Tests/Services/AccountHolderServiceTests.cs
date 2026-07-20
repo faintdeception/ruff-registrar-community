@@ -182,6 +182,20 @@ public class AccountHolderServiceTests
     }
 
     [Fact]
+    public async Task UpdateAccountHolderAsync_WhenLinkedEmailChanges_ThrowsInvalidOperationException()
+    {
+        var id = Guid.NewGuid();
+        var existing = new AccountHolder { Id = id, TenantId = Guid.NewGuid(), FirstName = "Jane", LastName = "Doe", EmailAddress = "jane@example.com", KeycloakUserId = "kc-1", AddressJson = "{}", EmergencyContactJson = "{}" };
+        _accountHolderRepository.Setup(r => r.GetByIdAsync(id)).ReturnsAsync(existing);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _service.UpdateAccountHolderAsync(id, new UpdateAccountHolderDto { EmailAddress = "updated@example.com" }));
+
+        Assert.Equal("Email changes for linked members must be confirmed through profile settings.", exception.Message);
+        _accountHolderRepository.Verify(r => r.UpdateAsync(It.IsAny<AccountHolder>()), Times.Never);
+    }
+
+    [Fact]
     public async Task UpdateAccountHolderAsync_WhenNotFound_ReturnsNull()
     {
         _accountHolderRepository.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((AccountHolder?)null);

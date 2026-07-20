@@ -11,6 +11,8 @@ interface UserProfile {
 interface CurrentUser {
   id: string;
   email: string;
+  pendingEmail?: string | null;
+  pendingEmailExpiresAtUtc?: string | null;
   firstName: string;
   lastName: string;
   roleDisplay?: string;
@@ -18,7 +20,16 @@ interface CurrentUser {
   profile?: UserProfile | null;
 }
 
+interface RequestEmailChangeResponse {
+  currentEmail: string;
+  pendingEmail?: string | null;
+  pendingEmailExpiresAtUtc?: string | null;
+  message: string;
+  debugConfirmationUrl?: string | null;
+}
+
 interface ProfileFormState {
+  email: string;
   firstName: string;
   lastName: string;
   phoneNumber: string;
@@ -29,6 +40,7 @@ export default function ProfileSettings() {
   const { user } = useAuth();
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [form, setForm] = useState<ProfileFormState>({
+    email: '',
     firstName: '',
     lastName: '',
     phoneNumber: '',
@@ -38,6 +50,7 @@ export default function ProfileSettings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [debugConfirmationUrl, setDebugConfirmationUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -60,6 +73,7 @@ export default function ProfileSettings() {
       const data = await response.json() as CurrentUser;
       setCurrentUser(data);
       setForm({
+        email: data.pendingEmail ?? data.email ?? '',
         firstName: data.firstName ?? '',
         lastName: data.lastName ?? '',
         phoneNumber: data.profile?.phoneNumber ?? '',
@@ -87,8 +101,14 @@ export default function ProfileSettings() {
       setSaving(true);
       setError(null);
       setSuccessMessage(null);
+      setDebugConfirmationUrl(null);
 
-      const payload = {
+      const normalizedEmail = form.email.trim();
+      const desiredEmail = (currentUser.pendingEmail ?? currentUser.email ?? '').trim();
+      const emailChanged = normalizedEmail !== desiredEmail;
+
+      const profilePayload = {
+        email: normalizedEmail,
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         profile: {
@@ -97,25 +117,46 @@ export default function ProfileSettings() {
         },
       };
 
-      const response = await apiClient.put(`/api/Users/${currentUser.id}`, payload);
-      if (!response.ok) {
-        const message = await response.text();
+      const userProfileResponse = await apiClient.put(`/api/Users/${currentUser.id}`, {
+        firstName: profilePayload.firstName,
+        lastName: profilePayload.lastName,
+        profile: profilePayload.profile,
+      });
+      if (!userProfileResponse.ok) {
+        const message = await userProfileResponse.text();
         throw new Error(message || 'Failed to save profile');
+      }
+
+      let emailChangeResult: RequestEmailChangeResponse | null = null;
+      if (emailChanged) {
+        const response = await apiClient.post(`/api/Users/${currentUser.id}/email-change-requests`, {
+          newEmail: normalizedEmail,
+        });
+        if (!response.ok) {
+          const message = await response.text();
+          throw new Error(message || 'Failed to request email change');
+        }
+
+        emailChangeResult = await response.json() as RequestEmailChangeResponse;
+        setDebugConfirmationUrl(emailChangeResult.debugConfirmationUrl ?? null);
       }
 
       setCurrentUser((prev) => prev
         ? {
             ...prev,
-            firstName: payload.firstName,
-            lastName: payload.lastName,
+            email: emailChangeResult?.currentEmail ?? prev.email,
+            pendingEmail: emailChangeResult?.pendingEmail ?? prev.pendingEmail ?? null,
+            pendingEmailExpiresAtUtc: emailChangeResult?.pendingEmailExpiresAtUtc ?? prev.pendingEmailExpiresAtUtc ?? null,
+            firstName: profilePayload.firstName,
+            lastName: profilePayload.lastName,
             profile: {
               ...prev.profile,
-              phoneNumber: payload.profile.phoneNumber,
-              bio: payload.profile.bio,
+              phoneNumber: profilePayload.profile.phoneNumber,
+              bio: profilePayload.profile.bio,
             },
           }
         : prev);
-      setSuccessMessage('Profile updated successfully.');
+      setSuccessMessage(emailChangeResult?.message ?? 'Profile updated successfully.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save profile');
     } finally {
@@ -124,6 +165,11 @@ export default function ProfileSettings() {
   };
 
   const roleLabel = currentUser?.roleDisplay ?? user?.roles?.[0] ?? 'Member';
+  const pendingEmail = currentUser?.pendingEmail ?? null;
+  const activeEmail = currentUser?.email ?? user?.email ?? '';
+  const pendingEmailExpiryLabel = currentUser?.pendingEmailExpiresAtUtc
+    ? new Date(currentUser.pendingEmailExpiresAtUtc).toLocaleString()
+    : null;
 
   return (
     <ProtectedRoute>
@@ -146,6 +192,13 @@ export default function ProfileSettings() {
         {successMessage && (
           <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-green-700" data-testid="profile-success-message">
             {successMessage}
+            {debugConfirmationUrl && (
+              <div className="mt-2 text-sm">
+                <a href={debugConfirmationUrl} className="font-medium underline" data-testid="profile-debug-confirmation-link">
+                  Development confirmation link
+                </a>
+              </div>
+            )}
           </div>
         )}
 
@@ -199,12 +252,18 @@ export default function ProfileSettings() {
                   <input
                     id="email"
                     type="email"
-                    value={currentUser?.email ?? user?.email ?? ''}
-                    readOnly
-                    className="mt-1 block w-full rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-700"
+                    value={form.email}
+                    onChange={(event) => handleFieldChange('email', event.target.value)}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     data-testid="profile-email-input"
                   />
-                  <p className="mt-1 text-xs text-gray-500">Email is managed by account identity settings.</p>
+                  {pendingEmail ? (
+                    <p className="mt-1 text-xs text-amber-700" data-testid="profile-pending-email-message">
+                      Pending verification for {pendingEmail}. Your current sign-in email remains {activeEmail} until you confirm the new address{pendingEmailExpiryLabel ? ` (expires ${pendingEmailExpiryLabel})` : ''}.
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-gray-500">This email is also used for your sign-in account.</p>
+                  )}
                 </div>
 
                 <div>

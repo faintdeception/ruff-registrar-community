@@ -67,6 +67,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddMemoryCache();
+builder.Services.Configure<TransactionalEmailOptions>(builder.Configuration.GetSection(TransactionalEmailOptions.SectionName));
 
 // Add AutoMapper
 builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
@@ -95,6 +96,7 @@ builder.Services.AddScoped<IEducatorService, EducatorService>();
 builder.Services.AddScoped<IKeycloakService, KeycloakService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
+builder.Services.AddScoped<IUserIdentityEmailSender, UserIdentityEmailSender>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<ITenantBillingService, TenantBillingService>();
 builder.Services.AddScoped<ITenantStripeBillingGateway, TenantStripeBillingGateway>();

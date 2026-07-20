@@ -196,6 +196,50 @@ public class KeycloakService : IKeycloakService
         }
     }
 
+    public async Task UpdateUserEmailAsync(string keycloakId, string email)
+    {
+        try
+        {
+            _logger.LogInformation("Updating user email for Keycloak ID: {KeycloakId} to {Email}", keycloakId, email);
+
+            var adminToken = await GetManagementAccessTokenAsync();
+            var realm = GetCurrentRealm();
+            var userUpdate = new
+            {
+                username = email,
+                email,
+                emailVerified = false
+            };
+
+            using var updateRequest = new HttpRequestMessage(HttpMethod.Put, $"{_keycloakBaseUrl}/admin/realms/{realm}/users/{keycloakId}");
+            updateRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+            updateRequest.Content = new StringContent(
+                JsonSerializer.Serialize(userUpdate),
+                System.Text.Encoding.UTF8,
+                "application/json");
+
+            var response = await _httpClient.SendAsync(updateRequest);
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("Successfully updated email for Keycloak ID: {KeycloakId}", keycloakId);
+                return;
+            }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                throw new InvalidOperationException($"User with email {email} already exists in Keycloak");
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"Failed to update user email. Status: {response.StatusCode}, Error: {errorContent}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update user email for Keycloak ID: {KeycloakId}", keycloakId);
+            throw;
+        }
+    }
+
     public async Task DeactivateUserAsync(string keycloakId)
     {
         try

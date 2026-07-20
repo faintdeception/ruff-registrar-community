@@ -73,11 +73,13 @@ public class LoginTests : BaseTest
     [Fact]
     public void Should_Show_Tenant_Access_Request_Link_For_Tenant_Login()
     {
+        var tenantSlugFromBaseUrl = ExtractTenantSlugFromBaseUrl(BaseUrl);
         var configuredTenantSlug = Environment.GetEnvironmentVariable("PORTAL_E2E_LOGIN_SUBDOMAIN")
             ?? Environment.GetEnvironmentVariable("PORTAL_E2E_ADMIN_SETUP_SUBDOMAIN")
             ?? Environment.GetEnvironmentVariable("SAAS_SMOKE_SUBDOMAIN");
-        var tenantSlugFromBaseUrl = ExtractTenantSlugFromBaseUrl(BaseUrl);
-        var tenantSlug = configuredTenantSlug ?? tenantSlugFromBaseUrl;
+        // Prefer the slug already encoded in BaseUrl to avoid cross-lane env var drift
+        // (e.g. SaaS smoke variables present while running core local E2E).
+        var tenantSlug = tenantSlugFromBaseUrl ?? configuredTenantSlug;
 
         var loginUrl = string.IsNullOrWhiteSpace(tenantSlug)
             ? $"{BaseUrl.TrimEnd('/')}/login"
@@ -100,6 +102,13 @@ public class LoginTests : BaseTest
 
         var loginPage = new LoginPage(Driver);
         Assert.True(loginPage.IsOnLoginPage());
+
+        if (string.IsNullOrWhiteSpace(tenantSlug))
+        {
+            // Self-hosted runs are not guaranteed to expose tenant contact metadata,
+            // so this tenant-specific assertion is only enforced when a tenant slug exists.
+            return;
+        }
 
         // Act - wait for the tenant access request link to render after tenant contact is resolved.
         WaitForElementVisible(By.CssSelector("[data-testid='tenant-access-request-link']"), 15);

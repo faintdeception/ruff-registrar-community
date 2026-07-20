@@ -408,6 +408,8 @@ public class StudentRegistrarDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.TenantId).IsRequired();
             entity.Property(e => e.Email).IsRequired().HasMaxLength(320);
+            entity.Property(e => e.PendingEmail).HasMaxLength(320);
+            entity.Property(e => e.PendingEmailTokenHash).HasMaxLength(128);
             entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.KeycloakId).IsRequired().HasMaxLength(100);
@@ -418,6 +420,7 @@ public class StudentRegistrarDbContext : DbContext
 
             entity.HasIndex(e => new { e.TenantId, e.Email }).IsUnique();
             entity.HasIndex(e => new { e.TenantId, e.KeycloakId }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.PendingEmail }).IsUnique();
             entity.HasIndex(e => e.TenantId);
         });
 

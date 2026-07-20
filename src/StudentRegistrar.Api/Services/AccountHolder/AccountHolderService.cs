@@ -80,6 +80,13 @@ public class AccountHolderService : IAccountHolderService
         if (existingAccountHolder == null)
             return null;
 
+        if (!string.IsNullOrWhiteSpace(updateDto.EmailAddress)
+            && !string.Equals(existingAccountHolder.EmailAddress, updateDto.EmailAddress.Trim(), StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(existingAccountHolder.KeycloakUserId))
+        {
+            throw new InvalidOperationException("Email changes for linked members must be confirmed through profile settings.");
+        }
+
         _mapper.Map(updateDto, existingAccountHolder);
         var updatedAccountHolder = await _accountHolderRepository.UpdateAsync(existingAccountHolder);
         return _mapper.Map<AccountHolderDto>(updatedAccountHolder);

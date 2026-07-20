@@ -73,6 +73,10 @@ public class User : ITenantEntity
     public Guid TenantId { get; set; }
     
     public string Email { get; set; } = string.Empty;
+    public string? PendingEmail { get; set; }
+    public string? PendingEmailTokenHash { get; set; }
+    public DateTime? PendingEmailRequestedAtUtc { get; set; }
+    public DateTime? PendingEmailExpiresAtUtc { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string KeycloakId { get; set; } = string.Empty; // Links to Keycloak user

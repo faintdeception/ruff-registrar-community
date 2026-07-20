@@ -256,6 +256,11 @@ public class AccountHoldersController : ControllerBase
 
             return Ok(updatedAccountHolder);
         }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid account holder update for {Id}", id);
+            return BadRequest(ex.Message);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating account holder {Id}", id);

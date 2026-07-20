@@ -7,6 +7,9 @@ public class UserDto
 {
     public Guid Id { get; set; }
     public string Email { get; set; } = string.Empty;
+    public string? PendingEmail { get; set; }
+    public DateTime? PendingEmailRequestedAtUtc { get; set; }
+    public DateTime? PendingEmailExpiresAtUtc { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string FullName => $"{FirstName} {LastName}";
@@ -25,6 +28,10 @@ public class UserDto
 
 public class UpdateUserRequest
 {
+    [EmailAddress]
+    [StringLength(320)]
+    public string? Email { get; set; }
+
     [StringLength(100)]
     public string? FirstName { get; set; }
     
@@ -47,4 +54,33 @@ public class UserProfileDto
     public DateTime? DateOfBirth { get; set; }
     public string? Bio { get; set; }
     public string? ProfilePictureUrl { get; set; }
+}
+
+public class RequestEmailChangeRequest
+{
+    [Required]
+    [EmailAddress]
+    [StringLength(320)]
+    public string NewEmail { get; set; } = string.Empty;
+}
+
+public class RequestEmailChangeResponse
+{
+    public string CurrentEmail { get; set; } = string.Empty;
+    public string? PendingEmail { get; set; }
+    public DateTime? PendingEmailExpiresAtUtc { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public string? DebugConfirmationUrl { get; set; }
+}
+
+public class ConfirmEmailChangeRequest
+{
+    [Required]
+    public string Token { get; set; } = string.Empty;
+}
+
+public class ConfirmEmailChangeResponse
+{
+    public string Email { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
 }
