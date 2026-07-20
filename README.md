@@ -255,6 +255,12 @@ dotnet ef database update --project src/StudentRegistrar.Data --startup-project 
 - `NEXT_PUBLIC_KEYCLOAK_REALM`: Keycloak realm
 - `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID`: Keycloak client ID
 
+For local `next dev` overrides, prefer Next.js local env files such as `frontend/.env.local`.
+Those files are git-ignored and are the right place for machine-specific values like
+`NEXT_PUBLIC_API_URL=http://localhost:64432`. Keep `frontend/public/env.js` checked in as
+the placeholder file only; container and deployment flows generate its runtime values from
+environment variables at startup.
+
 ## Security Configuration
 
 ### Development Environment

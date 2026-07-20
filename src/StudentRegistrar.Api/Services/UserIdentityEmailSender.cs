@@ -34,27 +34,43 @@ public interface IUserIdentityEmailSender
 public sealed class UserIdentityEmailSender : IUserIdentityEmailSender
 {
     private readonly TransactionalEmailOptions _options;
+    private readonly IHostEnvironment _environment;
     private readonly ILogger<UserIdentityEmailSender> _logger;
 
     public UserIdentityEmailSender(
         IOptions<TransactionalEmailOptions> options,
+        IHostEnvironment environment,
         ILogger<UserIdentityEmailSender> logger)
     {
         _options = options.Value;
+        _environment = environment;
         _logger = logger;
     }
 
     public async Task<EmailDispatchResult> SendEmailChangeConfirmationAsync(PendingEmailChangeEmail email, CancellationToken cancellationToken = default)
     {
         var provider = string.IsNullOrWhiteSpace(_options.Provider) ? "Log" : _options.Provider.Trim();
-        if (string.Equals(provider, "Log", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(provider, "Log", StringComparison.OrdinalIgnoreCase) || !_environment.IsProduction())
         {
-            _logger.LogInformation(
-                "Transactional email suppressed by Log provider. Pending email change from {CurrentEmail} to {PendingEmail} expires at {ExpiresAtUtc}. Confirmation URL: {ConfirmationUrl}",
-                email.CurrentEmail,
-                email.PendingEmail,
-                email.ExpiresAtUtc,
-                email.ConfirmationUrl);
+            if (string.Equals(provider, "Log", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogInformation(
+                    "Transactional email suppressed by Log provider. Pending email change from {CurrentEmail} to {PendingEmail} expires at {ExpiresAtUtc}. Confirmation URL: {ConfirmationUrl}",
+                    email.CurrentEmail,
+                    email.PendingEmail,
+                    email.ExpiresAtUtc,
+                    email.ConfirmationUrl);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Transactional email suppressed outside Production. Pending email change from {CurrentEmail} to {PendingEmail} expires at {ExpiresAtUtc}. Confirmation URL: {ConfirmationUrl}. Environment: {EnvironmentName}",
+                    email.CurrentEmail,
+                    email.PendingEmail,
+                    email.ExpiresAtUtc,
+                    email.ConfirmationUrl,
+                    _environment.EnvironmentName);
+            }
 
             return new EmailDispatchResult(email.ConfirmationUrl);
         }
