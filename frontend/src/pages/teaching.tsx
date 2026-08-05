@@ -109,7 +109,7 @@ export default function TeachingPage() {
               Once an administrator assigns you to a course, student and parent contact details will appear here automatically.
             </p>
             <p className="mt-2 text-sm text-gray-500" data-testid="teaching-empty-help">
-              If you teach as a co-op member or invited educator and expected a roster here, contact the administrator who manages course instructor assignments for this term.
+              If you teach as an organization member or invited educator and expected a roster here, contact the administrator who manages course instructor assignments for this term.
             </p>
           </div>
         )}

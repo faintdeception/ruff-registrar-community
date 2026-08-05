@@ -384,7 +384,7 @@ export default function SystemSettings() {
                 value={welcomeBlurbInput}
                 onChange={(event) => setWelcomeBlurbInput(event.target.value)}
                 className="mt-2 block w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
-                placeholder={homeContent?.welcomeBlurb ?? 'A comprehensive homeschool management system designed to help you track students, courses, rooms, and educators with ease.'}
+                placeholder={homeContent?.welcomeBlurb ?? 'A comprehensive student management system designed to help you track students, courses, rooms, and educators with ease.'}
                 data-testid="welcome-blurb-input"
               />
               <p className="mt-1 text-xs text-slate-500">
@@ -499,7 +499,7 @@ export default function SystemSettings() {
                   <h2 className="text-xl font-semibold text-slate-900">Tenant Stripe Connect</h2>
                 </div>
                 <p className="mt-2 text-sm text-slate-600">
-                  Connect your co-op Stripe account so family payments can settle directly to your organization.
+                  Connect your organization Stripe account so family payments can settle directly to your organization.
                 </p>
               </div>
 

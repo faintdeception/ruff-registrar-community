@@ -25,7 +25,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [homeContent, setHomeContent] = useState({
     welcomeTitle: 'Welcome to Student Registrar',
-    welcomeBlurb: 'A comprehensive homeschool management system designed to help you track students, courses, rooms, and educators with ease.',
+    welcomeBlurb: 'A comprehensive student management system designed to help you track students, courses, rooms, and educators with ease.',
   });
 
   useEffect(() => {

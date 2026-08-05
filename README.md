@@ -1,6 +1,6 @@
 # Student Registrar
 
-A comprehensive homeschool management system built with .NET Aspire, Keycloak, PostgreSQL, and Next.js!
+A comprehensive student management system built with .NET Aspire, Keycloak, PostgreSQL, and Next.js!
 
 ## Features
 

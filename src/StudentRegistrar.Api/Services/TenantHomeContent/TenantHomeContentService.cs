@@ -12,7 +12,7 @@ public sealed class TenantHomeContentService : ITenantHomeContentService
     private const int WelcomeBlurbMaxLength = 600;
 
     private const string DefaultWelcomeTitle = "Welcome to Student Registrar";
-    private const string DefaultWelcomeBlurb = "A comprehensive homeschool management system designed to help you track students, courses, rooms, and educators with ease.";
+    private const string DefaultWelcomeBlurb = "A comprehensive student management system designed to help you track students, courses, rooms, and educators with ease.";
 
     private readonly StudentRegistrarDbContext _dbContext;
     private readonly ITenantContextAccessor _tenantContextAccessor;

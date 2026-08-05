@@ -78,7 +78,7 @@ export default function Login() {
           Sign in to Student Registrar
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Manage your homeschool students and courses
+          Manage your students, courses, and educators
         </p>
       </div>
 

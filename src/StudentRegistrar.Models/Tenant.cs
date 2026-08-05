@@ -51,7 +51,7 @@ public partial class Tenant
     public Guid Id { get; set; } = Guid.NewGuid();
 
     /// <summary>
-    /// Display name of the organization (e.g., "Sunrise Homeschool Co-op")
+    /// Display name of the organization (e.g., "Sunrise Learning Collective")
     /// </summary>
     [Required]
     [MaxLength(200)]

@@ -711,7 +711,7 @@ export default function CoursesPage() {
                             )}
                             {instructor.accountHolder && (
                               <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                                Co-op Member
+                                Organization Member
                               </span>
                             )}
                           </p>
@@ -737,7 +737,7 @@ export default function CoursesPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
-                      Select Co-op Member (Optional)
+                      Select Organization Member (Optional)
                     </label>
                     <select
                       value={newInstructor.accountHolderId}

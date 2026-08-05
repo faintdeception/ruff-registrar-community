@@ -17,7 +17,7 @@ public class CourseInstructor : ITenantEntity
     [Required]
     public Guid CourseId { get; set; }
     
-    // Optional link to AccountHolder (for co-op members who are teaching)
+    // Optional link to AccountHolder (for organization members who are teaching)
     public Guid? AccountHolderId { get; set; }
     
     /// <summary>
