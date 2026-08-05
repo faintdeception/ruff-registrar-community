@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Student Registrar is a comprehensive homeschool management system built with modern cloud-native technologies. The application provides student management, course creation, enrollment tracking, and grade recording capabilities with secure authentication.
+Student Registrar is a comprehensive student management system built with modern cloud-native technologies. The application provides student management, course creation, enrollment tracking, and grade recording capabilities with secure authentication.
 
 ## Technology Stack
 

@@ -179,7 +179,7 @@ public class TenantBillingServiceTests
         var tenant = new Tenant
         {
             Id = Guid.NewGuid(),
-            Name = "Sunrise Homeschool Co-op",
+            Name = "Sunrise Learning Collective",
             Subdomain = "sunrise",
             SubscriptionTier = SubscriptionTier.Pro,
             SubscriptionStatus = SubscriptionStatus.Active,

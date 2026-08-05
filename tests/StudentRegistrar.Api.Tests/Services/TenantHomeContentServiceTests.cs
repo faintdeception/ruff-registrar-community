@@ -25,10 +25,10 @@ public class TenantHomeContentServiceTests
 
         var result = await service.GetHomeContentAsync();
 
-        Assert.Equal("Welcome to Sunrise Homeschool Co-op", result.WelcomeTitle);
+        Assert.Equal("Welcome to Sunrise Learning Collective", result.WelcomeTitle);
         Assert.False(result.HasCustomWelcomeTitle);
         Assert.False(result.HasCustomWelcomeBlurb);
-        Assert.Contains("homeschool management system", result.WelcomeBlurb, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("student management system", result.WelcomeBlurb, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -87,8 +87,8 @@ public class TenantHomeContentServiceTests
             WelcomeBlurb = ""
         });
 
-        Assert.Equal("Welcome to Sunrise Homeschool Co-op", result.WelcomeTitle);
-        Assert.Contains("homeschool management system", result.WelcomeBlurb, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("Welcome to Sunrise Learning Collective", result.WelcomeTitle);
+        Assert.Contains("student management system", result.WelcomeBlurb, StringComparison.OrdinalIgnoreCase);
         Assert.False(result.HasCustomWelcomeTitle);
         Assert.False(result.HasCustomWelcomeBlurb);
     }
@@ -107,7 +107,7 @@ public class TenantHomeContentServiceTests
         var tenant = new Tenant
         {
             Id = Guid.NewGuid(),
-            Name = "Sunrise Homeschool Co-op",
+            Name = "Sunrise Learning Collective",
             Subdomain = "sunrise",
             SubscriptionTier = SubscriptionTier.Pro,
             SubscriptionStatus = SubscriptionStatus.Active,
