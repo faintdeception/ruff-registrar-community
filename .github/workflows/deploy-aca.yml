@@ -158,7 +158,7 @@ jobs:
 
       - name: Azure login
         if: ${{ env.AZURE_CREDENTIALS != '' }}
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           creds: ${{ env.AZURE_CREDENTIALS }}
 
