@@ -553,9 +553,7 @@ static void ConfigureDataProtection(IServiceCollection services, IConfiguration 
     }
 
     var certificatePassword = configuration["DataProtection:CertificatePassword"];
-    var certificate = string.IsNullOrWhiteSpace(certificatePassword)
-        ? new X509Certificate2(certificatePath)
-        : new X509Certificate2(certificatePath, certificatePassword);
+    var certificate = X509CertificateLoader.LoadPkcs12FromFile(certificatePath, certificatePassword);
 
     dataProtectionBuilder.ProtectKeysWithCertificate(certificate);
 }
