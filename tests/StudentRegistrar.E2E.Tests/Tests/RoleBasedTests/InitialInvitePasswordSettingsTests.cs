@@ -12,10 +12,12 @@ public class InitialInvitePasswordSettingsTests : BaseRoleNavigationTest
     [Fact]
     public void Admin_Should_Configure_Initial_Invite_Password_Successfully()
     {
-        // Arrange
+        // Arrange - client-side nav (a hard reload loses the Keycloak session on localhost)
         LoginAsAdmin();
-        Driver.Navigate().GoToUrl($"{BaseUrl}/settings/system");
+        NavigationPage.ClickSettingsButton();
         WaitForPageLoad();
+        NavigationPage.ClickSettingsMenuItem("system");
+        WaitForUrlContains("/settings/system");
         WaitForElementVisible(By.CssSelector("[data-testid='invite-password-settings-card']"));
 
         // Act
@@ -32,10 +34,12 @@ public class InitialInvitePasswordSettingsTests : BaseRoleNavigationTest
     [Fact]
     public void Admin_Should_See_Clear_Error_When_Invite_Password_Is_Insecure()
     {
-        // Arrange
+        // Arrange - client-side nav (a hard reload loses the Keycloak session on localhost)
         LoginAsAdmin();
-        Driver.Navigate().GoToUrl($"{BaseUrl}/settings/system");
+        NavigationPage.ClickSettingsButton();
         WaitForPageLoad();
+        NavigationPage.ClickSettingsMenuItem("system");
+        WaitForUrlContains("/settings/system");
         WaitForElementVisible(By.CssSelector("[data-testid='invite-password-settings-card']"));
 
         // Act - a password that fails any real Keycloak policy (and the conservative fallback baseline)

@@ -150,11 +150,17 @@ public abstract class BaseRoleNavigationTest : BaseTest
     /// Ensures the tenant's initial invite password (used for bulk member import) is configured,
     /// setting it via the System Settings UI if it isn't already. Admin must already be logged in.
     /// Shared by settings tests and bulk-import tests so both stay self-contained/order-independent.
+    /// Navigates via UI clicks (client-side routing), NOT a hard URL navigation \u2014 a full page
+    /// reload does not restore the Keycloak session on localhost (see SettingsMenuTests), which
+    /// would otherwise make this helper (and anything that follows it) fail with a timeout waiting
+    /// for admin-only content.
     /// </summary>
     protected void EnsureInitialInvitePasswordConfigured(string password = "Correct-Horse-Battery-99!")
     {
-        Driver.Navigate().GoToUrl($"{BaseUrl}/settings/system");
+        NavigationPage.ClickSettingsButton();
         WaitForPageLoad();
+        NavigationPage.ClickSettingsMenuItem("system");
+        WaitForUrlContains("/settings/system");
         WaitForElementVisible(By.CssSelector("[data-testid='invite-password-settings-card']"));
 
         if (Driver.FindElements(By.CssSelector("[data-testid='initial-invite-password-configured']")).Count > 0)

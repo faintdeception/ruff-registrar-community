@@ -12,13 +12,15 @@ public class BulkImportMembersTests : BaseRoleNavigationTest
     [Fact]
     public void Admin_Should_Bulk_Import_Members_From_Csv()
     {
-        // Arrange
+        // Arrange - client-side nav (a hard reload loses the Keycloak session on localhost)
         LoginAsAdmin();
         EnsureInitialInvitePasswordConfigured();
 
-        Driver.Navigate().GoToUrl($"{BaseUrl}/members");
+        NavigationPage.ClickHome();
         WaitForPageLoad();
-        WaitUntil(d => d.PageSource.Contains("Members Management"));
+        Driver.FindElement(By.CssSelector("[data-testid='members-card']")).Click();
+        WaitForPageLoad();
+        WaitUntil(d => d.Url.Contains("/members") && d.PageSource.Contains("Members Management"));
 
         var timestamp = DateTime.Now.Ticks.ToString()[10..];
         var email = $"bulkimport{timestamp}@example.com";
@@ -55,13 +57,15 @@ public class BulkImportMembersTests : BaseRoleNavigationTest
     [Fact]
     public void Admin_Should_See_Row_Level_Errors_For_Invalid_Csv_Rows()
     {
-        // Arrange
+        // Arrange - client-side nav (a hard reload loses the Keycloak session on localhost)
         LoginAsAdmin();
         EnsureInitialInvitePasswordConfigured();
 
-        Driver.Navigate().GoToUrl($"{BaseUrl}/members");
+        NavigationPage.ClickHome();
         WaitForPageLoad();
-        WaitUntil(d => d.PageSource.Contains("Members Management"));
+        Driver.FindElement(By.CssSelector("[data-testid='members-card']")).Click();
+        WaitForPageLoad();
+        WaitUntil(d => d.Url.Contains("/members") && d.PageSource.Contains("Members Management"));
 
         var timestamp = DateTime.Now.Ticks.ToString()[10..];
         var goodEmail = $"bulkimportgood{timestamp}@example.com";
