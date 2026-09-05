@@ -82,6 +82,7 @@ public class StudentRegistrarDbContext : DbContext
     public DbSet<Payment> Payments { get; set; }
     public DbSet<Room> Rooms { get; set; }
     public DbSet<ProcessedStripeWebhookEvent> ProcessedStripeWebhookEvents { get; set; }
+    public DbSet<TenantSettings> TenantSettings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -233,6 +234,18 @@ public class StudentRegistrarDbContext : DbContext
                 .OnDelete(DeleteBehavior.SetNull);
                 
             entity.HasIndex(e => e.TenantId);
+        });
+
+        // Configure TenantSettings (1:1 per tenant)
+        modelBuilder.Entity<TenantSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TenantId).IsRequired();
+            entity.Property(e => e.InitialInvitePasswordEncrypted).HasMaxLength(2000);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.UpdatedAt).IsRequired();
+
+            entity.HasIndex(e => e.TenantId).IsUnique();
         });
 
         // Configure Room
@@ -510,6 +523,10 @@ public class StudentRegistrarDbContext : DbContext
             .HasQueryFilter(e =>
                 !_tenantProvider.ShouldApplyTenantFilter ||
                 e.TenantId == _tenantProvider.CurrentTenantId);
+        modelBuilder.Entity<TenantSettings>()
+            .HasQueryFilter(e =>
+                !_tenantProvider.ShouldApplyTenantFilter ||
+                e.TenantId == _tenantProvider.CurrentTenantId);
     }
 
     public override int SaveChanges()
@@ -549,7 +566,8 @@ public class StudentRegistrarDbContext : DbContext
             .Where(e => e.Entity is GradeRecord || e.Entity is AcademicYear || e.Entity is User ||
                        e.Entity is AccountHolder || e.Entity is Semester || e.Entity is Student ||
                        e.Entity is Course || e.Entity is Enrollment || e.Entity is CourseInstructor ||
-                       e.Entity is Educator || e.Entity is Payment || e.Entity is Room)
+                       e.Entity is Educator || e.Entity is Payment || e.Entity is Room ||
+                       e.Entity is TenantSettings)
             .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified);
 
         foreach (var entry in entries)

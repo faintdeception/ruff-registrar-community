@@ -11,4 +11,11 @@ public interface IKeycloakService
     Task<string?> GetUserIdByEmailAsync(string email);
     Task DeactivateUserAsync(string keycloakId);
     Task<bool> UserExistsAsync(string email);
+
+    /// <summary>
+    /// Returns the current realm's raw `passwordPolicy` string (Keycloak's `and`-joined token
+    /// format), or null if it could not be retrieved (e.g. admin API unreachable/forbidden).
+    /// Callers must not treat null as "no policy" — fall back to a conservative baseline instead.
+    /// </summary>
+    Task<string?> GetRealmPasswordPolicyAsync();
 }

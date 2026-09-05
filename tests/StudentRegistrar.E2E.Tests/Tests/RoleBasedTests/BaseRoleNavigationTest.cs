@@ -145,4 +145,31 @@ public abstract class BaseRoleNavigationTest : BaseTest
     }
 
     #endregion
+
+    /// <summary>
+    /// Ensures the tenant's initial invite password (used for bulk member import) is configured,
+    /// setting it via the System Settings UI if it isn't already. Admin must already be logged in.
+    /// Shared by settings tests and bulk-import tests so both stay self-contained/order-independent.
+    /// </summary>
+    protected void EnsureInitialInvitePasswordConfigured(string password = "Correct-Horse-Battery-99!")
+    {
+        Driver.Navigate().GoToUrl($"{BaseUrl}/settings/system");
+        WaitForPageLoad();
+        WaitForElementVisible(By.CssSelector("[data-testid='invite-password-settings-card']"));
+
+        if (Driver.FindElements(By.CssSelector("[data-testid='initial-invite-password-configured']")).Count > 0)
+        {
+            return;
+        }
+
+        var input = Driver.FindElement(By.Id("initial-invite-password"));
+        input.Clear();
+        input.SendKeys(password);
+        Driver.FindElement(By.Id("save-invite-password-button")).Click();
+
+        WaitUntil(
+            d => d.FindElements(By.CssSelector("[data-testid='initial-invite-password-configured']")).Count > 0,
+            15,
+            failureMessage: "Initial invite password was not confirmed as configured after saving");
+    }
 }

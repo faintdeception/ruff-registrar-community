@@ -5,7 +5,7 @@ import { buildTenantPath } from '../lib/tenant-routing';
 import { getTenantSlugFromPath } from '../lib/runtime-env';
 import ProtectedRoute from '../components/ProtectedRoute';
 import apiClient from '../lib/api-client';
-import { PlusIcon, XMarkIcon, UserIcon, PhoneIcon, EnvelopeIcon, MapPinIcon, ClipboardDocumentIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, XMarkIcon, UserIcon, PhoneIcon, EnvelopeIcon, MapPinIcon, ClipboardDocumentIcon, ExclamationTriangleIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 
 interface Member {
   id: string;
@@ -76,6 +76,20 @@ interface ApiErrorResponse {
   debug?: string;
 }
 
+interface BulkImportRowResult {
+  rowNumber: number;
+  email: string;
+  success: boolean;
+  errorMessage?: string;
+}
+
+interface BulkImportResponse {
+  totalRows: number;
+  successCount: number;
+  failureCount: number;
+  results: BulkImportRowResult[];
+}
+
 const MembersPage: React.FC = () => {
   const { user } = useAuth();
   const router = useRouter();
@@ -87,6 +101,11 @@ const MembersPage: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [newMemberCredentials, setNewMemberCredentials] = useState<UserCredentials | null>(null);
   const [showCredentials, setShowCredentials] = useState(false);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+  const [bulkImportFile, setBulkImportFile] = useState<File | null>(null);
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [bulkImportResult, setBulkImportResult] = useState<BulkImportResponse | null>(null);
+  const [bulkImportError, setBulkImportError] = useState<string | null>(null);
   const [newMember, setNewMember] = useState<CreateMemberForm>({
     firstName: '',
     lastName: '',
@@ -244,6 +263,48 @@ const MembersPage: React.FC = () => {
     await copyToClipboard(credentialsText, 'Credentials');
   };
 
+  const handleBulkImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bulkImportFile) {
+      return;
+    }
+
+    try {
+      setBulkImportError(null);
+      setBulkImportResult(null);
+      setBulkImporting(true);
+
+      const formData = new FormData();
+      formData.append('file', bulkImportFile);
+
+      const response = await apiClient.postForm('/api/AccountHolders/bulk-import', formData);
+
+      if (!response.ok) {
+        const errorData = await readApiError(response);
+        throw new Error(errorData.message || 'Bulk import failed');
+      }
+
+      const data: BulkImportResponse = await response.json();
+      setBulkImportResult(data);
+      fetchMembers();
+
+      if (data.failureCount === 0) {
+        setSuccessMessage(`Bulk import complete: ${data.successCount} member(s) created.`);
+      }
+    } catch (err) {
+      setBulkImportError(err instanceof Error ? err.message : 'Bulk import failed');
+    } finally {
+      setBulkImporting(false);
+    }
+  };
+
+  const closeBulkImportModal = () => {
+    setShowBulkImportModal(false);
+    setBulkImportFile(null);
+    setBulkImportResult(null);
+    setBulkImportError(null);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -362,16 +423,118 @@ const MembersPage: React.FC = () => {
               <h3 className="text-lg leading-6 font-medium text-gray-900">Members Management</h3>
               <p className="mt-1 max-w-2xl text-sm text-gray-500">Manage member accounts and information</p>
             </div>
-            <button
-              id="create-member-button"
-              onClick={() => setShowCreateForm(true)}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Create Member
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                id="bulk-import-button"
+                onClick={() => setShowBulkImportModal(true)}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <ArrowUpTrayIcon className="h-4 w-4 mr-2" />
+                Bulk Import
+              </button>
+              <button
+                id="create-member-button"
+                onClick={() => setShowCreateForm(true)}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Create Member
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Bulk Import Members */}
+        {showBulkImportModal && (
+          <div className="bg-white shadow rounded-lg mb-6" data-testid="bulk-import-panel">
+            <div className="px-4 py-5 sm:px-6">
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="text-lg font-medium text-gray-900">Bulk Import Members</h4>
+                <button
+                  onClick={closeBulkImportModal}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+
+              <p className="text-sm text-gray-600 mb-4">
+                Upload a CSV file with a header row of <code className="bg-gray-100 px-1 rounded">firstName,lastName,email</code>.
+                Each row creates a member account that must change its password on first login.
+                No email is sent to imported members. Set the initial invite password in{' '}
+                <a href="/settings/system" className="text-blue-600 hover:underline">System Settings</a>{' '}
+                before importing.
+              </p>
+
+              {bulkImportError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800" data-testid="bulk-import-error">
+                  {bulkImportError}
+                </div>
+              )}
+
+              <form onSubmit={handleBulkImport} className="space-y-4">
+                <div>
+                  <input
+                    id="bulk-import-file-input"
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={(e) => setBulkImportFile(e.target.files?.[0] ?? null)}
+                    className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                </div>
+
+                <div className="flex space-x-3">
+                  <button
+                    id="bulk-import-submit-button"
+                    type="submit"
+                    disabled={!bulkImportFile || bulkImporting}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {bulkImporting ? 'Importing...' : 'Upload and Import'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closeBulkImportModal}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Close
+                  </button>
+                </div>
+              </form>
+
+              {bulkImportResult && (
+                <div className="mt-6" data-testid="bulk-import-results">
+                  <p className="text-sm font-medium text-gray-900 mb-2">
+                    {bulkImportResult.successCount} of {bulkImportResult.totalRows} member(s) created
+                    {bulkImportResult.failureCount > 0 && `, ${bulkImportResult.failureCount} failed`}.
+                  </p>
+                  <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-md">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-medium text-gray-500">Row</th>
+                          <th className="px-3 py-2 text-left font-medium text-gray-500">Email</th>
+                          <th className="px-3 py-2 text-left font-medium text-gray-500">Result</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {bulkImportResult.results.map((row) => (
+                          <tr key={row.rowNumber}>
+                            <td className="px-3 py-2 text-gray-700">{row.rowNumber}</td>
+                            <td className="px-3 py-2 text-gray-700">{row.email}</td>
+                            <td className={`px-3 py-2 ${row.success ? 'text-green-700' : 'text-red-700'}`}>
+                              {row.success ? 'Created' : row.errorMessage || 'Failed'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Create Member Form */}
         {showCreateForm && (

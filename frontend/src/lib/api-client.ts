@@ -21,8 +21,9 @@ class ApiClient {
     const requestUrl = resolveApiUrl(url);
     const token = getCurrentAccessToken() ?? await this.refreshTokenIfNeeded();
     
+    // Let the browser set the multipart boundary itself for FormData bodies.
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...(options.headers || {}),
     };
 
@@ -104,6 +105,15 @@ class ApiClient {
       ...options,
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
+    });
+    return response;
+  }
+  
+  async postForm(url: string, formData: FormData, options?: Omit<ApiClientOptions, 'method' | 'body'>) {
+    const response = await this.request(url, {
+      ...options,
+      method: 'POST',
+      body: formData,
     });
     return response;
   }

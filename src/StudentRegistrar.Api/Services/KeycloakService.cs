@@ -57,8 +57,11 @@ public class KeycloakService : IKeycloakService
             // Get admin access token
             var adminToken = await GetManagementAccessTokenAsync();
             
-            // Generate a secure temporary password
-            var temporaryPassword = _passwordService.GenerateSecurePassword(14);
+            // Use the caller-supplied password (e.g. a configured initial invite password for bulk
+            // import) when provided, otherwise generate a random secure temporary password.
+            var temporaryPassword = string.IsNullOrEmpty(request.Password)
+                ? _passwordService.GenerateSecurePassword(14)
+                : request.Password;
             var passwordStrength = _passwordService.AssessPasswordStrength(temporaryPassword);
             
             _logger.LogDebug("Generated temporary password with strength: {Strength}", passwordStrength);
@@ -434,5 +437,35 @@ public class KeycloakService : IKeycloakService
     {
         var tenantRealm = _tenantContextAccessor?.TenantContext?.Tenant?.KeycloakRealm;
         return string.IsNullOrWhiteSpace(tenantRealm) ? _realm : tenantRealm;
+    }
+
+    public async Task<string?> GetRealmPasswordPolicyAsync()
+    {
+        try
+        {
+            var adminToken = await GetManagementAccessTokenAsync();
+            var realm = GetCurrentRealm();
+
+            using var getRequest = new HttpRequestMessage(HttpMethod.Get, $"{_keycloakBaseUrl}/admin/realms/{realm}");
+            getRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+            var response = await _httpClient.SendAsync(getRequest);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Failed to fetch realm password policy for {Realm}. Status: {Status}", realm, response.StatusCode);
+                return null;
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            using var json = JsonDocument.Parse(content);
+            return json.RootElement.TryGetProperty("passwordPolicy", out var policyElement)
+                ? policyElement.GetString()
+                : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error fetching realm password policy");
+            return null;
+        }
     }
 }
