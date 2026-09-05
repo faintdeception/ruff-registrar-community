@@ -168,9 +168,11 @@ public abstract class BaseRoleNavigationTest : BaseTest
             return;
         }
 
+        WaitForElementVisible(By.Id("initial-invite-password"));
         var input = Driver.FindElement(By.Id("initial-invite-password"));
         input.Clear();
         input.SendKeys(password);
+        WaitForElementVisible(By.Id("save-invite-password-button"));
         Driver.FindElement(By.Id("save-invite-password-button")).Click();
 
         WaitUntil(

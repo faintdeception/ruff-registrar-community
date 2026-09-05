@@ -21,9 +21,11 @@ public class InitialInvitePasswordSettingsTests : BaseRoleNavigationTest
         WaitForElementVisible(By.CssSelector("[data-testid='invite-password-settings-card']"));
 
         // Act
+        WaitForElementVisible(By.Id("initial-invite-password"));
         var input = Driver.FindElement(By.Id("initial-invite-password"));
         input.Clear();
         input.SendKeys("Correct-Horse-Battery-99!");
+        WaitForElementVisible(By.Id("save-invite-password-button"));
         Driver.FindElement(By.Id("save-invite-password-button")).Click();
 
         // Assert
@@ -43,9 +45,11 @@ public class InitialInvitePasswordSettingsTests : BaseRoleNavigationTest
         WaitForElementVisible(By.CssSelector("[data-testid='invite-password-settings-card']"));
 
         // Act - a password that fails any real Keycloak policy (and the conservative fallback baseline)
+        WaitForElementVisible(By.Id("initial-invite-password"));
         var input = Driver.FindElement(By.Id("initial-invite-password"));
         input.Clear();
         input.SendKeys("password");
+        WaitForElementVisible(By.Id("save-invite-password-button"));
         Driver.FindElement(By.Id("save-invite-password-button")).Click();
 
         // Assert - a clear, actionable error is shown instead of silently accepting a weak password
