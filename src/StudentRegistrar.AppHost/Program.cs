@@ -100,7 +100,11 @@ static string? DeriveFrontendOrigin(string? publicApiUrlValue)
 }
 
 // PostgreSQL database (persisted locally; ACA volume permissions can prevent initdb)
-var postgres = builder.AddPostgres("postgres", password: postgresPassword);
+// Pin the image tag explicitly: Aspire.Hosting.PostgreSQL's default image tag can change
+// across package upgrades (e.g. silently jumping to Postgres 18's incompatible on-disk
+// layout), which will refuse to start against an existing data volume/mount.
+var postgres = builder.AddPostgres("postgres", password: postgresPassword)
+    .WithImageTag("17");
 
 if (builder.ExecutionContext.IsRunMode)
 {
