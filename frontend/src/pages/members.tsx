@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { useAuth } from '../lib/auth';
 import { buildTenantPath } from '../lib/tenant-routing';
 import { getTenantSlugFromPath } from '../lib/runtime-env';
@@ -462,7 +463,7 @@ const MembersPage: React.FC = () => {
                 Upload a CSV file with a header row of <code className="bg-gray-100 px-1 rounded">firstName,lastName,email</code>.
                 Each row creates a member account that must change its password on first login.
                 No email is sent to imported members. Set the initial invite password in{' '}
-                <a href="/settings/system" className="text-blue-600 hover:underline">System Settings</a>{' '}
+                <Link href="/settings/system" className="text-blue-600 hover:underline">System Settings</Link>{' '}
                 before importing.
               </p>
 
