@@ -172,8 +172,8 @@ public abstract class BaseRoleNavigationTest : BaseTest
         var input = Driver.FindElement(By.Id("initial-invite-password"));
         input.Clear();
         input.SendKeys(password);
-        WaitForElementVisible(By.Id("save-invite-password-button"));
-        Driver.FindElement(By.Id("save-invite-password-button")).Click();
+        WaitForElementVisible(By.CssSelector("[data-testid='save-invite-password-button']"));
+        Driver.FindElement(By.CssSelector("[data-testid='save-invite-password-button']")).Click();
 
         WaitUntil(
             d => d.FindElements(By.CssSelector("[data-testid='initial-invite-password-configured']")).Count > 0,

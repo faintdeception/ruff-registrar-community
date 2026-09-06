@@ -25,8 +25,8 @@ public class InitialInvitePasswordSettingsTests : BaseRoleNavigationTest
         var input = Driver.FindElement(By.Id("initial-invite-password"));
         input.Clear();
         input.SendKeys("Correct-Horse-Battery-99!");
-        WaitForElementVisible(By.Id("save-invite-password-button"));
-        Driver.FindElement(By.Id("save-invite-password-button")).Click();
+        WaitForElementVisible(By.CssSelector("[data-testid='save-invite-password-button']"));
+        Driver.FindElement(By.CssSelector("[data-testid='save-invite-password-button']")).Click();
 
         // Assert
         WaitForElementVisible(By.CssSelector("[data-testid='invite-password-success']"), 15);
@@ -49,8 +49,8 @@ public class InitialInvitePasswordSettingsTests : BaseRoleNavigationTest
         var input = Driver.FindElement(By.Id("initial-invite-password"));
         input.Clear();
         input.SendKeys("password");
-        WaitForElementVisible(By.Id("save-invite-password-button"));
-        Driver.FindElement(By.Id("save-invite-password-button")).Click();
+        WaitForElementVisible(By.CssSelector("[data-testid='save-invite-password-button']"));
+        Driver.FindElement(By.CssSelector("[data-testid='save-invite-password-button']")).Click();
 
         // Assert - a clear, actionable error is shown instead of silently accepting a weak password
         WaitForElementVisible(By.CssSelector("[data-testid='invite-password-error']"), 15);
