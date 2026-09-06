@@ -3,7 +3,8 @@
 
 [CmdletBinding()]
 param(
-    [string]$KeycloakUrl = $(if ($env:KEYCLOAK_URL) { $env:KEYCLOAK_URL } else { 'http://localhost:8080' }),
+    # Aspire's dashboard proxies Keycloak on a fixed port using HTTPS; plain HTTP resets POST requests instead of redirecting.
+    [string]$KeycloakUrl = $(if ($env:KEYCLOAK_URL) { $env:KEYCLOAK_URL } else { 'https://localhost:8080' }),
     [string]$RealmName = $(if ($env:KEYCLOAK_REALM) { $env:KEYCLOAK_REALM } else { 'student-registrar' }),
     [string]$AdminUser = $(if ($env:KEYCLOAK_ADMIN_USER) { $env:KEYCLOAK_ADMIN_USER } else { 'admin' }),
     [string]$AdminPassword = $env:KEYCLOAK_ADMIN_PASSWORD,
@@ -25,7 +26,7 @@ function Test-KeycloakUrl {
     param([Parameter(Mandatory)] [string]$Url)
 
     try {
-        Invoke-WebRequest -Uri "$Url/realms/master" -UseBasicParsing -TimeoutSec 5 | Out-Null
+        Invoke-WebRequest -Uri "$Url/realms/master" -UseBasicParsing -SkipCertificateCheck -TimeoutSec 5 | Out-Null
         return $true
     } catch {
         return $false
@@ -51,8 +52,10 @@ function Resolve-KeycloakUrl {
         Where-Object { $_ -match '^keycloak-' } |
         Select-Object -First 1
 
-    if ($keycloakContainer -match '127\.0\.0\.1:(\d+)->8080/tcp') {
-        $detectedUrl = "http://127.0.0.1:$($Matches[1])"
+    # The container itself only ever publishes its https (8443) and management (9000) ports;
+    # the fixed http/8080 endpoint is Aspire's own dashboard proxy, not a container port mapping.
+    if ($keycloakContainer -match '127\.0\.0\.1:(\d+)->8443/tcp') {
+        $detectedUrl = "https://127.0.0.1:$($Matches[1])"
         Write-Host "Detected Aspire Keycloak container at $detectedUrl"
         return $detectedUrl
     }
@@ -117,7 +120,7 @@ function Invoke-KeycloakJson {
         }
     }
 
-    Invoke-RestMethod @parameters
+    Invoke-RestMethod @parameters -SkipCertificateCheck
 }
 
 function Get-AdminToken {
@@ -131,6 +134,7 @@ function Get-AdminToken {
                 -Method Post `
                 -Uri "$KeycloakUrl/realms/master/protocol/openid-connect/token" `
                 -ContentType 'application/x-www-form-urlencoded' `
+                -SkipCertificateCheck `
                 -Body @{
                     username = $AdminUser
                     password = $Password
@@ -207,6 +211,7 @@ function Test-UserPasswordValid {
             -Method Post `
             -Uri "$KeycloakUrl/realms/$RealmName/protocol/openid-connect/token" `
             -ContentType 'application/x-www-form-urlencoded' `
+            -SkipCertificateCheck `
             -Body @{
                 client_id = 'student-registrar-spa'
                 grant_type = 'password'

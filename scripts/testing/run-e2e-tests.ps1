@@ -4,6 +4,7 @@ param(
     [switch]$SetupUsers,
     [ValidateSet('all', 'admin', 'educator', 'member', 'login')]
     [string]$TestSuite = 'all',
+    [string]$TestFilter,
     [switch]$NoTests,
     [string]$AdminPassword,
     [string]$KeycloakUrl,
@@ -65,7 +66,7 @@ function Invoke-SetupUsers {
     Write-Success 'Test user setup completed'
 }
 
-function Get-TestFilter {
+function Get-TestSuiteFilter {
     switch ($TestSuite) {
         'login' { return 'FullyQualifiedName~LoginTests' }
         'admin' { return 'FullyQualifiedName~AdminTests' }
@@ -100,7 +101,9 @@ function Invoke-E2ETests {
             Write-Status 'Running with browser visible'
         }
 
-        if ($TestSuite -eq 'all') {
+        if (-not [string]::IsNullOrWhiteSpace($TestFilter)) {
+            Write-Status "Running custom test filter: $TestFilter"
+        } elseif ($TestSuite -eq 'all') {
             Write-Status 'Running all E2E tests'
         } else {
             Write-Status "Running test suite: $TestSuite"
@@ -114,7 +117,11 @@ function Invoke-E2ETests {
             '--collect:XPlat Code Coverage'
         )
 
-        $testFilter = Get-TestFilter
+        $testFilter = if ([string]::IsNullOrWhiteSpace($TestFilter)) {
+            Get-TestSuiteFilter
+        } else {
+            $TestFilter
+        }
         if ($null -ne $testFilter) {
             $arguments += @('--filter', $testFilter)
         }
