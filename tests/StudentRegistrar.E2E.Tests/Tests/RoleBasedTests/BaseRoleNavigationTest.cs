@@ -155,7 +155,7 @@ public abstract class BaseRoleNavigationTest : BaseTest
     /// would otherwise make this helper (and anything that follows it) fail with a timeout waiting
     /// for admin-only content.
     /// </summary>
-    protected void EnsureInitialInvitePasswordConfigured(string password = "Correct-Horse-Battery-99!")
+    protected void EnsureInitialInvitePasswordConfigured(string password = "Correct-Horse-Battery-99!", bool overwrite = false)
     {
         NavigationPage.ClickSettingsButton();
         WaitForPageLoad();
@@ -163,7 +163,7 @@ public abstract class BaseRoleNavigationTest : BaseTest
         WaitForUrlContains("/settings/system");
         WaitForElementVisible(By.CssSelector("[data-testid='invite-password-settings-card']"));
 
-        if (Driver.FindElements(By.CssSelector("[data-testid='initial-invite-password-configured']")).Count > 0)
+        if (!overwrite && Driver.FindElements(By.CssSelector("[data-testid='initial-invite-password-configured']")).Count > 0)
         {
             return;
         }
