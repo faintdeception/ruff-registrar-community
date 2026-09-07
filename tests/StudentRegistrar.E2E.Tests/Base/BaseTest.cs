@@ -67,7 +67,7 @@ public abstract class BaseTest : IDisposable
 
     protected void WaitForPageLoad(int timeoutSeconds = 30)
     {
-        Thread.Sleep(800); // Initial wait to allow page to start loading
+        Thread.Sleep(400); // Initial wait to allow page to start loading
         var wait = new OpenQA.Selenium.Support.UI.WebDriverWait(Driver, TimeSpan.FromSeconds(timeoutSeconds));
         try
         {
@@ -76,7 +76,7 @@ public abstract class BaseTest : IDisposable
         catch (Exception)
         {
             // If JavaScript execution fails, just wait a bit
-            Thread.Sleep(2000);
+            Thread.Sleep(500);
         }
     }
 
