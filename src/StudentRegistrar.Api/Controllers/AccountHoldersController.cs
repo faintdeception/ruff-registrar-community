@@ -198,84 +198,18 @@ public class AccountHoldersController : ControllerBase
     }
 
     /// <summary>
-    /// Bulk import members from a CSV file (firstName,lastName,email header row). Admin only.
-    /// Each created member gets the tenant's configured initial invite password and must change
-    /// it on first login. No email is sent \u2014 hosts may not have any email service configured.
-    /// Rows are processed independently and reported per-row so partial failures are visible.
+    /// Downloads the .xlsx template for the family bulk-import flow (parent + children per
+    /// family, one row per child). Admin only.
     /// </summary>
-    [HttpPost("bulk-import")]
+    [HttpGet("bulk-import/template")]
     [Authorize(Roles = "Administrator")]
-    public async Task<ActionResult<BulkImportResponse>> BulkImportAccountHolders(IFormFile file, CancellationToken cancellationToken)
+    public IActionResult DownloadFamilyImportTemplate()
     {
-        if (file == null || file.Length == 0)
-        {
-            return BadRequest("A non-empty CSV file is required.");
-        }
-
-        string initialInvitePassword;
-        try
-        {
-            // Fail fast, before touching Keycloak for row 1, if the host hasn't configured a
-            // secure initial invite password.
-            initialInvitePassword = await _tenantSettingsService.GetValidatedInitialInvitePasswordAsync(cancellationToken);
-        }
-        catch (InsecureInitialInvitePasswordException ex)
-        {
-            return BadRequest(new { message = ex.Message, reasons = ex.FailureReasons });
-        }
-
-        List<MemberImportRow> rows;
-        try
-        {
-            await using var stream = file.OpenReadStream();
-            rows = MemberImportCsvParser.Parse(stream).ToList();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
-
-        var response = new BulkImportResponse { TotalRows = rows.Count };
-
-        foreach (var row in rows)
-        {
-            var rowResult = new BulkImportRowResult { RowNumber = row.RowNumber, Email = row.Email };
-
-            try
-            {
-                var createDto = new CreateAccountHolderDto
-                {
-                    FirstName = row.FirstName,
-                    LastName = row.LastName,
-                    EmailAddress = row.Email
-                };
-
-                await CreateAccountHolderWithKeycloakUserAsync(
-                    createDto,
-                    explicitPassword: initialInvitePassword,
-                    requireEmailVerification: false);
-
-                rowResult.Success = true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Bulk import failed for row {RowNumber} ({Email})", row.RowNumber, row.Email);
-                rowResult.Success = false;
-                rowResult.ErrorMessage = ex.Message;
-            }
-
-            response.Results.Add(rowResult);
-        }
-
-        response.SuccessCount = response.Results.Count(r => r.Success);
-        response.FailureCount = response.Results.Count(r => !r.Success);
-
-        _logger.LogInformation(
-            "Bulk member import completed. AdminEmail: {AdminEmail}, TotalRows: {TotalRows}, " +
-            "SuccessCount: {SuccessCount}, FailureCount: {FailureCount}",
-            GetCurrentUserEmail(), response.TotalRows, response.SuccessCount, response.FailureCount);
-
-        return Ok(response);
+        var bytes = FamilyImportTemplateGenerator.Generate();
+        return File(
+            bytes,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "family-import-template.xlsx");
     }
 
     /// <summary>

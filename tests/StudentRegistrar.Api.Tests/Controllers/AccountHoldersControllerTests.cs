@@ -188,99 +188,20 @@ public class AccountHoldersControllerTests
     }
 
     // -------------------------------------------------------------------------
-    // POST /api/accountholders/bulk-import (admin)
+    // GET /api/accountholders/bulk-import/template (admin)
     // -------------------------------------------------------------------------
 
     [Fact]
-    public async Task BulkImportAccountHolders_NoFile_ReturnsBadRequest()
+    public void DownloadFamilyImportTemplate_ReturnsXlsxFile()
     {
         SetUser(role: "Administrator");
 
-        var result = await _controller.BulkImportAccountHolders(null!, CancellationToken.None);
+        var result = _controller.DownloadFamilyImportTemplate();
 
-        Assert.IsType<BadRequestObjectResult>(result.Result);
-    }
-
-    [Fact]
-    public async Task BulkImportAccountHolders_PasswordNotConfigured_ReturnsBadRequestWithoutTouchingKeycloak()
-    {
-        SetUser(role: "Administrator");
-        _tenantSettingsService
-            .Setup(s => s.GetValidatedInitialInvitePasswordAsync(It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new InsecureInitialInvitePasswordException(new[] { "no initial invite password has been configured yet" }));
-
-        var file = MakeCsvFile("firstName,lastName,email\nJane,Doe,jane@example.com\n");
-
-        var result = await _controller.BulkImportAccountHolders(file, CancellationToken.None);
-
-        Assert.IsType<BadRequestObjectResult>(result.Result);
-        _keycloakService.Verify(s => s.CreateUserAsync(It.IsAny<CreateUserRequest>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task BulkImportAccountHolders_MissingCsvColumns_ReturnsBadRequest()
-    {
-        SetUser(role: "Administrator");
-        _tenantSettingsService
-            .Setup(s => s.GetValidatedInitialInvitePasswordAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync("Correct-Horse-99");
-
-        var file = MakeCsvFile("firstName,email\nJane,jane@example.com\n");
-
-        var result = await _controller.BulkImportAccountHolders(file, CancellationToken.None);
-
-        Assert.IsType<BadRequestObjectResult>(result.Result);
-    }
-
-    [Fact]
-    public async Task BulkImportAccountHolders_MixedRows_ReportsPerRowResultsWithoutEmailVerification()
-    {
-        SetUser(role: "Administrator", email: "admin@example.com");
-        _tenantSettingsService
-            .Setup(s => s.GetValidatedInitialInvitePasswordAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync("Correct-Horse-99");
-
-        var file = MakeCsvFile(
-            "firstName,lastName,email\n" +
-            "Jane,Doe,jane@example.com\n" +
-            "John,Smith,john@example.com\n");
-
-        _keycloakService
-            .Setup(s => s.CreateUserAsync(It.Is<CreateUserRequest>(r => r.Email == "jane@example.com")))
-            .ReturnsAsync(new CreateUserResponse { UserId = "kc-jane", Username = "jane@example.com", IsTemporary = true, TemporaryPassword = "Correct-Horse-99" });
-        _keycloakService
-            .Setup(s => s.CreateUserAsync(It.Is<CreateUserRequest>(r => r.Email == "john@example.com")))
-            .ThrowsAsync(new InvalidOperationException("User with email john@example.com already exists in Keycloak"));
-
-        _accountHolderService
-            .Setup(s => s.CreateAccountHolderAsync(It.IsAny<CreateAccountHolderDto>(), "kc-jane"))
-            .ReturnsAsync(MakeDto(email: "jane@example.com"));
-
-        var result = await _controller.BulkImportAccountHolders(file, CancellationToken.None);
-
-        var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var response = Assert.IsType<BulkImportResponse>(ok.Value);
-
-        Assert.Equal(2, response.TotalRows);
-        Assert.Equal(1, response.SuccessCount);
-        Assert.Equal(1, response.FailureCount);
-        Assert.True(response.Results.Single(r => r.Email == "jane@example.com").Success);
-        Assert.False(response.Results.Single(r => r.Email == "john@example.com").Success);
-
-        _keycloakService.Verify(
-            s => s.CreateUserAsync(It.Is<CreateUserRequest>(r => !r.RequireEmailVerification)),
-            Times.Exactly(2));
-    }
-
-    private static IFormFile MakeCsvFile(string content, string fileName = "members.csv")
-    {
-        var bytes = System.Text.Encoding.UTF8.GetBytes(content);
-        var stream = new MemoryStream(bytes);
-        return new FormFile(stream, 0, bytes.Length, "file", fileName)
-        {
-            Headers = new HeaderDictionary(),
-            ContentType = "text/csv"
-        };
+        var fileResult = Assert.IsType<FileContentResult>(result);
+        Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileResult.ContentType);
+        Assert.Equal("family-import-template.xlsx", fileResult.FileDownloadName);
+        Assert.NotEmpty(fileResult.FileContents);
     }
 
     // -------------------------------------------------------------------------
