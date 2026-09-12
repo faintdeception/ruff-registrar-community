@@ -135,6 +135,10 @@ public class BulkImportFamiliesTests : BaseRoleNavigationTest
 
     private void NavigateToMembersPage()
     {
+        // EnsureInitialInvitePasswordConfigured() leaves the browser on /settings/system,
+        // so go home first before the members-card tile is available to click.
+        NavigationPage.ClickHome();
+        WaitForPageLoad();
         Driver.FindElement(By.CssSelector("[data-testid='members-card']")).Click();
         WaitForPageLoad();
         WaitUntil(d => d.Url.Contains("/members") && d.PageSource.Contains("Members Management"));
