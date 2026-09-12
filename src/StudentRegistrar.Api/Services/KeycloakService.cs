@@ -281,6 +281,35 @@ public class KeycloakService : IKeycloakService
         }
     }
 
+    public async Task DeleteUserAsync(string keycloakId)
+    {
+        try
+        {
+            _logger.LogInformation("Deleting user for Keycloak ID: {KeycloakId}", keycloakId);
+
+            var adminToken = await GetManagementAccessTokenAsync();
+            var realm = GetCurrentRealm();
+
+            using var deleteRequest = new HttpRequestMessage(HttpMethod.Delete, $"{_keycloakBaseUrl}/admin/realms/{realm}/users/{keycloakId}");
+            deleteRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+            var response = await _httpClient.SendAsync(deleteRequest);
+            if (response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                _logger.LogInformation("Deleted (or already absent) user for Keycloak ID: {KeycloakId}", keycloakId);
+                return;
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"Failed to delete user. Status: {response.StatusCode}, Error: {errorContent}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete user for Keycloak ID: {KeycloakId}", keycloakId);
+            throw;
+        }
+    }
+
     public async Task<string?> GetUserIdByEmailAsync(string email)
     {
         try

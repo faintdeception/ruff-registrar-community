@@ -76,6 +76,35 @@ interface ApiErrorResponse {
   debug?: string;
 }
 
+interface FamilyImportChildResult {
+  childFirstName: string;
+  childLastName: string;
+  success: boolean;
+  errorMessage?: string;
+}
+
+interface FamilyImportFamilyResult {
+  parentEmail: string;
+  parentAccountCreated: boolean;
+  success: boolean;
+  errorMessage?: string;
+  children: FamilyImportChildResult[];
+}
+
+interface FamilyImportParseError {
+  rowNumber: number;
+  message: string;
+}
+
+interface FamilyImportResponse {
+  totalFamilies: number;
+  totalChildren: number;
+  successCount: number;
+  failureCount: number;
+  parseErrors: FamilyImportParseError[];
+  families: FamilyImportFamilyResult[];
+}
+
 const MembersPage: React.FC = () => {
   const { user } = useAuth();
   const router = useRouter();
@@ -88,6 +117,11 @@ const MembersPage: React.FC = () => {
   const [newMemberCredentials, setNewMemberCredentials] = useState<UserCredentials | null>(null);
   const [showCredentials, setShowCredentials] = useState(false);
   const [templateDownloadError, setTemplateDownloadError] = useState<string | null>(null);
+  const [showBulkImportPanel, setShowBulkImportPanel] = useState(false);
+  const [bulkImportFile, setBulkImportFile] = useState<File | null>(null);
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [bulkImportResult, setBulkImportResult] = useState<FamilyImportResponse | null>(null);
+  const [bulkImportError, setBulkImportError] = useState<string | null>(null);
   const [newMember, setNewMember] = useState<CreateMemberForm>({
     firstName: '',
     lastName: '',
@@ -268,6 +302,48 @@ const MembersPage: React.FC = () => {
     }
   };
 
+  const handleBulkImportFamilies = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bulkImportFile) {
+      return;
+    }
+
+    try {
+      setBulkImportError(null);
+      setBulkImportResult(null);
+      setBulkImporting(true);
+
+      const formData = new FormData();
+      formData.append('file', bulkImportFile);
+
+      const response = await apiClient.postForm('/api/AccountHolders/bulk-import', formData);
+
+      if (!response.ok) {
+        const errorData = await readApiError(response);
+        throw new Error(errorData.message || 'Bulk import failed');
+      }
+
+      const data: FamilyImportResponse = await response.json();
+      setBulkImportResult(data);
+      fetchMembers();
+
+      if (data.failureCount === 0) {
+        setSuccessMessage(`Bulk import complete: ${data.successCount} of ${data.totalFamilies} famil${data.totalFamilies === 1 ? 'y' : 'ies'} imported (${data.totalChildren} child${data.totalChildren === 1 ? '' : 'ren'}).`);
+      }
+    } catch (err) {
+      setBulkImportError(err instanceof Error ? err.message : 'Bulk import failed');
+    } finally {
+      setBulkImporting(false);
+    }
+  };
+
+  const closeBulkImportPanel = () => {
+    setShowBulkImportPanel(false);
+    setBulkImportFile(null);
+    setBulkImportResult(null);
+    setBulkImportError(null);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -396,6 +472,14 @@ const MembersPage: React.FC = () => {
                 Download Family Import Template
               </button>
               <button
+                id="bulk-import-button"
+                onClick={() => setShowBulkImportPanel(true)}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <ArrowUpTrayIcon className="h-4 w-4 mr-2" />
+                Bulk Import Families
+              </button>
+              <button
                 id="create-member-button"
                 onClick={() => setShowCreateForm(true)}
                 className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -411,6 +495,116 @@ const MembersPage: React.FC = () => {
         {templateDownloadError && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg" data-testid="bulk-import-template-error">
             <p className="text-red-800">{templateDownloadError}</p>
+          </div>
+        )}
+
+        {/* Bulk Import Families */}
+        {showBulkImportPanel && (
+          <div className="bg-white shadow rounded-lg mb-6" data-testid="bulk-import-panel">
+            <div className="px-4 py-5 sm:px-6">
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="text-lg font-medium text-gray-900">Bulk Import Families</h4>
+                <button
+                  onClick={closeBulkImportPanel}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+
+              <p className="text-sm text-gray-600 mb-4">
+                Download the template above, fill in one row per child (repeat the parent
+                columns for each additional child in the same family), then upload it here.
+                A parent email that already has an account gets the new children added to it
+                instead of creating a duplicate. New parent accounts must change their
+                password on first login and no email is sent. Set the initial invite
+                password in{' '}
+                <a href={buildTenantPath('/settings/system', getTenantSlugFromPath())} className="text-blue-600 hover:underline">System Settings</a>{' '}
+                before importing.
+              </p>
+
+              {bulkImportError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800" data-testid="bulk-import-error">
+                  {bulkImportError}
+                </div>
+              )}
+
+              <form onSubmit={handleBulkImportFamilies} className="space-y-4">
+                <div>
+                  <input
+                    id="bulk-import-file-input"
+                    type="file"
+                    accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    onChange={(e) => setBulkImportFile(e.target.files?.[0] ?? null)}
+                    className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                </div>
+
+                <div className="flex space-x-3">
+                  <button
+                    id="bulk-import-submit-button"
+                    type="submit"
+                    disabled={!bulkImportFile || bulkImporting}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {bulkImporting ? 'Importing...' : 'Upload and Import'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closeBulkImportPanel}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Close
+                  </button>
+                </div>
+              </form>
+
+              {bulkImportResult && (
+                <div className="mt-6" data-testid="bulk-import-results">
+                  <p className="text-sm font-medium text-gray-900 mb-2">
+                    {bulkImportResult.successCount} of {bulkImportResult.totalFamilies} famil{bulkImportResult.totalFamilies === 1 ? 'y' : 'ies'} imported
+                    ({bulkImportResult.totalChildren} child{bulkImportResult.totalChildren === 1 ? '' : 'ren'})
+                    {bulkImportResult.failureCount > 0 && `, ${bulkImportResult.failureCount} failed`}.
+                  </p>
+
+                  {bulkImportResult.parseErrors.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-red-800 mb-1">Rows skipped due to errors:</p>
+                      <ul className="text-sm text-red-700 list-disc list-inside">
+                        {bulkImportResult.parseErrors.map((e) => (
+                          <li key={e.rowNumber}>Row {e.rowNumber}: {e.message}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-md">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-medium text-gray-500">Parent Email</th>
+                          <th className="px-3 py-2 text-left font-medium text-gray-500">Account</th>
+                          <th className="px-3 py-2 text-left font-medium text-gray-500">Children</th>
+                          <th className="px-3 py-2 text-left font-medium text-gray-500">Result</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {bulkImportResult.families.map((family) => (
+                          <tr key={family.parentEmail}>
+                            <td className="px-3 py-2 text-gray-700">{family.parentEmail}</td>
+                            <td className="px-3 py-2 text-gray-700">{family.parentAccountCreated ? 'New' : 'Existing'}</td>
+                            <td className="px-3 py-2 text-gray-700">{family.children.length}</td>
+                            <td className={`px-3 py-2 ${family.success ? 'text-green-700' : 'text-red-700'}`}>
+                              {family.success ? 'Created' : family.errorMessage || 'Failed'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using ClosedXML.Excel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -185,6 +186,454 @@ public class AccountHoldersControllerTests
         Assert.Equal(nameof(_controller.GetAccountHolder), created.ActionName);
         var response = Assert.IsType<CreateAccountHolderResponse>(created.Value);
         Assert.Same(createdDto, response.AccountHolder);
+    }
+
+    // -------------------------------------------------------------------------
+    // POST /api/accountholders/bulk-import (admin, family .xlsx)
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task BulkImportFamilies_NoFile_ReturnsBadRequest()
+    {
+        SetUser(role: "Administrator");
+
+        var result = await _controller.BulkImportFamilies(null!, CancellationToken.None);
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task BulkImportFamilies_PasswordNotConfigured_ReturnsBadRequestWithoutTouchingKeycloak()
+    {
+        SetUser(role: "Administrator");
+        _tenantSettingsService
+            .Setup(s => s.GetValidatedInitialInvitePasswordAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InsecureInitialInvitePasswordException(new[] { "no initial invite password has been configured yet" }));
+
+        var file = MakeXlsxFile(new object?[][]
+        {
+            new object?[] { "Jane", "Doe", "jane@example.com", "Alex", "Doe", null, null }
+        });
+
+        var result = await _controller.BulkImportFamilies(file, CancellationToken.None);
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+        _keycloakService.Verify(s => s.CreateUserAsync(It.IsAny<CreateUserRequest>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task BulkImportFamilies_InvalidWorkbook_ReturnsBadRequest()
+    {
+        SetUser(role: "Administrator");
+        _tenantSettingsService
+            .Setup(s => s.GetValidatedInitialInvitePasswordAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Correct-Horse-99");
+
+        var badHeaders = FamilyImportTemplateGenerator.Headers.Where(h => h != "ChildGrade").ToArray();
+        var file = MakeXlsxFile(new object?[][]
+        {
+            new object?[] { "Jane", "Doe", "jane@example.com", "Alex", "Doe", null }
+        }, badHeaders);
+
+        var result = await _controller.BulkImportFamilies(file, CancellationToken.None);
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task BulkImportFamilies_NewParentEmail_CreatesAccountAndAddsAllChildren()
+    {
+        SetUser(role: "Administrator", email: "admin@example.com");
+        _tenantSettingsService
+            .Setup(s => s.GetValidatedInitialInvitePasswordAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Correct-Horse-99");
+
+        var file = MakeXlsxFile(new object?[][]
+        {
+            new object?[] { "Jane", "Smith", "jane@example.com", "Alex", "Smith", new DateTime(2015, 4, 12), "3rd" },
+            new object?[] { "Jane", "Smith", "jane@example.com", "Sam", "Smith", null, "K" },
+        });
+
+        var newAccountId = Guid.NewGuid();
+        _accountHolderService.Setup(s => s.GetAccountHolderByEmailAsync("jane@example.com")).ReturnsAsync((AccountHolderDto?)null);
+        _keycloakService
+            .Setup(s => s.CreateUserAsync(It.Is<CreateUserRequest>(r => r.Email == "jane@example.com")))
+            .ReturnsAsync(new CreateUserResponse { UserId = "kc-jane", Username = "jane@example.com", IsTemporary = true, TemporaryPassword = "Correct-Horse-99" });
+        _accountHolderService
+            .Setup(s => s.CreateAccountHolderAsync(It.IsAny<CreateAccountHolderDto>(), "kc-jane"))
+            .ReturnsAsync(MakeDto(id: newAccountId.ToString(), email: "jane@example.com"));
+        _accountHolderService
+            .Setup(s => s.AddStudentToAccountAsync(newAccountId, It.IsAny<CreateStudentForAccountDto>()))
+            .ReturnsAsync(MakeStudentDto);
+
+        var result = await _controller.BulkImportFamilies(file, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<FamilyImportResponse>(ok.Value);
+
+        Assert.Equal(1, response.TotalFamilies);
+        Assert.Equal(2, response.TotalChildren);
+        Assert.Equal(1, response.SuccessCount);
+        Assert.Equal(0, response.FailureCount);
+
+        var family = Assert.Single(response.Families);
+        Assert.True(family.ParentAccountCreated);
+        Assert.True(family.Success);
+        Assert.Equal(2, family.Children.Count);
+
+        _accountHolderService.Verify(s => s.AddStudentToAccountAsync(newAccountId, It.IsAny<CreateStudentForAccountDto>()), Times.Exactly(2));
+        _keycloakService.Verify(
+            s => s.CreateUserAsync(It.Is<CreateUserRequest>(r => !r.RequireEmailVerification)),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task BulkImportFamilies_ExistingParentEmail_AddsChildrenWithoutCreatingKeycloakUser()
+    {
+        SetUser(role: "Administrator");
+        _tenantSettingsService
+            .Setup(s => s.GetValidatedInitialInvitePasswordAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Correct-Horse-99");
+
+        var file = MakeXlsxFile(new object?[][]
+        {
+            new object?[] { "Jane", "Smith", "jane@example.com", "Alex", "Smith", null, null }
+        });
+
+        var existingAccountId = Guid.NewGuid();
+        _accountHolderService
+            .Setup(s => s.GetAccountHolderByEmailAsync("jane@example.com"))
+            .ReturnsAsync(MakeDto(id: existingAccountId.ToString(), email: "jane@example.com"));
+        _accountHolderService
+            .Setup(s => s.AddStudentToAccountAsync(existingAccountId, It.IsAny<CreateStudentForAccountDto>()))
+            .ReturnsAsync(MakeStudentDto);
+
+        var result = await _controller.BulkImportFamilies(file, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<FamilyImportResponse>(ok.Value);
+        var family = Assert.Single(response.Families);
+
+        Assert.False(family.ParentAccountCreated);
+        Assert.True(family.Success);
+        _keycloakService.Verify(s => s.CreateUserAsync(It.IsAny<CreateUserRequest>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task BulkImportFamilies_ChildFailsForNewParent_RollsBackChildrenAndDeletesNewAccount()
+    {
+        SetUser(role: "Administrator");
+        _tenantSettingsService
+            .Setup(s => s.GetValidatedInitialInvitePasswordAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Correct-Horse-99");
+
+        var file = MakeXlsxFile(new object?[][]
+        {
+            new object?[] { "Jane", "Smith", "jane@example.com", "Alex", "Smith", null, null },
+            new object?[] { "Jane", "Smith", "jane@example.com", "Sam", "Smith", null, null },
+        });
+
+        var newAccountId = Guid.NewGuid();
+        var firstChildId = Guid.NewGuid();
+        _accountHolderService.Setup(s => s.GetAccountHolderByEmailAsync("jane@example.com")).ReturnsAsync((AccountHolderDto?)null);
+        _keycloakService
+            .Setup(s => s.CreateUserAsync(It.IsAny<CreateUserRequest>()))
+            .ReturnsAsync(new CreateUserResponse { UserId = "kc-jane", Username = "jane@example.com", IsTemporary = true, TemporaryPassword = "Correct-Horse-99" });
+        _keycloakService
+            .Setup(s => s.GetUserIdByEmailAsync("jane@example.com"))
+            .ReturnsAsync("kc-jane");
+        _accountHolderService
+            .Setup(s => s.CreateAccountHolderAsync(It.IsAny<CreateAccountHolderDto>(), "kc-jane"))
+            .ReturnsAsync(MakeDto(id: newAccountId.ToString(), email: "jane@example.com"));
+        _accountHolderService
+            .SetupSequence(s => s.AddStudentToAccountAsync(newAccountId, It.IsAny<CreateStudentForAccountDto>()))
+            .ReturnsAsync(() => { var dto = MakeStudentDto(); dto.Id = firstChildId; return dto; })
+            .ThrowsAsync(new InvalidOperationException("simulated failure adding second child"));
+
+        var result = await _controller.BulkImportFamilies(file, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<FamilyImportResponse>(ok.Value);
+        var family = Assert.Single(response.Families);
+
+        Assert.False(family.Success);
+        Assert.Empty(family.Children);
+        _accountHolderService.Verify(s => s.RemoveStudentFromAccountAsync(newAccountId, firstChildId), Times.Once);
+        _accountHolderService.Verify(s => s.DeleteAccountHolderAsync(newAccountId), Times.Once);
+        _keycloakService.Verify(s => s.GetUserIdByEmailAsync("jane@example.com"), Times.Once);
+        _keycloakService.Verify(s => s.DeleteUserAsync("kc-jane"), Times.Once);
+    }
+
+    [Fact]
+    public async Task BulkImportFamilies_ChildFailsForNewParent_KeycloakCleanupFailureDoesNotFailTheRequest()
+    {
+        SetUser(role: "Administrator");
+        _tenantSettingsService
+            .Setup(s => s.GetValidatedInitialInvitePasswordAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Correct-Horse-99");
+
+        var file = MakeXlsxFile(new object?[][]
+        {
+            new object?[] { "Jane", "Smith", "jane@example.com", "Alex", "Smith", null, null },
+            new object?[] { "Jane", "Smith", "jane@example.com", "Sam", "Smith", null, null },
+        });
+
+        var newAccountId = Guid.NewGuid();
+        _accountHolderService.Setup(s => s.GetAccountHolderByEmailAsync("jane@example.com")).ReturnsAsync((AccountHolderDto?)null);
+        _keycloakService
+            .Setup(s => s.CreateUserAsync(It.IsAny<CreateUserRequest>()))
+            .ReturnsAsync(new CreateUserResponse { UserId = "kc-jane", Username = "jane@example.com", IsTemporary = true, TemporaryPassword = "Correct-Horse-99" });
+        _keycloakService
+            .Setup(s => s.GetUserIdByEmailAsync("jane@example.com"))
+            .ThrowsAsync(new InvalidOperationException("Keycloak admin API unreachable"));
+        _accountHolderService
+            .Setup(s => s.CreateAccountHolderAsync(It.IsAny<CreateAccountHolderDto>(), "kc-jane"))
+            .ReturnsAsync(MakeDto(id: newAccountId.ToString(), email: "jane@example.com"));
+        _accountHolderService
+            .SetupSequence(s => s.AddStudentToAccountAsync(newAccountId, It.IsAny<CreateStudentForAccountDto>()))
+            .ReturnsAsync(MakeStudentDto)
+            .ThrowsAsync(new InvalidOperationException("simulated failure adding second child"));
+
+        var result = await _controller.BulkImportFamilies(file, CancellationToken.None);
+
+        // The Keycloak cleanup lookup failing must not blow up the whole request/response.
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<FamilyImportResponse>(ok.Value);
+        var family = Assert.Single(response.Families);
+        Assert.False(family.Success);
+        _accountHolderService.Verify(s => s.DeleteAccountHolderAsync(newAccountId), Times.Once);
+    }
+
+    [Fact]
+    public async Task BulkImportFamilies_ReuploadAfterRollback_CreatesNewAccountInstepOfCollidingWithOrphan()
+    {
+        // Regression test for the retry-after-rollback risk: a first upload rolls back a new
+        // parent (deleting the DB row and, now, the Keycloak user too), so a second upload for
+        // the same email must be free to create a brand new Keycloak user rather than colliding
+        // with an orphaned one from the first attempt.
+        SetUser(role: "Administrator");
+        _tenantSettingsService
+            .Setup(s => s.GetValidatedInitialInvitePasswordAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Correct-Horse-99");
+
+        var firstAttemptFile = MakeXlsxFile(new object?[][]
+        {
+            new object?[] { "Jane", "Smith", "jane@example.com", "Alex", "Smith", null, null },
+            new object?[] { "Jane", "Smith", "jane@example.com", "Sam", "Smith", null, null },
+        });
+        var secondAttemptFile = MakeXlsxFile(new object?[][]
+        {
+            new object?[] { "Jane", "Smith", "jane@example.com", "Alex", "Smith", null, null },
+        });
+
+        var firstAccountId = Guid.NewGuid();
+        var firstChildId = Guid.NewGuid();
+        _accountHolderService.Setup(s => s.GetAccountHolderByEmailAsync("jane@example.com")).ReturnsAsync((AccountHolderDto?)null);
+        _keycloakService
+            .Setup(s => s.CreateUserAsync(It.IsAny<CreateUserRequest>()))
+            .ReturnsAsync(new CreateUserResponse { UserId = "kc-jane-1", Username = "jane@example.com", IsTemporary = true, TemporaryPassword = "Correct-Horse-99" });
+        _keycloakService
+            .Setup(s => s.GetUserIdByEmailAsync("jane@example.com"))
+            .ReturnsAsync("kc-jane-1");
+        _accountHolderService
+            .Setup(s => s.CreateAccountHolderAsync(It.IsAny<CreateAccountHolderDto>(), "kc-jane-1"))
+            .ReturnsAsync(MakeDto(id: firstAccountId.ToString(), email: "jane@example.com"));
+        _accountHolderService
+            .SetupSequence(s => s.AddStudentToAccountAsync(firstAccountId, It.IsAny<CreateStudentForAccountDto>()))
+            .ReturnsAsync(() => { var dto = MakeStudentDto(); dto.Id = firstChildId; return dto; })
+            .ThrowsAsync(new InvalidOperationException("simulated failure adding second child"));
+
+        var firstResult = await _controller.BulkImportFamilies(firstAttemptFile, CancellationToken.None);
+        var firstOk = Assert.IsType<OkObjectResult>(firstResult.Result);
+        Assert.False(Assert.Single(Assert.IsType<FamilyImportResponse>(firstOk.Value).Families).Success);
+
+        // After rollback, the account holder is gone and (thanks to the new cleanup call) so is
+        // the Keycloak user, so the re-upload's "does this email already have an account" lookup
+        // must again see nothing, and Keycloak must be free to hand back a fresh user id.
+        _accountHolderService.Setup(s => s.GetAccountHolderByEmailAsync("jane@example.com")).ReturnsAsync((AccountHolderDto?)null);
+        var secondAccountId = Guid.NewGuid();
+        _keycloakService
+            .Setup(s => s.CreateUserAsync(It.Is<CreateUserRequest>(r => r.Email == "jane@example.com")))
+            .ReturnsAsync(new CreateUserResponse { UserId = "kc-jane-2", Username = "jane@example.com", IsTemporary = true, TemporaryPassword = "Correct-Horse-99" });
+        _accountHolderService
+            .Setup(s => s.CreateAccountHolderAsync(It.IsAny<CreateAccountHolderDto>(), "kc-jane-2"))
+            .ReturnsAsync(MakeDto(id: secondAccountId.ToString(), email: "jane@example.com"));
+        _accountHolderService
+            .Setup(s => s.AddStudentToAccountAsync(secondAccountId, It.IsAny<CreateStudentForAccountDto>()))
+            .ReturnsAsync(MakeStudentDto);
+
+        var secondResult = await _controller.BulkImportFamilies(secondAttemptFile, CancellationToken.None);
+
+        var secondOk = Assert.IsType<OkObjectResult>(secondResult.Result);
+        var secondFamily = Assert.Single(Assert.IsType<FamilyImportResponse>(secondOk.Value).Families);
+        Assert.True(secondFamily.Success);
+        Assert.True(secondFamily.ParentAccountCreated);
+        _keycloakService.Verify(s => s.DeleteUserAsync("kc-jane-1"), Times.Once);
+    }
+
+    [Fact]
+    public async Task BulkImportFamilies_ChildFailsForExistingParent_RollsBackChildrenButKeepsAccount()
+    {
+        SetUser(role: "Administrator");
+        _tenantSettingsService
+            .Setup(s => s.GetValidatedInitialInvitePasswordAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Correct-Horse-99");
+
+        var file = MakeXlsxFile(new object?[][]
+        {
+            new object?[] { "Jane", "Smith", "jane@example.com", "Alex", "Smith", null, null },
+            new object?[] { "Jane", "Smith", "jane@example.com", "Sam", "Smith", null, null },
+        });
+
+        var existingAccountId = Guid.NewGuid();
+        var firstChildId = Guid.NewGuid();
+        _accountHolderService
+            .Setup(s => s.GetAccountHolderByEmailAsync("jane@example.com"))
+            .ReturnsAsync(MakeDto(id: existingAccountId.ToString(), email: "jane@example.com"));
+        _accountHolderService
+            .SetupSequence(s => s.AddStudentToAccountAsync(existingAccountId, It.IsAny<CreateStudentForAccountDto>()))
+            .ReturnsAsync(() => { var dto = MakeStudentDto(); dto.Id = firstChildId; return dto; })
+            .ThrowsAsync(new InvalidOperationException("simulated failure adding second child"));
+
+        var result = await _controller.BulkImportFamilies(file, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<FamilyImportResponse>(ok.Value);
+        var family = Assert.Single(response.Families);
+
+        Assert.False(family.Success);
+        _accountHolderService.Verify(s => s.RemoveStudentFromAccountAsync(existingAccountId, firstChildId), Times.Once);
+        _accountHolderService.Verify(s => s.DeleteAccountHolderAsync(It.IsAny<Guid>()), Times.Never);
+        _keycloakService.Verify(s => s.GetUserIdByEmailAsync(It.IsAny<string>()), Times.Never);
+        _keycloakService.Verify(s => s.DeleteUserAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task BulkImportFamilies_MultipleFamilies_ReportsIndependentPerFamilyResults()
+    {
+        SetUser(role: "Administrator");
+        _tenantSettingsService
+            .Setup(s => s.GetValidatedInitialInvitePasswordAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Correct-Horse-99");
+
+        var file = MakeXlsxFile(new object?[][]
+        {
+            new object?[] { "Jane", "Smith", "jane@example.com", "Alex", "Smith", null, null },
+            new object?[] { "Bob", "Lee", "bob@example.com", "Cara", "Lee", null, null },
+        });
+
+        var janeAccountId = Guid.NewGuid();
+        var bobAccountId = Guid.NewGuid();
+        _accountHolderService.Setup(s => s.GetAccountHolderByEmailAsync("jane@example.com")).ReturnsAsync((AccountHolderDto?)null);
+        _accountHolderService.Setup(s => s.GetAccountHolderByEmailAsync("bob@example.com")).ReturnsAsync((AccountHolderDto?)null);
+        _keycloakService
+            .Setup(s => s.CreateUserAsync(It.Is<CreateUserRequest>(r => r.Email == "jane@example.com")))
+            .ReturnsAsync(new CreateUserResponse { UserId = "kc-jane", Username = "jane@example.com", IsTemporary = true, TemporaryPassword = "Correct-Horse-99" });
+        _keycloakService
+            .Setup(s => s.CreateUserAsync(It.Is<CreateUserRequest>(r => r.Email == "bob@example.com")))
+            .ReturnsAsync(new CreateUserResponse { UserId = "kc-bob", Username = "bob@example.com", IsTemporary = true, TemporaryPassword = "Correct-Horse-99" });
+        _accountHolderService
+            .Setup(s => s.CreateAccountHolderAsync(It.IsAny<CreateAccountHolderDto>(), "kc-jane"))
+            .ReturnsAsync(MakeDto(id: janeAccountId.ToString(), email: "jane@example.com"));
+        _accountHolderService
+            .Setup(s => s.CreateAccountHolderAsync(It.IsAny<CreateAccountHolderDto>(), "kc-bob"))
+            .ReturnsAsync(MakeDto(id: bobAccountId.ToString(), email: "bob@example.com"));
+        _accountHolderService
+            .Setup(s => s.AddStudentToAccountAsync(janeAccountId, It.IsAny<CreateStudentForAccountDto>()))
+            .ReturnsAsync(MakeStudentDto);
+        _accountHolderService
+            .Setup(s => s.AddStudentToAccountAsync(bobAccountId, It.IsAny<CreateStudentForAccountDto>()))
+            .ThrowsAsync(new InvalidOperationException("simulated failure"));
+
+        var result = await _controller.BulkImportFamilies(file, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<FamilyImportResponse>(ok.Value);
+
+        Assert.Equal(2, response.Families.Count);
+        Assert.Equal(1, response.SuccessCount);
+        Assert.Equal(1, response.FailureCount);
+        Assert.True(response.Families.Single(f => f.ParentEmail == "jane@example.com").Success);
+        Assert.False(response.Families.Single(f => f.ParentEmail == "bob@example.com").Success);
+        _accountHolderService.Verify(s => s.DeleteAccountHolderAsync(bobAccountId), Times.Once);
+    }
+
+    [Fact]
+    public async Task BulkImportFamilies_RowWithMissingRequiredField_ReportsParseErrorAndSkipsRow()
+    {
+        SetUser(role: "Administrator");
+        _tenantSettingsService
+            .Setup(s => s.GetValidatedInitialInvitePasswordAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Correct-Horse-99");
+
+        var file = MakeXlsxFile(new object?[][]
+        {
+            new object?[] { "Jane", "Smith", "jane@example.com", "Alex", "Smith", null, null },
+            new object?[] { "Bob", "", "bob@example.com", "Cara", "Lee", null, null },
+        });
+
+        var janeAccountId = Guid.NewGuid();
+        _accountHolderService.Setup(s => s.GetAccountHolderByEmailAsync("jane@example.com")).ReturnsAsync((AccountHolderDto?)null);
+        _keycloakService
+            .Setup(s => s.CreateUserAsync(It.IsAny<CreateUserRequest>()))
+            .ReturnsAsync(new CreateUserResponse { UserId = "kc-jane", Username = "jane@example.com", IsTemporary = true, TemporaryPassword = "Correct-Horse-99" });
+        _accountHolderService
+            .Setup(s => s.CreateAccountHolderAsync(It.IsAny<CreateAccountHolderDto>(), "kc-jane"))
+            .ReturnsAsync(MakeDto(id: janeAccountId.ToString(), email: "jane@example.com"));
+        _accountHolderService
+            .Setup(s => s.AddStudentToAccountAsync(janeAccountId, It.IsAny<CreateStudentForAccountDto>()))
+            .ReturnsAsync(MakeStudentDto);
+
+        var result = await _controller.BulkImportFamilies(file, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<FamilyImportResponse>(ok.Value);
+
+        Assert.Equal(1, response.TotalFamilies);
+        var parseError = Assert.Single(response.ParseErrors);
+        Assert.Contains("ParentLastName", parseError.Message);
+    }
+
+    private static IFormFile MakeXlsxFile(object?[][] dataRows, string[]? headers = null, string fileName = "families.xlsx")
+    {
+        headers ??= FamilyImportTemplateGenerator.Headers;
+
+        using var workbook = new XLWorkbook();
+        var sheet = workbook.Worksheets.Add("Family Import");
+        for (var col = 0; col < headers.Length; col++)
+        {
+            sheet.Cell(1, col + 1).Value = headers[col];
+        }
+
+        for (var rowIndex = 0; rowIndex < dataRows.Length; rowIndex++)
+        {
+            var row = dataRows[rowIndex];
+            for (var col = 0; col < row.Length; col++)
+            {
+                var cell = sheet.Cell(rowIndex + 2, col + 1);
+                switch (row[col])
+                {
+                    case null:
+                        break;
+                    case DateTime dt:
+                        cell.Value = dt;
+                        break;
+                    default:
+                        cell.Value = row[col]!.ToString();
+                        break;
+                }
+            }
+        }
+
+        using var workbookStream = new MemoryStream();
+        workbook.SaveAs(workbookStream);
+        var bytes = workbookStream.ToArray();
+        var formStream = new MemoryStream(bytes);
+        return new FormFile(formStream, 0, bytes.Length, "file", fileName)
+        {
+            Headers = new HeaderDictionary(),
+            ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        };
     }
 
     // -------------------------------------------------------------------------

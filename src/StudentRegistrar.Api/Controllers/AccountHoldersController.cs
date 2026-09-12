@@ -198,6 +198,190 @@ public class AccountHoldersController : ControllerBase
     }
 
     /// <summary>
+    /// Bulk import families from an .xlsx file (see the template downloaded from
+    /// GET bulk-import/template). Admin only. Each row is a child; rows sharing a ParentEmail
+    /// become one family. An existing account for that email gets the children added to it
+    /// instead of failing as a duplicate. Each family's parent + children succeed or fail
+    /// together (whole-family atomicity) — other families in the same file are unaffected.
+    /// No email is sent to new parent accounts; they must change their password on first login.
+    /// </summary>
+    [HttpPost("bulk-import")]
+    [Authorize(Roles = "Administrator")]
+    public async Task<ActionResult<FamilyImportResponse>> BulkImportFamilies(IFormFile file, CancellationToken cancellationToken)
+    {
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest("A non-empty .xlsx file is required.");
+        }
+
+        string initialInvitePassword;
+        try
+        {
+            // Fail fast, before touching Keycloak for family 1, if the host hasn't configured a
+            // secure initial invite password.
+            initialInvitePassword = await _tenantSettingsService.GetValidatedInitialInvitePasswordAsync(cancellationToken);
+        }
+        catch (InsecureInitialInvitePasswordException ex)
+        {
+            return BadRequest(new { message = ex.Message, reasons = ex.FailureReasons });
+        }
+
+        FamilyImportParseResult parseResult;
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            parseResult = FamilyImportExcelParser.Parse(stream);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+
+        var response = new FamilyImportResponse
+        {
+            TotalFamilies = parseResult.Families.Count,
+            TotalChildren = parseResult.Families.Sum(f => f.Children.Count),
+            ParseErrors = parseResult.RowErrors
+                .Select(e => new FamilyImportParseError { RowNumber = e.RowNumber, Message = e.Message })
+                .ToList()
+        };
+
+        foreach (var family in parseResult.Families)
+        {
+            response.Families.Add(await ImportFamilyAsync(family, initialInvitePassword));
+        }
+
+        response.SuccessCount = response.Families.Count(f => f.Success);
+        response.FailureCount = response.Families.Count(f => !f.Success);
+
+        _logger.LogInformation(
+            "Bulk family import completed. AdminEmail: {AdminEmail}, TotalFamilies: {TotalFamilies}, " +
+            "SuccessCount: {SuccessCount}, FailureCount: {FailureCount}",
+            GetCurrentUserEmail(), response.TotalFamilies, response.SuccessCount, response.FailureCount);
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Creates (or reuses) the family's parent account and adds all of its children. If any
+    /// child fails partway through, the children already added for this family are removed so
+    /// the family fails or succeeds as a unit; other families in the same upload are unaffected.
+    /// Note: if the parent account itself was newly created here, a rollback removes the
+    /// AccountHolder row, but the Keycloak user is not deleted (no delete-user capability exists
+    /// today) — matches the pre-existing single-create path's known limitation on this edge case.
+    /// </summary>
+    private async Task<FamilyImportFamilyResult> ImportFamilyAsync(FamilyImportFamily family, string initialInvitePassword)
+    {
+        var familyResult = new FamilyImportFamilyResult { ParentEmail = family.ParentEmail };
+
+        Guid accountHolderId;
+        var parentAccountCreated = false;
+        try
+        {
+            var existingAccountHolder = await _accountHolderService.GetAccountHolderByEmailAsync(family.ParentEmail);
+            if (existingAccountHolder != null)
+            {
+                accountHolderId = Guid.Parse(existingAccountHolder.Id);
+            }
+            else
+            {
+                var createDto = new CreateAccountHolderDto
+                {
+                    FirstName = family.ParentFirstName,
+                    LastName = family.ParentLastName,
+                    EmailAddress = family.ParentEmail
+                };
+
+                var created = await CreateAccountHolderWithKeycloakUserAsync(
+                    createDto,
+                    explicitPassword: initialInvitePassword,
+                    requireEmailVerification: false);
+
+                accountHolderId = Guid.Parse(created.AccountHolder.Id);
+                parentAccountCreated = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Bulk family import failed to create/find parent account for {ParentEmail}", family.ParentEmail);
+            familyResult.Success = false;
+            familyResult.ErrorMessage = ex.Message;
+            return familyResult;
+        }
+
+        familyResult.ParentAccountCreated = parentAccountCreated;
+
+        var addedStudentIds = new List<Guid>();
+        try
+        {
+            foreach (var child in family.Children)
+            {
+                var studentDto = await _accountHolderService.AddStudentToAccountAsync(accountHolderId, new CreateStudentForAccountDto
+                {
+                    FirstName = child.ChildFirstName,
+                    LastName = child.ChildLastName,
+                    Grade = child.ChildGrade,
+                    DateOfBirth = child.ChildDateOfBirth
+                });
+
+                addedStudentIds.Add(studentDto.Id);
+                familyResult.Children.Add(new FamilyImportChildResult
+                {
+                    ChildFirstName = child.ChildFirstName,
+                    ChildLastName = child.ChildLastName,
+                    Success = true
+                });
+            }
+
+            familyResult.Success = true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Bulk family import failed adding a child for {ParentEmail}; rolling back this family's children", family.ParentEmail);
+
+            foreach (var studentId in addedStudentIds)
+            {
+                await _accountHolderService.RemoveStudentFromAccountAsync(accountHolderId, studentId);
+            }
+
+            if (parentAccountCreated)
+            {
+                await _accountHolderService.DeleteAccountHolderAsync(accountHolderId);
+                await DeleteOrphanedKeycloakUserAsync(family.ParentEmail);
+            }
+
+            familyResult.Children.Clear();
+            familyResult.Success = false;
+            familyResult.ErrorMessage = ex.Message;
+        }
+
+        return familyResult;
+    }
+
+    /// <summary>
+    /// Best-effort cleanup for a rolled-back new-parent family: deletes the Keycloak user created
+    /// moments earlier for this email so a later re-upload of the same family doesn't collide with
+    /// an orphaned Keycloak account. Failures here are logged, not thrown — the family import
+    /// itself has already failed and been reported; a cleanup miss just means the admin needs to
+    /// handle that one Keycloak user manually before retrying.
+    /// </summary>
+    private async Task DeleteOrphanedKeycloakUserAsync(string parentEmail)
+    {
+        try
+        {
+            var keycloakUserId = await _keycloakService.GetUserIdByEmailAsync(parentEmail);
+            if (!string.IsNullOrEmpty(keycloakUserId))
+            {
+                await _keycloakService.DeleteUserAsync(keycloakUserId);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to clean up orphaned Keycloak user for {ParentEmail} after a rolled-back bulk import", parentEmail);
+        }
+    }
+
+    /// <summary>
     /// Downloads the .xlsx template for the family bulk-import flow (parent + children per
     /// family, one row per child). Admin only.
     /// </summary>
