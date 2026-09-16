@@ -38,7 +38,7 @@ Shows usage text.
 [CmdletBinding()]
 param(
     [string]$Realm = 'student-registrar',
-    [string]$KeycloakUrl = 'http://localhost:8080',
+    [string]$KeycloakUrl = 'https://localhost:8080',
     [string]$AdminUsername = 'admin',
     [string]$InitialAdminUsername,
     [string]$InitialAdminEmail,

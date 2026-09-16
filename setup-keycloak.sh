@@ -231,29 +231,37 @@ if [ "$CLIENT_UUID" != "null" ] && [ -n "$CLIENT_UUID" ]; then
             -H "Authorization: Bearer $TOKEN" | jq -r '.[0].id')
         
         if [ "$REALM_MANAGEMENT_CLIENT" != "null" ] && [ -n "$REALM_MANAGEMENT_CLIENT" ]; then
-            # Get the manage-users role
-            MANAGE_USERS_ROLE=$(curl -s -X GET "${KEYCLOAK_URL}/admin/realms/$REALM_NAME/clients/$REALM_MANAGEMENT_CLIENT/roles/manage-users" \
-                -H "Authorization: Bearer $TOKEN")
-            
-            MANAGE_USERS_ROLE_ID=$(echo "$MANAGE_USERS_ROLE" | jq -r '.id')
-            
-            if [ "$MANAGE_USERS_ROLE_ID" != "null" ] && [ -n "$MANAGE_USERS_ROLE_ID" ]; then
-                # Grant the manage-users role to the service account
+            # Roles needed for the API's user/role management operations.
+            ROLES_TO_GRANT=("manage-users" "manage-realm" "view-users" "query-users")
+            ROLE_REPRESENTATIONS=""
+
+            for role_name in "${ROLES_TO_GRANT[@]}"; do
+                ROLE_JSON=$(curl -s -X GET "${KEYCLOAK_URL}/admin/realms/$REALM_NAME/clients/$REALM_MANAGEMENT_CLIENT/roles/$role_name" \
+                    -H "Authorization: Bearer $TOKEN")
+
+                ROLE_ID=$(echo "$ROLE_JSON" | jq -r '.id')
+
+                if [ "$ROLE_ID" != "null" ] && [ -n "$ROLE_ID" ]; then
+                    if [ -n "$ROLE_REPRESENTATIONS" ]; then
+                        ROLE_REPRESENTATIONS="$ROLE_REPRESENTATIONS,"
+                    fi
+                    ROLE_REPRESENTATIONS="$ROLE_REPRESENTATIONS{\"id\": \"$ROLE_ID\", \"name\": \"$role_name\"}"
+                else
+                    echo "⚠️  Could not find realm-management role '$role_name'"
+                fi
+            done
+
+            if [ -n "$ROLE_REPRESENTATIONS" ]; then
                 GRANT_RESPONSE=$(curl -s -X POST "${KEYCLOAK_URL}/admin/realms/$REALM_NAME/users/$SERVICE_ACCOUNT_USER_ID/role-mappings/clients/$REALM_MANAGEMENT_CLIENT" \
                     -H "Authorization: Bearer $TOKEN" \
                     -H "Content-Type: application/json" \
-                    -d "[{
-                        \"id\": \"$MANAGE_USERS_ROLE_ID\",
-                        \"name\": \"manage-users\"
-                    }]")
-                
+                    -d "[$ROLE_REPRESENTATIONS]")
+
                 if [ $? -eq 0 ]; then
-                    echo "✅ Service account granted manage-users permission"
+                    echo "✅ Service account granted: ${ROLES_TO_GRANT[*]}"
                 else
-                    echo "⚠️  Failed to grant manage-users permission to service account"
+                    echo "⚠️  Failed to grant service account roles"
                 fi
-            else
-                echo "⚠️  Could not find manage-users role"
             fi
         else
             echo "⚠️  Could not find realm-management client"
@@ -465,26 +473,26 @@ if [ "$CLIENT_UUID" != "null" ] && [ -n "$CLIENT_UUID" ]; then
                 echo "⚠️  User created but failed to set password"
             fi
             
-            # Assign Instructor role
-            INSTRUCTOR_ROLE_ID=$(curl -s -X GET "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/roles/Instructor" \
+            # Assign Educator role (the API maps educators to the Educator realm role)
+            EDUCATOR_ROLE_ID=$(curl -s -X GET "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/roles/Educator" \
                 -H "Authorization: Bearer $TOKEN" | jq -r '.id')
             
-            if [ "$INSTRUCTOR_ROLE_ID" != "null" ] && [ -n "$INSTRUCTOR_ROLE_ID" ]; then
+            if [ "$EDUCATOR_ROLE_ID" != "null" ] && [ -n "$EDUCATOR_ROLE_ID" ]; then
                 ROLE_RESPONSE=$(curl -s -X POST "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/users/${USER_ID}/role-mappings/realm" \
                     -H "Authorization: Bearer $TOKEN" \
                     -H "Content-Type: application/json" \
                     -d "[{
-                        \"id\": \"$INSTRUCTOR_ROLE_ID\",
-                        \"name\": \"Instructor\"
+                        \"id\": \"$EDUCATOR_ROLE_ID\",
+                        \"name\": \"Educator\"
                     }]")
                 
-                if ! check_api_response "$ROLE_RESPONSE" "assign Instructor role"; then
-                    echo "⚠️  User created but failed to assign Instructor role"
+                if ! check_api_response "$ROLE_RESPONSE" "assign Educator role"; then
+                    echo "⚠️  User created but failed to assign Educator role"
                 fi
                 
-                echo "✅ User $SCOOPINSTRUCTOR_USERNAME created with Instructor role."
+                echo "✅ User $SCOOPINSTRUCTOR_USERNAME created with Educator role."
             else
-                echo "⚠️  User created but failed to get Instructor role ID"
+                echo "⚠️  User created but failed to get Educator role ID"
             fi
         else
             echo "❌ Failed to get user ID after creation"
@@ -517,7 +525,7 @@ if [ "$CLIENT_UUID" != "null" ] && [ -n "$CLIENT_UUID" ]; then
     echo "Username: $SCOOPINSTRUCTOR_USERNAME"
     echo "Password: $SCOOPINSTRUCTOR_PASSWORD"
     echo "Email: scoopinstructor@example.com"
-    echo "Role: Instructor"
+    echo "Role: Educator"
     echo ""
     echo "🔧 Add this to your API configuration:"
     echo "====================================="

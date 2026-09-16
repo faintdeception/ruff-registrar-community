@@ -26,6 +26,8 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.4" />
     <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.5.2" />
     <PackageReference Include="AutoMapper" Version="16.1.1" />
+    <!-- MIT-licensed .xlsx read/write, used for the family bulk-import template/upload -->
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
   </ItemGroup>
 
   <ItemGroup>

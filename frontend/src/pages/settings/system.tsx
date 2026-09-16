@@ -59,6 +59,10 @@ interface TenantHomeContent {
   hasCustomWelcomeBlurb: boolean;
 }
 
+interface TenantSettings {
+  initialInvitePasswordConfigured: boolean;
+}
+
 export default function SystemSettings() {
   const { user } = useAuth();
   const [billing, setBilling] = useState<TenantBillingStatus | null>(null);
@@ -71,6 +75,11 @@ export default function SystemSettings() {
   const [homeContent, setHomeContent] = useState<TenantHomeContent | null>(null);
   const [welcomeTitleInput, setWelcomeTitleInput] = useState('');
   const [welcomeBlurbInput, setWelcomeBlurbInput] = useState('');
+  const [tenantSettings, setTenantSettings] = useState<TenantSettings | null>(null);
+  const [initialInvitePasswordInput, setInitialInvitePasswordInput] = useState('');
+  const [invitePasswordSubmitting, setInvitePasswordSubmitting] = useState(false);
+  const [invitePasswordError, setInvitePasswordError] = useState<string | null>(null);
+  const [invitePasswordSuccess, setInvitePasswordSuccess] = useState<string | null>(null);
 
   const isAdmin = !!user?.roles.includes('Administrator');
 
@@ -85,8 +94,23 @@ export default function SystemSettings() {
 
   const fetchSettingsData = async () => {
     setLoading(true);
-    await Promise.all([fetchBilling(), fetchConnectStatus(), fetchHomeContent()]);
+    await Promise.all([fetchBilling(), fetchConnectStatus(), fetchHomeContent(), fetchTenantSettings()]);
     setLoading(false);
+  };
+
+  const fetchTenantSettings = async () => {
+    try {
+      const response = await apiClient.get('/api/tenant-settings');
+      if (!response.ok) {
+        throw new Error('Failed to load tenant settings');
+      }
+
+      const data = await response.json() as TenantSettings;
+      setTenantSettings(data);
+    } catch (err) {
+      console.error('Error loading tenant settings:', err);
+      setTenantSettings(null);
+    }
   };
 
   const fetchHomeContent = async () => {
@@ -279,6 +303,34 @@ export default function SystemSettings() {
     }
   };
 
+  const handleSaveInitialInvitePassword = async () => {
+    try {
+      setInvitePasswordSubmitting(true);
+      setInvitePasswordError(null);
+      setInvitePasswordSuccess(null);
+
+      const response = await apiClient.put('/api/tenant-settings/initial-invite-password', {
+        initialInvitePassword: initialInvitePasswordInput,
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null) as { message?: string; reasons?: string[] } | null;
+        const reasons = payload?.reasons?.length ? `: ${payload.reasons.join('; ')}` : '';
+        throw new Error((payload?.message || 'Failed to save initial invite password') + reasons);
+      }
+
+      const data = await response.json() as TenantSettings;
+      setTenantSettings(data);
+      setInitialInvitePasswordInput('');
+      setInvitePasswordSuccess('Initial invite password updated.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save initial invite password';
+      setInvitePasswordError(message);
+    } finally {
+      setInvitePasswordSubmitting(false);
+    }
+  };
+
   const formatDateTime = (value?: string | null) => {
     if (!value) {
       return 'Not scheduled';
@@ -401,6 +453,68 @@ export default function SystemSettings() {
                 data-testid="save-home-content-button"
               >
                 {submitting ? 'Saving...' : 'Save Home Content'}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-slate-200 bg-white shadow-sm" data-testid="invite-password-settings-card">
+          <div className="border-b border-slate-200 px-6 py-5">
+            <h2 className="text-xl font-semibold text-slate-900">Initial Invite Password</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Used only for bulk/CSV member import. Every imported member must change this
+              password on first login, and no email is sent when it&apos;s used &mdash; it must
+              meet your Keycloak realm&apos;s password policy.
+            </p>
+          </div>
+
+          <div className="px-6 py-6 space-y-4">
+            <div className="text-sm text-slate-700" data-testid="initial-invite-password-status">
+              Status:{' '}
+              {tenantSettings?.initialInvitePasswordConfigured ? (
+                <span className="font-medium text-green-700" data-testid="initial-invite-password-configured">Configured</span>
+              ) : (
+                <span className="font-medium text-red-700" data-testid="initial-invite-password-not-configured">Not configured &mdash; bulk import is disabled</span>
+              )}
+            </div>
+
+            {invitePasswordError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700" data-testid="invite-password-error">
+                {invitePasswordError}
+              </div>
+            )}
+
+            {invitePasswordSuccess && (
+              <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700" data-testid="invite-password-success">
+                {invitePasswordSuccess}
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="initial-invite-password" className="block text-sm font-medium text-slate-700">
+                New initial invite password
+              </label>
+              <input
+                id="initial-invite-password"
+                type="password"
+                autoComplete="new-password"
+                value={initialInvitePasswordInput}
+                onChange={(event) => setInitialInvitePasswordInput(event.target.value)}
+                className="mt-2 block w-full max-w-sm rounded-md border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                placeholder="............"
+                data-testid="initial-invite-password-input"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSaveInitialInvitePassword}
+                disabled={invitePasswordSubmitting || !initialInvitePasswordInput}
+                className="inline-flex items-center rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-primary-300"
+                data-testid="save-invite-password-button"
+              >
+                {invitePasswordSubmitting ? 'Saving...' : 'Save Invite Password'}
               </button>
             </div>
           </div>

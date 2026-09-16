@@ -56,6 +56,12 @@ public class AccountHolderService : IAccountHolderService
         return accountHolder != null ? _mapper.Map<AccountHolderDto>(accountHolder) : null;
     }
 
+    public async Task<AccountHolderDto?> GetAccountHolderByEmailAsync(string email)
+    {
+        var accountHolder = await _accountHolderRepository.GetByEmailAsync(email);
+        return accountHolder != null ? _mapper.Map<AccountHolderDto>(accountHolder) : null;
+    }
+
     public async Task<AccountHolderDto> CreateAccountHolderAsync(CreateAccountHolderDto createDto)
     {
         var accountHolder = _mapper.Map<AccountHolder>(createDto);
@@ -90,6 +96,11 @@ public class AccountHolderService : IAccountHolderService
         _mapper.Map(updateDto, existingAccountHolder);
         var updatedAccountHolder = await _accountHolderRepository.UpdateAsync(existingAccountHolder);
         return _mapper.Map<AccountHolderDto>(updatedAccountHolder);
+    }
+
+    public async Task<bool> DeleteAccountHolderAsync(Guid id)
+    {
+        return await _accountHolderRepository.DeleteAsync(id);
     }
 
     public async Task<StudentDto> AddStudentToAccountAsync(Guid accountHolderId, CreateStudentForAccountDto createDto)

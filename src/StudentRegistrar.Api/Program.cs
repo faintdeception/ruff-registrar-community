@@ -96,6 +96,8 @@ builder.Services.AddScoped<IEducatorService, EducatorService>();
 builder.Services.AddScoped<IKeycloakService, KeycloakService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
+builder.Services.AddScoped<IPasswordPolicyValidator, PasswordPolicyValidator>();
+builder.Services.AddScoped<ITenantSettingsService, TenantSettingsService>();
 builder.Services.AddScoped<IUserIdentityEmailSender, UserIdentityEmailSender>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<ITenantBillingService, TenantBillingService>();

@@ -59,6 +59,7 @@ public class NavigationPage
     // public void ClickEnrollments() => ClickNavItem("enrollments");
     // public void ClickGrades() => ClickNavItem("grades");
     public void ClickEducators() => ClickNavItem("educators");
+    public void ClickHome() => ClickNavItem("home");
 
     public void Logout()
     {
