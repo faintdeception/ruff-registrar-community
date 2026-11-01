@@ -56,6 +56,12 @@ if [ "$(echo "$CLIENT" | jq -r .directAccessGrantsEnabled)" != "true" ]; then
   echo "Enabled direct access grants on '$CLIENT_ID'."
 fi
 
+ACCOUNT_CONSOLE=$(api GET "/clients?clientId=account-console" | jq '.[0]')
+if [ "$ACCOUNT_CONSOLE" != "null" ] && [ "$(echo "$ACCOUNT_CONSOLE" | jq -r .enabled)" = "true" ]; then
+  api PUT "/clients/$(echo "$ACCOUNT_CONSOLE" | jq -r .id)" "$(echo "$ACCOUNT_CONSOLE" | jq '.enabled = false')" >/dev/null
+  echo "Disabled 'account-console' client."
+fi
+
 api PUT "" "$(jq -n --arg realm "$REALM" '{realm: $realm, bruteForceProtected: false}')" >/dev/null
 
 setup_user() { # username first last role

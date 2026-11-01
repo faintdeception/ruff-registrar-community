@@ -6,6 +6,7 @@
 
 .DESCRIPTION
     - Enables direct access grants on the SPA client (this realm only).
+    - Disables the account-console client so visitors cannot change the shared password.
     - Disables brute-force protection, because the demo password is public and lockouts would be a denial of service.
     - Creates demo-admin / demo-member if missing (existing users and their ids are kept) and resets their password.
     - Prints each user's Keycloak id. The app database needs a User row with that KeycloakId in the demo tenant
@@ -55,6 +56,14 @@ if (-not $client.directAccessGrantsEnabled) {
     $client.directAccessGrantsEnabled = $true
     Invoke-Admin Put "/clients/$($client.id)" $client | Out-Null
     Write-Host "Enabled direct access grants on '$ClientId'."
+}
+
+# Stop visitors from changing the shared demo password via the self-service account console.
+$accountConsole = (Invoke-Admin Get '/clients?clientId=account-console' | ForEach-Object { $_ } | Select-Object -First 1)
+if ($accountConsole -and $accountConsole.enabled) {
+    $accountConsole.enabled = $false
+    Invoke-Admin Put "/clients/$($accountConsole.id)" $accountConsole | Out-Null
+    Write-Host "Disabled 'account-console' client."
 }
 
 Invoke-Admin Put '' @{ realm = $Realm; bruteForceProtected = $false } | Out-Null
