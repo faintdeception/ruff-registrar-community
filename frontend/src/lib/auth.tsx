@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { getKeycloakConfig, getTenantSlugFromPath } from './runtime-env';
 import { buildTenantPath } from './tenant-routing';
+import { clearDemoSession, getStoredDemoSession, revokeDemoSession } from './demo-login';
 
 interface User {
   id: string;
@@ -94,20 +95,35 @@ const ensureKeycloakInitialized = async (): Promise<Keycloak> => {
   const client = getKeycloakClient();
   if (!keycloakInitPromise) {
     const runningOnLocalhost = typeof window !== 'undefined' && isLocalhostHost(window.location.hostname);
+    const demoSession = getStoredDemoSession();
 
-    keycloakInitPromise = client.init(
-      runningOnLocalhost
+    // A demo session carries its own tokens, so no redirect or SSO check is needed.
+    const initOptions = demoSession
+      ? {
+          token: demoSession.token,
+          refreshToken: demoSession.refreshToken,
+          idToken: demoSession.idToken,
+          pkceMethod: 'S256' as const,
+          checkLoginIframe: false,
+        }
+      : runningOnLocalhost
         ? {
-            pkceMethod: 'S256',
+            pkceMethod: 'S256' as const,
             checkLoginIframe: false,
           }
         : {
-            onLoad: 'check-sso',
-            pkceMethod: 'S256',
+            onLoad: 'check-sso' as const,
+            pkceMethod: 'S256' as const,
             checkLoginIframe: false,
             silentCheckSsoRedirectUri: getRedirectUri('/silent-check-sso.html'),
-          }
-    );
+          };
+
+    keycloakInitPromise = client.init(initOptions).catch((error) => {
+      if (demoSession) {
+        clearDemoSession();
+      }
+      throw error;
+    });
   }
 
   await keycloakInitPromise;
@@ -204,6 +220,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    const demoSession = getStoredDemoSession();
+    if (demoSession) {
+      clearDemoSession();
+      setUser(null);
+      void revokeDemoSession(demoSession).finally(() => {
+        window.location.assign(getRedirectUri('/login'));
+      });
+      return;
+    }
+
     const client = keycloakClient;
     setUser(null);
     if (client) {

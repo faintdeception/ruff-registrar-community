@@ -118,6 +118,23 @@ For the browser E2E suite, prefer the testing setup scripts because they create 
 ./scripts/testing/setup-test-users.ps1 -AdminPassword 'admin123!'
 ```
 
+## Public demo "click to try" login
+
+`setup-demo-login.ps1` / `setup-demo-login.sh` (the `.sh` needs `curl` and `jq`) prepare a **demo-only** realm for the one-click login buttons: they enable direct grants on `student-registrar-spa`, disable brute-force protection, and create/reset `demo-admin` (Administrator) and `demo-member` (Member) with a shared, public password. Never run them against a real organization's realm.
+
+```powershell
+$env:KEYCLOAK_ADMIN_PASSWORD = '...'; $env:DEMO_LOGIN_PASSWORD = '...'
+./setup-demo-login.ps1 -Realm dreampipe-studios-org -KeycloakUrl https://<keycloak-host>
+```
+
+One-time wiring:
+1. Run the script and note the printed `KeycloakId` values.
+2. Insert matching `Users` rows (KeycloakId, demo tenant, role Administrator / Member) in the demo tenant, then re-run the DemoReset `snapshot` so resets keep them.
+3. Set on the API: `DemoLogin__Enabled=true`, `DemoLogin__TenantSubdomain`, `DemoLogin__Admin__Username/Password`, `DemoLogin__Member__Username/Password` (same password as `DEMO_LOGIN_PASSWORD`).
+4. Re-run the script on a schedule (e.g. daily with the reset) to restore passwords if a visitor changes them.
+
+For a local Aspire stack, Keycloak is served over HTTPS with a dev certificate (`https://localhost:8080`), so add `-SkipCertificateCheck` to the PowerShell script.
+
 ## Regenerating Realm Template
 1. Make interactive changes in a disposable Keycloak instance.
 2. Export realm without users:

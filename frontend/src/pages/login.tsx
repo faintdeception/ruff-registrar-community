@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { getApiBaseUrl, getAppVersion, getTenantSlugFromPath } from '@/lib/runtime-env';
+import { buildTenantPath } from '@/lib/tenant-routing';
+import {
+  fetchDemoAccounts,
+  requestDemoSession,
+  storeDemoSession,
+  type DemoAccount,
+} from '@/lib/demo-login';
 import { AcademicCapIcon, ArrowRightCircleIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
 
 export default function Login() {
@@ -10,8 +17,28 @@ export default function Login() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [requestAccessUrl, setRequestAccessUrl] = useState<string | null>(null);
+  const [demoAccounts, setDemoAccounts] = useState<DemoAccount[]>([]);
+  const [demoLoadingRole, setDemoLoadingRole] = useState<string | null>(null);
   
   const { login } = useAuth();
+
+  useEffect(() => {
+    void fetchDemoAccounts().then(setDemoAccounts);
+  }, []);
+
+  const handleDemoSignIn = async (account: DemoAccount) => {
+    setError('');
+    setDemoLoadingRole(account.role);
+
+    try {
+      storeDemoSession(await requestDemoSession(account));
+      // A full page load lets the auth provider start from the stored demo tokens.
+      window.location.assign(buildTenantPath('/', tenantSlug));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to start the demo');
+      setDemoLoadingRole(null);
+    }
+  };
 
   useEffect(() => {
     const fetchRequestAccessUrl = async () => {
@@ -129,6 +156,30 @@ export default function Login() {
                 )}
               </button>
             </div>
+
+            {demoAccounts.length > 0 && (
+              <div data-testid="demo-login" className="rounded-md border border-blue-200 bg-blue-50 p-4 space-y-3">
+                <p className="text-sm font-medium text-blue-900">
+                  Try the demo — see what your families and instructors will experience.
+                </p>
+                {demoAccounts.map((account) => (
+                  <button
+                    key={account.role}
+                    type="button"
+                    data-testid={`demo-login-${account.role}`}
+                    onClick={() => void handleDemoSignIn(account)}
+                    disabled={demoLoadingRole !== null}
+                    className="w-full flex justify-center py-2 px-4 border border-blue-300 rounded-md text-sm font-medium text-blue-800 bg-white hover:bg-blue-100 disabled:opacity-60"
+                  >
+                    {demoLoadingRole === account.role
+                      ? 'Starting demo...'
+                      : account.role === 'admin'
+                        ? 'Try as an organizer (admin)'
+                        : 'Try as a family member'}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {requestAccessUrl && (
               <div className="text-center text-sm text-gray-600">

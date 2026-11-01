@@ -68,6 +68,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddMemoryCache();
 builder.Services.Configure<TransactionalEmailOptions>(builder.Configuration.GetSection(TransactionalEmailOptions.SectionName));
+builder.Services.Configure<DemoLoginOptions>(builder.Configuration.GetSection(DemoLoginOptions.SectionName));
 
 // Add AutoMapper
 builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
