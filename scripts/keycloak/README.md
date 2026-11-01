@@ -133,6 +133,8 @@ One-time wiring:
 3. Set on the API: `DemoLogin__Enabled=true`, `DemoLogin__TenantSubdomain`, `DemoLogin__Admin__Username/Password`, `DemoLogin__Member__Username/Password` (same password as `DEMO_LOGIN_PASSWORD`).
 4. Re-run the script on a schedule (e.g. daily with the reset) to restore passwords if a visitor changes them.
 
+Guardrails: while `DemoLogin:Enabled` is true, the API rejects (403) writes from the demo accounts to `/api/users`, `/api/tenant-billing`, `/api/tenant-payment-connect`, `/api/tenant-stripe-payments`, `/api/tenant-settings`, `/api/tenant-home-content` and `/api/accountholders/bulk-import` (`POST /api/users/me/sync` is allowed). Consider also disabling the `account-console` client in the demo realm so visitors can't change the shared password.
+
 For a local Aspire stack, Keycloak is served over HTTPS with a dev certificate (`https://localhost:8080`), so add `-SkipCertificateCheck` to the PowerShell script.
 
 ## Regenerating Realm Template

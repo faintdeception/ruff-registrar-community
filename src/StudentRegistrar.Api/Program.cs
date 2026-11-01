@@ -363,7 +363,7 @@ app.UseTenantResolution();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
+app.UseMiddleware<DemoAccountGuardMiddleware>();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapControllers();
 app.MapDefaultEndpoints();
